@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Please wait" %}{% endblock %}
+{% block content %}
+<h1>{% translate "Please wait a little" %}</h1>
+<p class="card" role="alert">{% translate "You have started many contributions recently. Please try again later." %}</p>
+{% endblock %}

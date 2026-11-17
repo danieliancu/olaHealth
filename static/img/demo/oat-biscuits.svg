@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Original illustration for a fictional demo product (olaHealth). -->
+  <rect width="200" height="200" rx="24" fill="#faf5ec"/>
+  <ellipse cx="100" cy="176" rx="70" ry="8" fill="#ece2cf"/>
+  <rect x="34" y="44" width="132" height="128" rx="10" fill="#d9a35b"/>
+  <rect x="34" y="44" width="132" height="22" rx="10" fill="#b97f36"/>
+  <circle cx="78" cy="122" r="26" fill="#e8c48a" stroke="#c99a52" stroke-width="3"/>
+  <circle cx="122" cy="128" r="22" fill="#ecc993" stroke="#c99a52" stroke-width="3"/>
+  <g fill="#b98543"><circle cx="70" cy="114" r="2.5"/><circle cx="84" cy="128" r="2.5"/><circle cx="76" cy="132" r="2"/><circle cx="118" cy="122" r="2.5"/><circle cx="128" cy="134" r="2"/></g>
+  <text x="100" y="90" font-family="system-ui,sans-serif" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">OAT BISCUITS</text>
+  <text x="150" y="164" font-family="system-ui,sans-serif" font-size="10" fill="#fff" text-anchor="end">300 g</text>
+</svg>

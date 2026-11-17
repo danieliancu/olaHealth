@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load static i18n ui %}
+{% block title %}{% translate "Scan a barcode" %}{% endblock %}
+{% block head %}<script type="module" src="{% static 'js/scanner.js' %}"></script>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{% translate "Scan a barcode" %}</h1>
+  <a class="icon-btn" href="{% url 'home' %}" aria-label="{% translate 'Close scanner' %}" title="{% translate 'Close' %}">{% icon "x" 22 %}</a>
+</div>
+
+<section aria-label="{% translate 'Camera scanner' %}" data-scanner
+         data-lookup-url="{% url 'api-lookup' %}"
+         data-zxing-url="{% static 'vendor/zxing-wasm/es/reader/index.js' %}"
+         data-zxing-wasm="{% static 'vendor/zxing-wasm/reader/zxing_reader.wasm' %}">
+  <div class="viewfinder">
+    <video data-video playsinline muted aria-label="{% translate 'Camera preview' %}" hidden></video>
+    <div class="frame" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    <div class="viewfinder-idle" data-idle>
+      {% icon "scan-barcode" 48 %}
+      <button type="button" class="btn btn-primary" data-start>{% icon "camera" 20 %}<span>{% translate "Start camera" %}</span></button>
+    </div>
+    <button type="button" class="btn btn-light stop" data-stop hidden>{% icon "x" 18 %}<span>{% translate "Stop camera" %}</span></button>
+  </div>
+  <p class="center hint">{% translate "Place the barcode inside the frame. The camera image stays on your device; only the number is sent." %}</p>
+  <p class="status" data-scan-status role="status"></p>
+  <div data-result></div>
+  <form method="post" action="{% url 'contribution-start' %}" data-contribute-template hidden>
+    {% csrf_token %}
+    <input type="hidden" name="problem_type">
+    <input type="hidden" name="product">
+    <input type="hidden" name="code">
+    <input type="hidden" name="format">
+    <button class="btn btn-outline btn-small" type="submit"></button>
+  </form>
+</section>
+
+<section class="card" id="manual" aria-labelledby="manual-h">
+  <h2 id="manual-h">{% translate "Enter barcode" %}</h2>
+  <form method="get" action="{% url 'lookup' %}" class="stack">
+    {% include "partials/field.html" with field=form.code %}
+    {{ form.format }}
+    <button class="btn btn-primary" type="submit">{% icon "search" 20 %}<span>{% translate "Look up" %}</span></button>
+  </form>
+</section>
+
+<section class="card" id="photo" aria-labelledby="photo-h">
+  <h2 id="photo-h">{% translate "Scan from a photo" %}</h2>
+  <p class="hint">{% translate "The photo is sent to our server only to read the barcode. It is processed in memory and never stored." %}</p>
+  <form method="post" action="{% url 'scan-photo' %}" enctype="multipart/form-data" class="stack">
+    {% csrf_token %}
+    {% include "partials/field.html" with field=photo_form.photo %}
+    <button class="btn btn-outline" type="submit">{% icon "camera" 20 %}<span>{% translate "Read barcode from photo" %}</span></button>
+  </form>
+</section>
+
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load i18n ui %}
+{% block title %}{% translate "Understand your food" %}{% endblock %}
+{% block content %}
+<div class="home-wrap">
+  <div>
+    <section class="hero">
+      <p class="eyebrow">{% translate "Know what you eat" %}</p>
+      <h1 class="display">{% translate "Understand your food." %}</h1>
+      <p class="lead">{% translate "Scan a barcode. Explore the ingredients. Compare your choices." %}</p>
+    </section>
+    <div class="stack">
+      <a class="btn btn-primary btn-block" href="{% url 'scan' %}">{% icon "scan-barcode" 20 %}<span>{% translate "Scan a product" %}</span></a>
+      <a class="btn btn-outline btn-block" href="{% url 'scan' %}#manual">{% translate "Enter barcode" %}</a>
+    </div>
+    <div class="tiles">
+      <a class="tile" href="{% url 'compare' %}">{% icon "git-compare-arrows" 24 %}<span>{% translate "Compare products" %}</span></a>
+      <a class="tile" href="{% url 'products' %}">{% icon "search" 24 %}<span>{% translate "Explore the catalogue" %}</span></a>
+    </div>
+  </div>
+  <img class="hero-art" src="{% asset 'img/hero' %}" alt="" width="640" height="320">
+</div>
+
+<section class="recent" aria-labelledby="recent-h" data-recent hidden>
+  <h2 id="recent-h" class="section-title">{% translate "Recently viewed" %}</h2>
+  <ul class="product-list" data-recent-list></ul>
+</section>
+
+<p class="source-note">{% translate "Source: Open Food Facts" %}</p>
+{% endblock %}

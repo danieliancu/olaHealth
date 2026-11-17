@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Lookup" %}{% endblock %}
+{% block head %}{% if status == "pending" %}<meta http-equiv="refresh" content="2">{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if status == "not_found" %}{% translate "Product not found" %}{% elif status == "pending" %}{% translate "Looking up…" %}{% else %}{% translate "Lookup problem" %}{% endif %}</h1>
+<section class="card">
+  <p><strong>{% translate "Barcode" %}:</strong> <span class="mono">{{ code }}</span>
+    {% if parsed and parsed.kind == "restricted" %}<br><span class="tag tag-warn">{% translate "Store-internal code: it may identify different products in different shops." %}</span>{% endif %}
+  </p>
+  <p role="{% if status == 'pending' %}status{% else %}alert{% endif %}" class="{% if error %}error{% endif %}">{{ message }}</p>
+
+  {% if status == "not_found" %}
+    <p>{% translate "You can add this product. A moderator checks every contribution before it is published." %}</p>
+    <form method="post" action="{% url 'contribution-start' %}">
+      {% csrf_token %}
+      <input type="hidden" name="problem_type" value="new_product">
+      <input type="hidden" name="code" value="{{ code }}">
+      <input type="hidden" name="format" value="{{ format }}">
+      <button class="btn btn-primary" type="submit">{% translate "Add this product" %}</button>
+    </form>
+  {% elif can_force %}
+    <a class="btn" href="{% url 'lookup' %}?code={{ code|urlencode }}&amp;allow_bad_check=1">{% translate "The number is correct – look it up anyway" %}</a>
+  {% elif status == "pending" %}
+    <a class="btn" href="{{ request.get_full_path }}">{% translate "Check again" %}</a>
+  {% elif error and error != "invalid_code" %}
+    <a class="btn" href="{{ request.get_full_path }}">{% translate "Try again" %}</a>
+  {% endif %}
+</section>
+<p><a href="{% url 'scan' %}">{% translate "Scan another product" %}</a></p>
+{% endblock %}

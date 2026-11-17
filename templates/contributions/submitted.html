@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Contribution" %}{% endblock %}
+{% block content %}
+<h1>{% translate "Thank you" %}</h1>
+<section class="card" role="status">
+  {% if c.status == "submitted" or c.status == "conflict" %}
+    <p>{% translate "Your contribution was sent and is waiting for a moderator. It is not public until approved." %}</p>
+  {% elif c.status == "approved" %}
+    <p>{% translate "Your contribution was approved and published." %}</p>
+  {% elif c.status == "rejected" %}
+    <p>{% translate "Your contribution was not accepted." %}{% if c.moderation_reason %} {% translate "Reason" %}: {{ c.moderation_reason }}{% endif %}</p>
+  {% endif %}
+  {% if c.validation_warnings %}<p class="hint">{% translate "The moderator will double-check" %}:</p><ul>{% for w in c.validation_warnings %}<li>{{ w }}</li>{% endfor %}</ul>{% endif %}
+  <p>{% if c.product %}<a href="{% url 'product' c.product.pk %}">{% translate "Back to the product" %}</a> · {% endif %}<a href="{% url 'scan' %}">{% translate "Scan another product" %}</a></p>
+</section>
+{% endblock %}

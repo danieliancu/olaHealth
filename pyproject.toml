@@ -1,0 +1,52 @@
+[project]
+name = "olahealth"
+version = "0.1.0"
+description = "Scan, identify, compare and understand packaged foods."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "django>=5.2.19,<5.3",
+    "djangorestframework>=3.16,<3.19",
+    "django-q2>=1.8,<2",
+    "psycopg[binary]>=3.2,<4",
+    "pillow>=11,<14",
+    "pytesseract>=0.3.13,<0.4",
+    "zxing-cpp>=2.3,<4",
+    "httpx>=0.28,<0.29",
+    "gunicorn>=23,<28",
+    "whitenoise>=6.9,<7",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<10",
+    "pytest-django>=4.10,<5",
+    "ruff>=0.11,<0.18",
+    "respx>=0.22,<0.24",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "olahealth.settings"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers -m 'not ocr and not network'"
+markers = [
+    "ocr: end-to-end OCR tests using the real Tesseract binary (run with -m ocr)",
+    "network: tests calling the real Open Food Facts API (never in the default suite)",
+]
+filterwarnings = ["error::RuntimeWarning", "ignore:No directory at:UserWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["static/vendor", "*/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "S", "SIM", "RUF"]
+ignore = ["S101", "RUF012", "S311", "RUF001", "RUF002", "RUF003"]  # typographic quotes and dashes in UI text are intentional
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S108"]

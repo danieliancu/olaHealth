@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Barcodes found" %}{% endblock %}
+{% block content %}
+<h1>{% translate "Several barcodes were found" %}</h1>
+<section class="card">
+  <p>{% translate "Choose the one printed on the product:" %}</p>
+  <ul class="plain-list">
+    {% for c in codes %}
+      <li><a class="btn" href="{% url 'lookup' %}?code={{ c.text|urlencode }}&amp;format={{ c.format }}">{{ c.text }} <span class="hint">({{ c.format }})</span></a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

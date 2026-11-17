@@ -1,0 +1,62 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Home</a> › <a href="{% url 'admin:contributions_contribution_changelist' %}">Contributions</a> › Review</div>{% endblock %}
+{% block content %}
+<style>
+  .mod td, .mod th { vertical-align: top; }
+  .mod pre { white-space: pre-wrap; max-width: 34em; margin: 0; font-size: 12px; }
+  .mod tr.proposed { background: #ecfdf5; }
+  .mod tr.changed td.cur { background: #fff7ed; }
+  .imgs img { max-height: 260px; margin: 4px; border: 1px solid #ccc; }
+  .warn { color: #9a3412; }
+</style>
+<h1>{{ title }}</h1>
+<p><strong>Status:</strong> {{ c.get_status_display }} · <strong>Type:</strong> {{ c.get_problem_type_display }}
+ · <strong>Submitted:</strong> {{ c.submitted_at|default:"—" }}
+ · <strong>Product:</strong> {% if c.product %}<a href="{% url 'product' c.product.pk %}" target="_blank" rel="noopener">{{ c.product }}</a>{% else %}new ({{ c.code }}){% endif %}
+ · <strong>Base revision:</strong> {{ base.number|default:"—" }} · <strong>Current revision:</strong> {{ current.number|default:"—" }}</p>
+{% if c.status == "conflict" %}<p class="warn"><strong>Conflict:</strong> the product changed since this contribution's base revision in a field it touches. Review the diff, then re-base (with a reason) or reject.</p>{% endif %}
+{% if c.note %}<p><strong>Contributor note:</strong> {{ c.note }}</p>{% endif %}
+{% if c.validation_warnings %}<p class="warn"><strong>Validation warnings:</strong></p><ul>{% for w in c.validation_warnings %}<li>{{ w }}</li>{% endfor %}</ul>{% endif %}
+<p><strong>Consent given:</strong> {{ c.consent_publication|yesno:"yes,no" }}</p>
+
+<h2>Changes</h2>
+<table class="mod">
+  <thead><tr><th>Field</th><th>At base revision</th><th>Current</th><th>Proposed</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr class="{% if r.proposed %}proposed{% endif %}{% if r.changed_since_base %} changed{% endif %}">
+      <th>{{ r.field }}{% if r.changed_since_base %}<br><small class="warn">changed since base</small>{% endif %}</th>
+      <td><pre>{{ r.base }}</pre></td><td class="cur"><pre>{{ r.current }}</pre></td><td>{% if r.proposed %}<pre>{{ r.new }}</pre>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Photos</h2>
+<div class="imgs">
+  {% for img in images %}<a href="{% url 'staff-image' img.pk %}" target="_blank" rel="noopener"><img src="{% url 'staff-image' img.pk %}" alt="{{ img.kind }} photo"></a>{% empty %}<p>No photos.</p>{% endfor %}
+</div>
+{% for r in runs %}
+  <details><summary>OCR {{ r.image.kind }} – {{ r.status }}{% if r.error %} ({{ r.error }}){% endif %}{% if r.duration_ms %}, {{ r.duration_ms }} ms{% endif %}</summary>
+    <pre>{{ r.text }}</pre>
+    {% if r.parsed.proposals %}<p>Parser proposals (dictionary v{{ r.parsed.dictionary_version }}, basis {{ r.parsed.basis|default:"unknown" }}):</p>
+      <ul>{% for p in r.parsed.proposals %}<li>{{ p.nutrient }} = {{ p.value }} {{ p.unit }} <small>({{ p.line }})</small></li>{% endfor %}</ul>{% endif %}
+    {% if r.image.ocr_file %}<a href="{% url 'staff-image-variant' r.image.pk 'ocr' %}" target="_blank" rel="noopener">OCR input image</a>{% endif %}
+  </details>
+{% endfor %}
+
+<h2>Decision</h2>
+{% if can_moderate %}
+  {% if c.status == "submitted" or c.status == "conflict" %}
+  <form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Confirm" class="default">
+  </form>
+  {% else %}<p>This contribution is {{ c.get_status_display|lower }}{% if c.moderation_reason %}: {{ c.moderation_reason }}{% endif %}.</p>{% endif %}
+{% else %}
+  <p>You can view contributions but do not have permission to approve or reject them.</p>
+{% endif %}
+
+<h2>Audit</h2>
+<ul>{% for a in c.audit.all %}<li>{{ a.created_at }} – {{ a.actor|default:"system" }} – {{ a.action }}{% if a.reason %}: {{ a.reason }}{% endif %}</li>{% empty %}<li>No actions yet.</li>{% endfor %}</ul>
+{% endblock %}

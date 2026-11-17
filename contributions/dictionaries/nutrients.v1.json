@@ -1,0 +1,37 @@
+{
+  "version": "1",
+  "description": "Nutrition-table labels per language. Matched after lowercasing and removing diacritics. Prefixes like 'of which' are stripped before matching.",
+  "strip_prefixes": {
+    "en": ["of which", "- of which", "whereof", "-"],
+    "ro": ["din care", "- din care", "-"]
+  },
+  "labels": {
+    "en": {
+      "energy": ["energy", "energy value", "calories"],
+      "fat": ["fat", "total fat", "fats"],
+      "saturated-fat": ["saturates", "saturated fat", "saturated fatty acids", "saturated"],
+      "carbohydrates": ["carbohydrate", "carbohydrates", "total carbohydrate"],
+      "sugars": ["sugars", "sugar", "total sugars"],
+      "fiber": ["fibre", "fiber", "dietary fibre", "dietary fiber"],
+      "proteins": ["protein", "proteins"],
+      "salt": ["salt"],
+      "sodium": ["sodium"]
+    },
+    "ro": {
+      "energy": ["valoare energetica", "energie", "valoarea energetica"],
+      "fat": ["grasimi", "grasimi totale", "lipide"],
+      "saturated-fat": ["acizi grasi saturati", "grasimi saturate", "saturati"],
+      "carbohydrates": ["glucide", "carbohidrati", "hidrati de carbon"],
+      "sugars": ["zaharuri", "zahar"],
+      "fiber": ["fibre", "fibre alimentare"],
+      "proteins": ["proteine"],
+      "salt": ["sare"],
+      "sodium": ["sodiu"]
+    }
+  },
+  "basis_markers": {
+    "per_100g": ["per 100 g", "per 100g", "100 g", "100g", "la 100 g", "la 100g", "/100 g", "/100g"],
+    "per_100ml": ["per 100 ml", "per 100ml", "100 ml", "100ml", "la 100 ml", "la 100ml", "/100 ml", "/100ml"],
+    "per_serving": ["per serving", "per portion", "per portie", "pe portie", "portie", "serving"]
+  }
+}

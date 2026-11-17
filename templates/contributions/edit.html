@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load i18n ui %}
+{% block title %}{% translate "Complete this product" %}{% endblock %}
+{% block content %}
+<p class="back">{% if c.product %}<a href="{% url 'product' c.product.pk %}">{% icon "chevron-left" 18 %}<span>{% translate "Back to product" %}</span></a>{% else %}<a href="{% url 'scan' %}">{% icon "chevron-left" 18 %}<span>{% translate "Back to scan" %}</span></a>{% endif %}</p>
+<h1>{% if c.problem_type == "new_product" %}{% translate "Add this product" %}{% elif c.problem_type == "wrong_product" %}{% translate "This is not my product" %}{% else %}{% translate "Complete this product" %}{% endif %}</h1>
+<p class="caption">{% if c.code %}{% translate "Barcode" %}: <span class="mono">{{ c.code }}</span>{% elif c.product %}{{ c.product.name }}{% endif %}</p>
+
+<ol class="stepper" aria-label="{% translate 'Steps' %}">
+  {% for s in steps %}
+  <li class="{% if s == step %}current{% endif %}" {% if s == step %}aria-current="step"{% endif %}>
+    <a href="?step={{ s }}"><span class="step-num">{{ forloop.counter }}</span><span>{% if s == "photos" %}{% translate "Photos" %}{% elif s == "check" %}{% translate "Check" %}{% else %}{% translate "Submit" %}{% endif %}</span></a>
+  </li>
+  {% endfor %}
+</ol>
+
+{% if errors %}<div class="error-box" role="alert"><p>{% translate "Please fix:" %}</p><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+
+{% if step == "photos" %}
+  <p class="hint">{% translate "Photos are optional but help moderators. Location data is removed. Photos stay private until approved." %}</p>
+  <div class="photo-slots">
+    {% for kind, label, img in slots %}
+    <div class="slot">
+      <p class="slot-title">{{ label }}</p>
+      {% if img %}
+        <div class="slot-img">
+          <img src="{% url 'contribution-image' c.access_token img.pk %}" alt="{{ label }}" width="120" height="120">
+          <form method="post" action="{% url 'contribution-image-delete' c.access_token img.pk %}">{% csrf_token %}
+            <button class="icon-btn mini" type="submit" aria-label="{% blocktranslate %}Remove photo: {{ label }}{% endblocktranslate %}">{% icon "x" 16 %}</button>
+          </form>
+        </div>
+      {% else %}
+        <form method="post" action="{% url 'contribution-upload' c.access_token %}" enctype="multipart/form-data" data-autoupload>
+          {% csrf_token %}
+          <input type="hidden" name="kind" value="{{ kind }}">
+          <label class="slot-add">
+            {% icon "camera" 28 %}
+            <span class="sr-only">{% blocktranslate %}Add photo: {{ label }}{% endblocktranslate %}</span>
+            <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" class="visually-hidden-input">
+          </label>
+          <button class="btn btn-small btn-outline js-hide" type="submit">{% translate "Upload" %}</button>
+        </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% if extra_images %}<p class="caption">{% blocktranslate count n=extra_images|length %}{{ n }} other photo{% plural %}{{ n }} other photos{% endblocktranslate %}</p>{% endif %}
+  <details class="more">
+    <summary>{% translate "Add another photo (packaging, other side…)" %}</summary>
+    <form method="post" action="{% url 'contribution-upload' c.access_token %}" enctype="multipart/form-data" class="stack">
+      {% csrf_token %}
+      {% include "partials/field.html" with field=photo_form.photo %}
+      {% include "partials/field.html" with field=photo_form.kind %}
+      <button class="btn btn-outline" type="submit">{% icon "image-plus" 18 %}<span>{% translate "Add photo" %}</span></button>
+    </form>
+  </details>
+
+  <form method="post" class="stack">
+    {% csrf_token %}
+    <div class="grid-2">
+      <div class="field"><label for="country">{% translate "Country" %}</label>
+        <select id="country" name="country">{% for tag, label in countries %}<option value="{{ tag }}" {% if tag == c.country %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="label_lang">{% translate "Label language" %}</label>
+        <select id="label_lang" name="label_lang">{% for v, l in langs %}<option value="{{ v }}" {% if v == c.label_lang %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    </div>
+    <p class="notice">{% icon "info" 18 %}<span>{% translate "Your contribution will be reviewed before publication." %}</span></p>
+    <button class="btn btn-primary btn-block" type="submit">{% translate "Continue" %}</button>
+  </form>
+
+{% elif step == "check" %}
+  {% if runs %}
+  <section class="card" aria-labelledby="ocr-h" data-ocr-status data-url="{% url 'contribution-ocr-status' c.access_token %}">
+    <h2 id="ocr-h">{% translate "Text recognition" %}</h2>
+    <p class="hint">{% translate "We try to read the ingredient list and nutrition table (English and Romanian). Always check the values. If it fails, just type them." %}</p>
+    <ul class="plain-list">
+      {% for r in runs %}
+      <li data-run="{{ r.pk }}">{{ r.image.get_kind_display }}:
+        <span data-run-status>{% if r.status == "done" %}{% translate "done" %}{% elif r.status == "failed" %}{% translate "failed" %}{% else %}{% translate "in progress…" %}{% endif %}</span>
+        {% if r.status == "failed" %}
+          <form method="post" action="{% url 'contribution-ocr-retry' c.access_token r.pk %}" class="inline">{% csrf_token %}<button class="btn btn-small btn-outline" type="submit">{% icon "refresh-cw" 16 %}<span>{% translate "Try again" %}</span></button></form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    <p><a class="btn btn-outline" href="?step=check&amp;prefill=ocr" data-ocr-apply {% if not ocr_ready %}hidden{% endif %}>{% translate "Fill the form with recognised values" %}</a></p>
+    {% for r in runs %}{% if r.status == "done" and r.parsed.unmapped %}
+      <details><summary>{% translate "Lines we could not map (not used)" %}</summary><ul>{% for line in r.parsed.unmapped %}<li class="mono">{{ line }}</li>{% endfor %}</ul></details>
+    {% endif %}{% endfor %}
+  </section>
+  {% endif %}
+
+  <form method="post" action="?step=check" class="stack" novalidate>
+    {% csrf_token %}
+    <p class="hint">{% translate "Fill in only what you can read on the package. Leave unknown values empty – empty is not zero." %}</p>
+    {% if form.non_field_errors %}<div class="error-box" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    <fieldset class="card"><legend>{% translate "Identity" %}</legend>
+      {% include "partials/field.html" with field=form.name %}
+      {% include "partials/field.html" with field=form.brand %}
+      {% include "partials/field.html" with field=form.quantity %}
+    </fieldset>
+    <fieldset class="card"><legend>{% translate "Ingredients and allergens" %}</legend>
+      {% include "partials/field.html" with field=form.ingredients_text %}
+      {% include "partials/field.html" with field=form.ingredients_lang %}
+      {% include "partials/field.html" with field=form.allergens %}
+      {% include "partials/field.html" with field=form.traces %}
+    </fieldset>
+    <fieldset class="card"><legend>{% translate "Nutrition table" %}</legend>
+      <div class="grid-2">
+        {% include "partials/field.html" with field=form.nutrition_basis %}
+        {% include "partials/field.html" with field=form.serving_size %}
+      </div>
+      {% include "partials/field.html" with field=form.nutrition_prepared %}
+      <div class="nutrient-grid">
+        {% for n, value, unit in form.nutrient_fields %}
+          <div class="field{% if value.errors %} has-error{% endif %}">
+            <label for="{{ value.id_for_label }}">{{ n.label }}{% if not unit %} ({{ n.unit }}){% endif %}</label>
+            <div class="row tight">{{ value }}{% if unit %}<label for="{{ unit.id_for_label }}" class="sr-only">{% blocktranslate with n=n.label %}Unit for {{ n }}{% endblocktranslate %}</label>{{ unit }}{% endif %}</div>
+            {% for e in value.errors %}<p class="error">{{ e }}</p>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+      {% include "partials/field.html" with field=form.packaging_nutriscore %}
+    </fieldset>
+    {% include "partials/field.html" with field=form.note %}
+    <button class="btn btn-primary btn-block" type="submit">{% translate "Continue" %}</button>
+  </form>
+
+{% else %}
+  <section class="card" aria-labelledby="sum-h">
+    <h2 id="sum-h">{% translate "Your contribution" %}</h2>
+    {% if summary %}
+      <dl class="summary">{% for label, value in summary %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>
+    {% else %}
+      <p>{% translate "No data changes – only photos or a note." %}</p>
+    {% endif %}
+    {% if images %}<p class="caption">{% blocktranslate count n=images|length %}{{ n }} photo{% plural %}{{ n }} photos{% endblocktranslate %}</p>{% endif %}
+    {% if c.note %}<p><strong>{% translate "Note" %}:</strong> {{ c.note }}</p>{% endif %}
+    {% if c.validation_warnings %}<div class="notice">{% icon "triangle-alert" 18 %}<div><p>{% translate "Please double-check (a moderator will too):" %}</p><ul>{% for w in c.validation_warnings %}<li>{{ w }}</li>{% endfor %}</ul></div></div>{% endif %}
+    <p><a href="?step=check">{% translate "Edit values" %}</a></p>
+  </section>
+  <form method="post" action="?step=submit" class="stack">
+    {% csrf_token %}
+    <label class="check consent"><input type="checkbox" name="consent" required> <span>{{ consent_text }}</span></label>
+    <p class="notice">{% icon "info" 18 %}<span>{% translate "Your contribution will be reviewed before publication." %}</span></p>
+    <button class="btn btn-primary btn-block" type="submit">{% translate "Submit for review" %}</button>
+  </form>
+{% endif %}
+{% endblock %}

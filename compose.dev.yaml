@@ -1,0 +1,34 @@
+# Development override: source mounted, Django dev server, dev dependencies installed.
+#   docker compose -f compose.yaml -f compose.dev.yaml up --build
+services:
+  web:
+    build:
+      args:
+        INSTALL_DEV: "true"
+    image: olahealth:dev
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py createcachetable &&
+             python manage.py setup_schedules &&
+             python manage.py runserver 0.0.0.0:8000"
+    environment:
+      DJANGO_DEBUG: "1"
+      POSTGRES_HOST: postgres
+    volumes:
+      - .:/app
+      - private_media:/data/private
+      - exports:/data/exports
+
+  worker:
+    build:
+      args:
+        INSTALL_DEV: "true"
+    image: olahealth:dev
+    environment:
+      DJANGO_DEBUG: "1"
+      POSTGRES_HOST: postgres
+      OMP_THREAD_LIMIT: "1"
+    volumes:
+      - .:/app
+      - private_media:/data/private
+      - exports:/data/exports

@@ -1,0 +1,64 @@
+name: olahealth
+
+x-app: &app
+  build:
+    context: .
+    args:
+      INSTALL_DEV: "${INSTALL_DEV:-false}"
+  image: olahealth:local
+  env_file: .env
+  environment:
+    POSTGRES_HOST: postgres
+  depends_on:
+    postgres:
+      condition: service_healthy
+  volumes:
+    - private_media:/data/private
+    - exports:/data/exports
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-olahealth}
+      POSTGRES_USER: ${POSTGRES_USER:-olahealth}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    <<: *app
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py createcachetable &&
+             python manage.py setup_schedules &&
+             gunicorn olahealth.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 30
+             --access-logfile -"
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    <<: *app
+    command: python manage.py qcluster
+    environment:
+      POSTGRES_HOST: postgres
+      # Tesseract: one thread per OCR job; the cluster runs Q_WORKERS jobs at a time.
+      OMP_THREAD_LIMIT: "1"
+    mem_limit: ${WORKER_MEM_LIMIT:-768m}
+
+volumes:
+  pgdata:
+  private_media:
+  exports:

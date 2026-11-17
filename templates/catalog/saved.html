@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load i18n ui %}
+{% block title %}{% translate "Saved" %}{% endblock %}
+{% block content %}
+<h1>{% translate "Saved products" %}</h1>
+
+<div class="segmented" role="tablist" aria-label="{% translate 'Saved lists' %}" data-tabs>
+  <button type="button" role="tab" id="tab-fav" aria-controls="panel-fav" aria-selected="true">{% translate "Favourites" %}</button>
+  <button type="button" role="tab" id="tab-hist" aria-controls="panel-hist" aria-selected="false" tabindex="-1">{% translate "Recent scans" %}</button>
+</div>
+
+<p class="notice notice-ok">{% icon "bookmark" 18 %}<span>{% translate "Saved on this device only – no account, no sync." %}</span></p>
+<p class="notice" data-storage-error hidden>{% icon "triangle-alert" 18 %}<span>{% translate "Your browser does not allow local storage, so favourites and history cannot be kept." %}</span></p>
+
+<section id="panel-fav" role="tabpanel" aria-labelledby="tab-fav">
+  <ul class="product-list" data-favorites></ul>
+  <p class="empty" data-favorites-empty hidden>{% translate "No favourites yet. Use the bookmark on a product page." %}</p>
+</section>
+<section id="panel-hist" role="tabpanel" aria-labelledby="tab-hist" hidden>
+  <ul class="product-list" data-history></ul>
+  <p class="empty" data-history-empty hidden>{% translate "No products viewed yet." %}</p>
+</section>
+
+<div class="stack">
+  <a class="btn btn-outline btn-block" href="{% url 'scan' %}">{% icon "scan-barcode" 18 %}<span>{% translate "Scan another product" %}</span></a>
+  <button type="button" class="btn btn-link" data-clear="all">{% translate "Clear saved products" %}</button>
+</div>
+
+<template data-row-template>
+  <li class="product-card">
+    <img class="thumb" alt="" width="64" height="64" loading="lazy" data-img>
+    <div class="grow"><a class="product-link" data-link></a><p class="meta" data-meta></p></div>
+    <button type="button" class="icon-btn filled" data-remove>{% icon "bookmark" 22 %}</button>
+  </li>
+</template>
+{% endblock %}
