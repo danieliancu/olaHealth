@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "whitenoise.runserver_nostatic",  # dev: WhiteNoise serves static with max-age=0
     "django.contrib.staticfiles",
     "django.contrib.postgres",
     "rest_framework",
@@ -139,7 +140,7 @@ STORAGES = {
         "BACKEND": (
             "django.contrib.staticfiles.storage.StaticFilesStorage"
             if DEBUG or env_bool("TESTING", False)
-            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+            else "core.storage.StaticStorage"
         ),
     },
 }
@@ -158,8 +159,10 @@ UPLOADS_PER_CONTRIBUTION = env_int("UPLOADS_PER_CONTRIBUTION", 6)
 OFF_BASE_URL = env("OFF_BASE_URL", "https://world.openfoodfacts.org")
 OFF_USER_AGENT = env("OFF_USER_AGENT", "olaHealth/0.1 (set OFF_USER_AGENT with a contact)")
 OFF_CONNECT_TIMEOUT = float(env("OFF_CONNECT_TIMEOUT", "3"))
-OFF_READ_TIMEOUT = float(env("OFF_READ_TIMEOUT", "8"))
-OFF_MAX_RETRIES = env_int("OFF_MAX_RETRIES", 2)
+OFF_READ_TIMEOUT = float(env("OFF_READ_TIMEOUT", "10"))
+OFF_MAX_RETRIES = env_int("OFF_MAX_RETRIES", 1)
+# After a timeout / 5xx, skip OFF for this many seconds so users get an answer at once.
+OFF_CIRCUIT_SECONDS = env_int("OFF_CIRCUIT_SECONDS", 60)
 OFF_RETRY_AFTER_CAP = env_int("OFF_RETRY_AFTER_CAP", 5)
 # OFF documents 15 product reads/min/IP. Shared by every web and worker process.
 OFF_RATE_LIMIT_PER_MINUTE = env_int("OFF_RATE_LIMIT_PER_MINUTE", 12)
@@ -193,7 +196,7 @@ OCR_MAX_SIDE = env_int("OCR_MAX_SIDE", 2000)
 Q_CLUSTER = {
     "name": "olahealth",
     "orm": "default",
-    "workers": env_int("Q_WORKERS", 1),
+    "workers": env_int("Q_WORKERS", 2),  # photo downloads wait on the network
     "recycle": 50,
     "timeout": OCR_TIMEOUT_SECONDS + 20,
     "retry": OCR_TIMEOUT_SECONDS + 60,

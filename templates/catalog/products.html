@@ -1,73 +1,78 @@
 {% extends "base.html" %}
-{% load i18n ui %}
+{% load i18n ui static %}
 {% block title %}{% translate "Products" %}{% endblock %}
+{% block head %}<script type="module" src="{% static 'js/search.js' %}"></script>{% endblock %}
 {% block content %}
 <h1>{% translate "Products" %}</h1>
 
 <form method="get" class="filters" role="search" aria-label="{% translate 'Search the catalogue' %}" data-autosubmit>
-  <div class="search-box">
+  <div class="search-box" data-suggest data-suggest-url="{% url 'api-suggest' %}">
     {% icon "search" 20 %}
     <label for="{{ form.q.id_for_label }}" class="sr-only">{% translate "Search name or brand" %}</label>
-    <input type="search" name="q" id="{{ form.q.id_for_label }}" value="{{ form.q.value|default:'' }}" placeholder="{% translate 'Search name or brand' %}" maxlength="100">
+    <input type="search" name="q" id="{{ form.q.id_for_label }}" value="{{ form.q.value|default:'' }}" placeholder="{% translate 'Search name or brand' %}" maxlength="100"
+           role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest-list" autocomplete="off">
+    <ul id="suggest-list" class="suggest" role="listbox" aria-label="{% translate 'Suggestions' %}" hidden></ul>
+    <p class="sr-only" aria-live="polite" data-suggest-status></p>
   </div>
-  <p class="caption">{% translate "Products in the olaHealth catalogue" %}<span class="sr-only"> – {% translate "only products already scanned or added here, not the whole Open Food Facts database" %}</span></p>
+  <p class="caption">{% translate "Products in the olaHealth catalogue" %}<span class="sr-only"> – {% translate "only products already scanned or added here" %}</span></p>
   <div class="pills">
-    <label class="pill"><span class="sr-only">{% translate "Category" %}</span>
-      <select name="category" aria-label="{% translate 'Category' %}">
-        <option value="">{% translate "Category" %}</option>
-        {% for tag, label in categories %}<option value="{{ tag }}" {% if form.category.value == tag %}selected{% endif %}>{{ label }}</option>{% endfor %}
-      </select>{% icon "chevron-down" 16 %}</label>
-    <label class="pill"><span class="sr-only">{% translate "Country where sold" %}</span>
-      <select name="country" aria-label="{% translate 'Country where sold' %}">
-        <option value="">{% translate "Country" %}</option>
-        {% for tag, label in countries %}<option value="{{ tag }}" {% if form.country.value == tag %}selected{% endif %}>{{ label }}</option>{% endfor %}
-      </select>{% icon "chevron-down" 16 %}</label>
-    <label class="pill"><span class="sr-only">Nutri-Score</span>
-      <select name="nutriscore" aria-label="Nutri-Score">
-        <option value="">Nutri-Score</option>
-        {% for v, l in form.fields.nutriscore.choices %}{% if v %}<option value="{{ v }}" {% if form.nutriscore.value == v %}selected{% endif %}>{{ l }}</option>{% endif %}{% endfor %}
-      </select>{% icon "chevron-down" 16 %}</label>
-    <label class="pill"><span class="sr-only">{% translate "Data completeness" %}</span>
-      <select name="completeness" aria-label="{% translate 'Data completeness' %}">
-        <option value="">{% translate "Completeness" %}</option>
-        {% for v, l in form.fields.completeness.choices %}{% if v %}<option value="{{ v }}" {% if form.completeness.value == v %}selected{% endif %}>{{ l }}</option>{% endif %}{% endfor %}
-      </select>{% icon "chevron-down" 16 %}</label>
+    {% translate "Category" as l_cat %}{% translate "Country" as l_country %}{% translate "Completeness" as l_comp %}
+    {% include "partials/facet_select.html" with name="category" label=l_cat options=facets.category value=form.category.value %}
+    {% include "partials/facet_select.html" with name="country" label=l_country options=facets.country value=form.country.value %}
+    {% include "partials/facet_select.html" with name="nutriscore" label="Nutri-Score" options=facets.nutriscore value=form.nutriscore.value %}
+    {% include "partials/facet_select.html" with name="completeness" label=l_comp options=facets.completeness value=form.completeness.value %}
   </div>
   <div class="sort-row">
     <label for="sort">{% translate "Sort:" %}</label>
     <select id="sort" name="sort" class="bare">
       {% for v, l in form.fields.sort.choices %}<option value="{{ v }}" {% if form.sort.value == v or not form.sort.value and v == "relevance" %}selected{% endif %}>{{ l }}</option>{% endfor %}
     </select>
-    <label class="check small"><input type="checkbox" name="include_demo" value="on" {% if form.include_demo.value %}checked{% endif %}> {% translate "Demo products" %}</label>
     <button class="btn btn-small btn-outline js-hide" type="submit">{% translate "Apply" %}</button>
   </div>
 </form>
 
 {% if mixed_versions %}
-  <p class="notice">{% icon "info" 18 %}<span>{% translate "Nutri-Score grades here come from different algorithm versions (2021 and 2023). They are listed by letter but are not directly comparable." %}</span></p>
+  <p class="notice notice-warn">{% icon "triangle-alert" 18 %}<span>{% translate "Nutri-Score grades here come from different algorithm versions (2021 and 2023). They are listed by letter but are not directly comparable." %}</span></p>
 {% endif %}
 
-<p class="caption" role="status">{% blocktranslate count counter=page.paginator.count %}{{ counter }} product{% plural %}{{ counter }} products{% endblocktranslate %}</p>
+<p class="caption" role="status" data-product-count data-total="{{ page.paginator.count }}">{% blocktranslate count counter=page.paginator.count %}{{ counter }} product{% plural %}{{ counter }} products{% endblocktranslate %}</p>
 <ul class="product-list">
   {% for p in page.object_list %}
   <li class="product-card">
     {% if p.front_image_url %}<img class="thumb" src="{{ p.front_image_url|img }}" alt="" width="64" height="64" loading="lazy">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="64" height="64">{% endif %}
     <div class="grow">
       <a href="{% url 'product' p.pk %}" class="product-link">{{ p.name|default:_("Unnamed product") }}</a>
-      <p class="meta">{% if p.brand %}{{ p.brand }}{% endif %}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}{% if p.is_demo %} <span class="tag tag-demo">{% translate "Demo" %}</span>{% endif %}</p>
+      <p class="meta">{% if p.brand %}{{ p.brand }}{% endif %}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</p>
       <p class="scores">
         {% if p.nutriscore_grade %}<span class="grade grade-sm grade-{{ p.nutriscore_grade }}" title="Nutri-Score {{ p.nutriscore_grade|upper }}{% if p.nutriscore_version %} ({{ p.nutriscore_version }}){% endif %}"><span class="sr-only">Nutri-Score </span>{{ p.nutriscore_grade|upper }}</span>{% endif %}
-        {% if p.nova_group %}<span class="chip">NOVA {{ p.nova_group }}</span>{% endif %}
+        {% if p.nova_group %}<span class="nova-inline"><span class="nova-num nova-sm nova-{{ p.nova_group }}" aria-hidden="true">{{ p.nova_group }}</span><span>NOVA</span><span class="sr-only"> {{ p.nova_group }}</span></span>{% endif %}
       </p>
-      <button type="button" class="btn btn-outline btn-small compare-btn" data-compare-toggle
-              data-id="{{ p.pk }}" data-name="{{ p.name }}" data-brand="{{ p.brand }}" data-quantity="{{ p.quantity }}" data-image="{{ p.front_image_url|img }}"
-              aria-pressed="false" aria-label="{% blocktranslate with n=p.name %}Add {{ n }} to compare{% endblocktranslate %}">{% icon "plus" 16 %}<span>{% translate "Compare" %}</span></button>
+      <div class="card-actions">
+        <div class="card-actions-panel" id="actions-{{ p.pk }}">
+        <button type="button" class="btn btn-outline btn-icon" data-fav title="{% translate 'Save' %}"
+                data-id="{{ p.pk }}" data-name="{{ p.name }}" data-brand="{{ p.brand }}" data-quantity="{{ p.quantity }}" data-image="{{ p.front_image_url|img }}"
+                aria-pressed="false" aria-label="{% blocktranslate with n=p.name|default:_('product') %}Save {{ n }}{% endblocktranslate %}">{% icon "bookmark" 20 %}</button>
+        <button type="button" class="btn btn-outline btn-icon" data-compare-toggle title="{% translate 'Compare' %}"
+                data-id="{{ p.pk }}" data-name="{{ p.name }}" data-brand="{{ p.brand }}" data-quantity="{{ p.quantity }}" data-image="{{ p.front_image_url|img }}"
+                aria-pressed="false" aria-label="{% blocktranslate with n=p.name|default:_('product') %}Add {{ n }} to compare{% endblocktranslate %}">{% icon "git-compare-arrows" 20 %}</button>
+        <button type="button" class="btn btn-icon btn-icon-danger" data-hide-product
+                data-id="{{ p.pk }}" data-name="{{ p.name }}" title="{% translate 'Remove from my list' %}"
+                aria-label="{% blocktranslate with n=p.name|default:_('product') %}Remove {{ n }} from my list{% endblocktranslate %}">{% icon "trash-2" 20 %}</button>
+        </div>
+        <button type="button" class="btn btn-icon actions-toggle js-only" aria-expanded="false" aria-controls="actions-{{ p.pk }}"
+                aria-label="{% blocktranslate with n=p.name|default:_('product') %}Actions for {{ n }}{% endblocktranslate %}" title="{% translate 'Actions' %}">{% icon "chevron-left" 20 %}</button>
+      </div>
     </div>
   </li>
   {% empty %}
   <li class="empty">{% translate "No products match. Try another search or scan a barcode." %}</li>
   {% endfor %}
 </ul>
+
+<p class="hidden-note" data-hidden-note hidden>
+  <span data-hidden-text></span>
+  <button type="button" class="btn-link" data-unhide-all>{% translate "Show them again" %}</button>
+</p>
 
 {% if page.has_other_pages %}
 <nav class="pager" aria-label="{% translate 'Pages' %}">

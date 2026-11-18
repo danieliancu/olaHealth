@@ -26,13 +26,13 @@ cp .env.example .env
 docker compose -f compose.yaml -f compose.dev.yaml up --build -d
 docker compose -f compose.yaml -f compose.dev.yaml exec web python manage.py createsuperuser
 docker compose -f compose.yaml -f compose.dev.yaml exec web python manage.py setup_roles
-docker compose -f compose.yaml -f compose.dev.yaml exec web python manage.py load_demo   # optional
 ```
 
 Open <http://localhost:8000>. The camera works on `localhost` (secure context); on any other
 host it needs HTTPS. Admin / moderation: <http://localhost:8000/admin/>.
 
-`web` runs migrations, creates the cache table and (re)creates the scheduled jobs at start.
+`web` runs migrations, creates the cache table, (re)creates the scheduled jobs and, on the
+first start, imports the full Open Food Facts category and country taxonomies.
 
 ## Production-like run
 
@@ -67,7 +67,7 @@ warnings and the audit log. Approve, reject (reason required) or re-base after a
 |---|---|
 | `python manage.py setup_schedules` | create/update periodic jobs (idempotent, run by `web` at start) |
 | `python manage.py setup_roles` | create the Reviewers / Moderators groups |
-| `python manage.py load_demo` / `load_demo --clear` | load / remove fictional demo products |
+| `python manage.py sync_taxonomies [--if-empty]` | import/update the full OFF category and country lists |
 | `python manage.py export_catalogue [--dir D]` | write the ODbL export (gzipped JSON Lines) |
 | `python manage.py off_smoke [codes…] [--fresh]` | limited real OFF test (≤ 5 codes), timings |
 | `python manage.py ocr_benchmark [images…] [--runs N]` | OCR latency and peak memory |
@@ -85,6 +85,7 @@ Run them with `docker compose -f compose.yaml -f compose.dev.yaml exec web …`.
 | delete-orphan-files | daily | private files no database row refers to (older than 1 h) |
 | report-waiting-contributions | daily | logs contributions waiting > 7 days |
 | export-catalogue | daily | regenerates `/sources/export/` (keeps the last 7 files) |
+| sync-taxonomies | weekly | refreshes the category and country reference tables |
 
 OCR jobs are queued on demand (one per photo of the ingredients / nutrition label).
 
@@ -94,7 +95,7 @@ OCR jobs are queued on demand (one per photo of the ingredients / nutrition labe
 DC="docker compose -f compose.yaml -f compose.dev.yaml"
 $DC run --rm --no-deps web ruff check .
 $DC run --rm --no-deps web ruff format --check .
-$DC run --rm --no-deps -e TESTING=1 web pytest                 # 113 tests, OFF mocked
+$DC run --rm --no-deps -e TESTING=1 web pytest                 # OFF mocked
 $DC run --rm --no-deps -e TESTING=1 web pytest -m ocr -s       # real Tesseract on fixtures
 $DC run --rm --no-deps web python manage.py makemigrations --check --dry-run
 $DC run --rm --no-deps web python manage.py check
@@ -113,21 +114,10 @@ then `.png`, then `.jpg`):
 | File | Shows | Suggested size |
 |---|---|---|
 | `static/img/hero.webp` | home hero (cup, oats, apple), light/transparent background | 1280×640 |
-| `static/img/demo/plain-yogurt.webp` | demo product photo | 800×800 |
-| `static/img/demo/oat-biscuits.webp` | demo product photo | 800×800 |
-| `static/img/demo/wholegrain-biscuits.webp` | demo product photo | 800×800 |
-| `static/img/demo/orange-juice.webp` | demo product photo | 800×800 |
 | `static/img/placeholder.webp` | "no photo yet" placeholder | 400×400 |
 
 Use only images you have the rights to, without real brands or logos. In production,
 rebuild the image (`docker compose build`) so `collectstatic` includes them.
-
-## Demo data
-
-`load_demo` adds four **fictional** products (badge "Demo" / "Illustrative data"). They
-are hidden from the catalogue unless "Demo products" is ticked, are never returned by a
-barcode lookup (their codes live in a separate `demo` context), and are excluded from the
-export. Remove them with `load_demo --clear`.
 
 ## Licences
 
@@ -136,6 +126,7 @@ export. Remove them with `load_demo --clear`.
 * Contributed photos: published only after moderation and only with the contributor's
   explicit consent (CC BY-SA 4.0 for photos, ODbL for data; see the consent text).
 * Bundled third-party code: zxing-wasm (MIT, `static/vendor/zxing-wasm/LICENSE`),
-  Lucide icons (ISC, `static/vendor/lucide/LICENSE`).
+  Lucide icons (ISC, `static/vendor/lucide/LICENSE`), Chart.js 4.6.1 (MIT,
+  `static/vendor/chartjs/LICENSE.md`, loaded only on the Compare page).
 * The licence of the olaHealth **code** has not been chosen yet; it is independent of
   the data licence. Add a `LICENSE` file when the owner decides.

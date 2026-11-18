@@ -144,3 +144,13 @@ def compare_api(request: Request) -> Response:
             "differences": c.differences,
         }
     )
+
+
+@api_view(["GET"])
+def suggest_api(request: Request) -> Response:
+    """Search-as-you-type over the local catalogue (never calls Open Food Facts)."""
+    q = str(request.query_params.get("q", "")).strip()[:100]
+    if len(q) < 2:
+        return Response({"results": []})
+    products = list(search_products(SearchParams(q=q))[:6])
+    return Response({"results": ProductSummarySerializer(products, many=True).data})

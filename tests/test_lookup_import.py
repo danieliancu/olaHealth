@@ -40,7 +40,8 @@ def test_absent_product_is_fetched_once_and_persisted(off_json):
 
 
 @respx.mock
-def test_not_found_is_negatively_cached_but_errors_are_not():
+def test_not_found_is_negatively_cached_but_errors_are_not(settings):
+    settings.OFF_CIRCUIT_SECONDS = 0  # circuit breaker covered by its own test
     route = respx.get(URL).mock(return_value=httpx.Response(404, json={"status": 0}))
     assert lookup_service.lookup("5941234567899", client=make_client()).status == "not_found"
     assert lookup_service.lookup("5941234567899", client=make_client()).status == "not_found"
@@ -212,3 +213,22 @@ def test_identifier_owned_by_another_product_is_not_merged(off_payload):
 def test_explicit_none_allergens_are_not_an_allergen(off_payload):
     p = import_off_product(off_payload(allergens_tags=["en:none"]))
     assert p.current_revision.data["allergens"] == {"status": "none_declared", "items": []}
+
+
+@respx.mock
+def test_outage_opens_circuit_so_next_users_do_not_wait(settings):
+    settings.OFF_CIRCUIT_SECONDS = 60
+    route = respx.get(URL).mock(return_value=httpx.Response(504))
+    r = lookup_service.lookup("5941234567899", client=make_client())
+    assert (r.status, r.error) == ("error", "upstream_unavailable")
+    calls = route.call_count
+    r2 = lookup_service.lookup("5941234567899", client=make_client())
+    assert (r2.status, r2.error) == ("error", "upstream_unavailable")
+    assert route.call_count == calls  # answered at once, OFF not called again
+
+
+@respx.mock
+def test_not_found_does_not_open_circuit(off_json):
+    respx.get(URL).mock(return_value=httpx.Response(404, json={"status": 0}))
+    lookup_service.lookup("5941234567899", client=make_client())
+    assert not lookup_service.off_circuit_open()

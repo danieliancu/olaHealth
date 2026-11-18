@@ -2,27 +2,41 @@
 {% load i18n ui %}
 {% block title %}{{ product.name|default:_("Product") }}{% endblock %}
 {% block content %}
-<p class="back"><a href="{% url 'scan' %}">{% icon "chevron-left" 18 %}<span>{% translate "Back to scan" %}</span></a></p>
+<p class="back"><a href="{% url 'products' %}">{% icon "chevron-left" 18 %}<span>{% translate "Back to products" %}</span></a></p>
 <article class="product" data-product
          data-id="{{ product.pk }}" data-name="{{ product.name }}" data-brand="{{ product.brand }}"
          data-image="{{ product.front_image_url|img }}" data-quantity="{{ product.quantity }}">
 
-  {# 1. Identity #}
-  <section class="card identity" aria-labelledby="name-h">
-    {% if product.is_demo %}<p class="tag tag-demo">{% translate "Demo product – fictional data" %}</p>{% endif %}
-    <div class="identity-row">
-      {% if product.front_image_url %}
-        <img class="product-photo" src="{{ product.front_image_url|img }}" alt="{% translate 'Front of the package' %}" width="120" height="120">
-      {% else %}
-        <img class="product-photo" src="{% asset 'img/placeholder' %}" alt="{% translate 'No photo yet' %}" width="120" height="120">
-      {% endif %}
-      <div>
+  {# 1. Identity + headline indicators #}
+  <section class="card hero-card" aria-labelledby="name-h">
+    <div class="hero-row">
+      <div class="hero-photo">
+        {% if product.front_image_url %}
+          <img class="product-photo" src="{{ product.front_image_url|img }}" alt="{% translate 'Front of the package' %}" width="132" height="176">
+        {% else %}
+          <img class="product-photo" src="{% asset 'img/placeholder' %}" alt="{% translate 'No photo yet' %}" width="132" height="176">
+        {% endif %}
+      </div>
+      <div class="hero-info">
         <h1 id="name-h">{{ data.name|default:_("Name not available") }}</h1>
         {% if data.brand or data.quantity %}<p class="meta">{{ data.brand|default:"" }}{% if data.brand and data.quantity %} · {% endif %}{{ data.quantity|default:"" }}</p>{% endif %}
-        <p class="meta mono">{% for i in product.identifiers.all %}{% if i.context != "demo" or product.is_demo %}{{ i.normalized|slice:"1:" }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}</p>
+        {% if nutriscore and nutriscore.badge %}
+        <div class="ns-scale" role="img" aria-label="Nutri-Score {{ nutriscore.badge|upper }}{% if nutriscore.version %}, {{ nutriscore.version }}{% endif %}">
+          <span class="ns-title" aria-hidden="true">Nutri-Score</span>
+          <span class="ns-letters" aria-hidden="true">{% for l in "abcde" %}<span class="ns-l ns-{{ l }}{% if l == nutriscore.badge %} is-on{% endif %}">{{ l|upper }}</span>{% endfor %}</span>
+        </div>
+        {% endif %}
+        {% if nova and nova.badge %}
+        <p class="nova-pill"><span class="nova-num nova-{{ nova.badge }}" aria-hidden="true">{{ nova.badge }}</span><span><strong>NOVA {{ nova.badge }}</strong><span class="nova-label"> · {{ nova_label }}</span></span></p>
+        {% endif %}
       </div>
     </div>
-    {% if restricted %}<p class="tag tag-warn">{% translate "This barcode is a store-internal code. It can identify different products in different shops." %}</p>{% endif %}
+    {% if restricted %}<p class="note note-warn">{% icon "triangle-alert" 16 %}<span>{% translate "Store code: may differ between shops." %}</span></p>{% endif %}
+    <div class="hero-actions">
+      <button type="button" class="btn btn-outline btn-small" data-fav aria-pressed="false">{% icon "bookmark" 18 %}<span>{% translate "Save" %}</span></button>
+      <button type="button" class="btn btn-outline btn-small" data-compare-toggle aria-pressed="false"
+              data-id="{{ product.pk }}" data-name="{{ product.name }}" data-brand="{{ product.brand }}" data-quantity="{{ product.quantity }}" data-image="{{ product.front_image_url|img }}">{% icon "git-compare-arrows" 18 %}<span>{% translate "Compare" %}</span></button>
+    </div>
     {% if scanned %}
       <form method="post" action="{% url 'contribution-start' %}" class="not-mine">
         {% csrf_token %}
@@ -32,72 +46,112 @@
         <button class="btn btn-orange btn-small" type="submit">{% translate "This is not my product" %}</button>
       </form>
     {% endif %}
-    <div class="row actions-top">
-      <button type="button" class="btn btn-outline btn-small" data-fav aria-pressed="false">{% icon "bookmark" 18 %}<span>{% translate "Save" %}</span></button>
-      <button type="button" class="btn btn-outline btn-small" data-compare-toggle aria-pressed="false"
-              data-id="{{ product.pk }}" data-name="{{ product.name }}" data-brand="{{ product.brand }}" data-quantity="{{ product.quantity }}" data-image="{{ product.front_image_url|img }}">{% icon "git-compare-arrows" 18 %}<span>{% translate "Compare" %}</span></button>
-    </div>
   </section>
 
-  {# 2. Indicators – only those with data #}
-  {% if indicators or packaging_nutriscore %}
-  <section class="card" aria-labelledby="ind-h">
-    <h2 id="ind-h">{% translate "Indicators" %}</h2>
-    <p class="hint">{% if product.is_demo %}{% translate "Fictional indicators for demonstration only." %}{% else %}{% translate "As published by Open Food Facts. olaHealth does not compute its own score." %}{% endif %}
-      {% if product.sync_label == "stale" or product.sync_label == "refresh_failed" %}<span class="badge badge-sync-{{ product.sync_label }}">{{ indicators.0.sync_label }}</span>{% endif %}</p>
-    <ul class="indicators">
-      {% for ind in indicators %}{% if ind.key != "additives" %}
-      <li class="indicator status-{{ ind.data_status }}{% if ind.not_current %} not-current{% endif %}">
-        <div class="indicator-head">
-          {% if ind.badge %}<span class="{% if ind.key == 'nutriscore' %}grade grade-{{ ind.badge }}{% else %}nova nova-{{ ind.badge }}{% endif %}" aria-hidden="true">{{ ind.badge|upper }}</span>{% endif %}
-          <div>
-            <h3>{{ ind.label }}</h3>
-            <p class="headline">{% if ind.not_current %}<del>{{ ind.headline }}</del>{% else %}{{ ind.headline }}{% endif %}</p>
+  {# 2. Nutrients at a glance #}
+  {% if nutrient_rows or additives %}
+  <section class="card nutri-card" aria-labelledby="nutri-h">
+    <div class="section-head">
+      <h2 id="nutri-h">{% translate "Nutrition" %}</h2>
+      <span class="caption">{{ rows_basis }}</span>
+    </div>
+    <ul class="nrows">
+      {% for r in nutrient_rows %}
+      <li>
+        {% if r.gauge %}
+        <details class="nrow level-{{ r.level }}">
+          <summary>
+            <span class="nrow-icon">{% icon r.icon 26 %}</span>
+            <span class="nrow-text"><span class="nrow-name">{{ r.label }}</span><span class="nrow-level">{{ r.level_text }}</span></span>
+            <span class="nrow-value">{{ r.value }}</span>
+            <span class="dot dot-{{ r.level }}" aria-hidden="true"></span>
+            <span class="nrow-chev">{% icon "chevron-down" 20 %}</span>
+          </summary>
+          <div class="gauge">
+            <svg viewBox="-8 0 316 40" width="100%" height="40" role="img" aria-label="{{ r.label }} {{ r.value }}">
+              <polygon class="gauge-marker" points="{{ r.gauge.marker_points }}"/>
+              {% for x, w, lvl in r.gauge.segments %}<rect class="seg seg-{{ lvl }}" x="{{ x }}" y="13" width="{{ w }}" height="7" rx="3.5"/>{% endfor %}
+              {% for x, label, anchor in r.gauge.ticks %}<text x="{{ x }}" y="36" text-anchor="{{ anchor }}">{{ label }}</text>{% endfor %}
+            </svg>
+            <p class="caption">{% blocktranslate with low=r.gauge.low high=r.gauge.high %}UK FSA thresholds: low up to {{ low }} g, high above {{ high }} g.{% endblocktranslate %}</p>
           </div>
+        </details>
+        {% else %}
+        <div class="nrow plain">
+          <span class="nrow-icon">{% icon r.icon 26 %}</span>
+          <span class="nrow-text"><span class="nrow-name">{{ r.label }}</span></span>
+          <span class="nrow-value">{{ r.value }}</span>
         </div>
-        {% if ind.not_current or ind.data_status == "conflicting" %}<p class="badges">
-          {% if ind.not_current %}<span class="badge badge-warn">{% translate "Not current: data was corrected after this was computed" %}</span>{% endif %}
-          {% if ind.data_status == "conflicting" %}<span class="badge badge-warn">{% translate "Sources disagree" %}</span>{% endif %}
-        </p>{% endif %}
-        {% if ind.details %}<ul class="details">{% for d in ind.details %}<li>{{ d }}</li>{% endfor %}</ul>{% endif %}
-        {% if ind.warnings %}<ul class="warnings">{% for w in ind.warnings %}<li>{{ w }}</li>{% endfor %}</ul>{% endif %}
+        {% endif %}
       </li>
-      {% endif %}{% endfor %}
+      {% endfor %}
+      {% if additives %}
+      <li><div class="nrow plain">
+        <span class="nrow-icon">{% icon "flask-conical" 26 %}</span>
+        <span class="nrow-text"><span class="nrow-name">{% translate "Additives" %}</span><span class="nrow-level">{% if additives.details %}{{ additives.details|join:", " }}{% else %}{% translate "None identified in the ingredient list" %}{% endif %}</span></span>
+        <span class="nrow-value">{{ additives.details|length }}</span>
+      </div></li>
+      {% endif %}
     </ul>
-    {% if packaging_nutriscore %}
-      <p class="declared">{% translate "Nutri-Score printed on the package" %}: <strong>{{ packaging_nutriscore.value.grade|upper }}</strong> <span class="hint">({% translate "as declared by the manufacturer; not computed by Open Food Facts" %})</span></p>
-    {% endif %}
+  </section>
+  {% endif %}
+
+  {# Details about the indicators (versions, warnings, analysis) #}
+  {% if indicators %}
+  <section class="card" aria-labelledby="ind-h">
+    <details class="about">
+      <summary><h2 id="ind-h">{% translate "About these indicators" %}</h2>{% icon "chevron-down" 20 %}</summary>
+      <p class="hint">{% translate "Official indicators. olaHealth does not compute its own score." %}
+        {% if product.sync_label == "stale" or product.sync_label == "refresh_failed" %}<span class="badge badge-sync-{{ product.sync_label }}">{{ indicators.0.sync_label }}</span>{% endif %}</p>
+      <ul class="indicators">
+        {% for ind in indicators %}{% if ind.key != "additives" and ind.key != "nutrient_levels" %}
+        <li class="indicator{% if ind.not_current %} not-current{% endif %}">
+          <h3>{{ ind.label }}</h3>
+          <p class="headline">{% if ind.not_current %}<del>{{ ind.headline }}</del>{% else %}{{ ind.headline }}{% endif %}</p>
+          {% if ind.not_current or ind.data_status == "conflicting" %}<p class="badges">
+            {% if ind.not_current %}<span class="badge badge-warn">{% translate "Not current: data was corrected after this was computed" %}</span>{% endif %}
+            {% if ind.data_status == "conflicting" %}<span class="badge badge-warn">{% translate "Sources disagree" %}</span>{% endif %}
+          </p>{% endif %}
+          {% if ind.details %}<ul class="details">{% for d in ind.details %}<li>{{ d }}</li>{% endfor %}</ul>{% endif %}
+          {% if ind.warnings %}<ul class="warnings">{% for w in ind.warnings %}<li>{{ w }}</li>{% endfor %}</ul>{% endif %}
+        </li>
+        {% endif %}{% endfor %}
+      </ul>
+      {% if packaging_nutriscore %}
+        <p class="declared">{% translate "Nutri-Score printed on the package" %}: <strong>{{ packaging_nutriscore.value.grade|upper }}</strong> <span class="hint">({% translate "as declared by the manufacturer" %})</span></p>
+      {% endif %}
+    </details>
   </section>
   {% endif %}
 
   {# 3. Only things that need checking #}
   {% if gaps or flags %}
-  <section class="card" aria-labelledby="gaps-h">
+  <section class="card card-warn" aria-labelledby="gaps-h">
     <h2 id="gaps-h">{% translate "Being checked" %}</h2>
     <ul>
       {% for g in gaps %}<li>{{ g }}</li>{% endfor %}
-      {% for f in flags %}<li>{% if f.kind == "data_conflict" %}{% blocktranslate with field=f.field %}Open Food Facts now has a different value for “{{ field }}” than our corrected one; a moderator will check it.{% endblocktranslate %}{% elif f.kind == "identity_conflict" %}{% translate "Someone reported that this barcode may belong to a different product; a moderator will check it." %}{% else %}{% translate "A value was flagged as unusual and will be checked." %}{% endif %}</li>{% endfor %}
+      {% for f in flags %}<li>{% if f.kind == "data_conflict" %}{% blocktranslate with field=f.field %}The source now has a different value for “{{ field }}” than our corrected one; a moderator will check it.{% endblocktranslate %}{% elif f.kind == "identity_conflict" %}{% translate "Someone reported that this barcode may belong to a different product; a moderator will check it." %}{% else %}{% translate "A value was flagged as unusual and will be checked." %}{% endif %}</li>{% endfor %}
     </ul>
   </section>
   {% endif %}
 
-  {# 4. Nutrition – only declared values #}
+  {# Full nutrition table (all bases) #}
   {% if nutrition or nutrition_status == "not_on_package" %}
   <section class="card" aria-labelledby="nut-h">
-    <h2 id="nut-h">{% translate "Nutrition facts" %}</h2>
-    {% if nutrition_status == "not_on_package" %}<p>{% translate "The package carries no nutrition facts." %}</p>{% endif %}
-    {% for g in nutrition %}
-      <div class="table-wrap">
-      <table class="nutrition">
-        <caption>{{ g.title|capfirst }}</caption>
-        <tbody>
-          {% for r in g.rows %}
-          <tr{% if r.sub %} class="sub"{% endif %}><th scope="row">{{ r.label }}</th><td>{{ r.value }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      </div>
-    {% endfor %}
+    <details class="about"{% if not nutrient_rows %} open{% endif %}>
+      <summary><h2 id="nut-h">{% translate "Full nutrition table" %}</h2>{% icon "chevron-down" 20 %}</summary>
+      {% if nutrition_status == "not_on_package" %}<p>{% translate "The package carries no nutrition facts." %}</p>{% endif %}
+      {% for g in nutrition %}
+        <div class="table-wrap">
+        <table class="nutrition">
+          <caption>{{ g.title|capfirst }}</caption>
+          <tbody>
+            {% for r in g.rows %}<tr{% if r.sub %} class="sub"{% endif %}><th scope="row">{{ r.label }}</th><td>{{ r.value }}</td></tr>{% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% endfor %}
+    </details>
   </section>
   {% endif %}
 
@@ -121,7 +175,7 @@
       <p class="caption">{% translate "In the order printed on the label (largest amount first). Words in bold are allergens marked by the source." %}</p>
     {% endif %}
 
-    <div class="allergen-box {% if allergens.status == 'listed' %}has-allergens{% endif %}">
+    <div class="allergen-box {% if allergens.status == 'listed' %}has-allergens{% else %}is-warn{% endif %}">
       <h3>{% icon "triangle-alert" 18 %}<span>{% translate "Allergens" %}</span></h3>
       {% if allergens.status == "listed" %}
         <ul class="chips chips-allergen">{% for a in allergens.items %}<li>{{ a }}</li>{% endfor %}</ul>
@@ -136,10 +190,6 @@
       {% endif %}
     </div>
 
-    {% if additives and additives.details %}
-      <h3 class="sub-title">{% translate "Additives" %}</h3>
-      <ul class="chips chips-outline">{% for a in additives.details %}<li>{{ a }}</li>{% endfor %}</ul>
-    {% endif %}
     {% if categories %}<h3 class="sub-title">{% translate "Category" %}</h3><p class="breadcrumb">{{ categories|join:" › " }}</p>{% endif %}
     {% if countries %}<h3 class="sub-title">{% translate "Sold in" %}</h3><p>{{ countries|join:", " }}</p>{% endif %}
   </section>
@@ -150,27 +200,12 @@
     <ul class="gallery">
       {% for img in images %}
       <li><figure>
-        <img src="{% if img.remote_url %}{% url 'off-image' img.pk %}{% else %}{% url 'public-image' img.pk %}{% endif %}" alt="{{ img.get_kind_display }}" width="160" height="160">
-        <figcaption>{{ img.get_kind_display }} · {{ img.license }} · {{ img.attribution }}</figcaption>
+        <img src="{% if img.remote_url %}{% url 'off-image' img.pk %}{% else %}{% url 'public-image' img.pk %}{% endif %}" alt="{{ img.get_kind_display }}" title="{{ img.license }}" width="160" height="160">
       </figure></li>
       {% endfor %}
     </ul>
   </section>
   {% endif %}
-
-  {# 6. Sources #}
-  <section class="card" aria-labelledby="src-h">
-    <h2 id="src-h">{% translate "Sources" %}</h2>
-    <p class="hint">{% blocktranslate with n=revision.number date=revision.created_at|date:"Y-m-d" %}Revision {{ n }} published on {{ date }}.{% endblocktranslate %}
-      {% if product.off_synced_at %}{% blocktranslate with d=product.off_synced_at|date:"Y-m-d H:i" %}Last checked with Open Food Facts: {{ d }} UTC.{% endblocktranslate %}{% endif %}</p>
-    <details>
-      <summary>{% translate "Where each field comes from" %}</summary>
-      <table class="sources"><tbody>
-        {% for s in sources %}<tr><th scope="row">{{ s.field }}</th><td>{{ s.source }}</td></tr>{% endfor %}
-      </tbody></table>
-    </details>
-    {% if off_url %}<p><a href="{{ off_url }}" rel="noopener">{% translate "View on Open Food Facts" %}</a></p>{% endif %}
-  </section>
 
   {# 7. Actions #}
   <section class="card" aria-labelledby="act-h">

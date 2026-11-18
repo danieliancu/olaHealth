@@ -17,20 +17,25 @@ from assessments.services.compare import compare as compare_products
 from catalog import presenters
 from catalog.countries import country_from_accept_language
 from catalog.forms import LookupForm, ScanPhotoForm, SearchForm
-from catalog.models import Product
+from catalog.models import Category, Country, Product
 from catalog.services.lookup import lookup
-from catalog.services.search import SearchParams, facet_values, search_products
+from catalog.services.search import SearchParams, facets, search_products, tag_names
 from core.barcodes import decode_product_barcodes
 from core.coordination import check_request_limit
 from core.images import ImageRejected, validate_and_reencode
 
+OFF_DOWN = (
+    "The product database isn't responding right now (a temporary problem on its side). "
+    "Please try again in a few minutes."
+)
+
 ERROR_MESSAGES = {
     "invalid_code": "This is not a valid barcode.",
-    "not_found": "This product is not in Open Food Facts or in our catalogue yet.",
-    "timeout": "Open Food Facts did not answer in time. Please try again.",
+    "not_found": "This product is not in our database yet.",
+    "timeout": OFF_DOWN,
     "rate_limited": "Too many lookups right now. Please wait a moment and try again.",
-    "upstream_unavailable": "Open Food Facts is unavailable at the moment. Please try again later.",
-    "invalid_response": "Open Food Facts returned data we could not read.",
+    "upstream_unavailable": OFF_DOWN,
+    "invalid_response": "The product database returned data we could not read.",
 }
 
 
@@ -160,7 +165,26 @@ def product_detail(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
         (s for s in snapshots if s.origin == "packaging_declared" and s.indicator == "nutriscore"),
         None,
     )
+    by_key = {i.key: i for i in indicators}
+    rows, rows_basis = presenters.nutrient_rows(
+        data,
+        next(
+            (
+                s
+                for s in snapshots
+                if s.indicator == "nutrient_levels" and s.origin == "off_computed"
+            ),
+            None,
+        ),
+    )
     context = {
+        "nutriscore": by_key.get("nutriscore"),
+        "nova": by_key.get("nova"),
+        "nova_label": presenters.NOVA_SHORT.get(
+            int(by_key["nova"].badge) if by_key.get("nova") and by_key["nova"].badge else 0, ""
+        ),
+        "nutrient_rows": rows,
+        "rows_basis": rows_basis,
         "product": product,
         "revision": revision,
         "data": data,
@@ -178,17 +202,14 @@ def product_detail(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
         "nutrition_status": (data.get("nutrition") or {}).get("status", "unknown"),
         "allergens": presenters.section_list(data.get("allergens")),
         "traces": presenters.section_list(data.get("traces")),
-        "categories": [presenters.humanize_tag(c) for c in data.get("categories") or []],
-        "countries": [presenters.humanize_tag(c) for c in data.get("countries") or []],
+        "categories": list(tag_names(data.get("categories") or [], Category).values()),
+        "countries": list(tag_names(data.get("countries") or [], Country).values()),
         "images": presenters.public_images(product),
-        "sources": presenters.sources_view(product),
         "scanned": request.GET.get("scanned", "")[:32],
         "off_url": f"{settings.OFF_BASE_URL}/product/{product.off_code}"
         if product.off_code
         else "",
-        "restricted": any(
-            i.kind == "restricted" and i.context != "demo" for i in product.identifiers.all()
-        ),
+        "restricted": any(i.kind == "restricted" for i in product.identifiers.all()),
     }
     return render(request, "catalog/product.html", context)
 
@@ -215,8 +236,7 @@ def product_list(request: HttpRequest) -> HttpResponse:
             "page": page,
             "query": query.urlencode(),
             "mixed_versions": mixed_versions,
-            "categories": [(c, presenters.humanize_tag(c)) for c in facet_values("categories")],
-            "countries": [(c, presenters.humanize_tag(c)) for c in facet_values("countries")],
+            "facets": facets(params),
         },
     )
 
@@ -244,11 +264,25 @@ def compare(request: HttpRequest) -> HttpResponse:
         )
     }
     products = [found[i] for i in ids if i in found]
+    # Products removed from the catalogue since they were selected are reported, not hidden.
+    context = {
+        "products": products,
+        "missing": len(ids) - len(products),
+        "shown_ids": ",".join(str(p.pk) for p in products),
+        "requested": bool(ids),
+    }
     try:
         comparison = compare_products(products)
     except ComparisonError as exc:
-        return render(request, "catalog/compare.html", {"error": str(exc), "products": products})
-    return render(request, "catalog/compare.html", {"c": comparison, "products": products})
+        return render(request, "catalog/compare.html", {**context, "error": str(exc)})
+    base = reverse("compare")
+    remove_urls = {
+        p.pk: f"{base}?ids=" + ",".join(str(o.pk) for o in products if o.pk != p.pk)
+        for p in products
+    }
+    for p in comparison.products:
+        p.remove_url = remove_urls[p.pk]
+    return render(request, "catalog/compare.html", {**context, "c": comparison})
 
 
 @require_GET

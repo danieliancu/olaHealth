@@ -1,6 +1,7 @@
 {% extends "base.html" %}
-{% load i18n ui %}
+{% load static i18n ui %}
 {% block title %}{% translate "Understand your food" %}{% endblock %}
+{% block head %}<script type="module" src="{% static 'js/magazine.js' %}"></script>{% endblock %}
 {% block content %}
 <div class="home-wrap">
   <div>
@@ -11,14 +12,44 @@
     </section>
     <div class="stack">
       <a class="btn btn-primary btn-block" href="{% url 'scan' %}">{% icon "scan-barcode" 20 %}<span>{% translate "Scan a product" %}</span></a>
-      <a class="btn btn-outline btn-block" href="{% url 'scan' %}#manual">{% translate "Enter barcode" %}</a>
+      <button type="button" class="btn btn-outline btn-block" aria-disabled="true" aria-describedby="magazine-soon" title="{% translate 'Coming soon' %}">{% icon "leaf" 20 %}<span>{% translate "Read the magazine" %}</span></button>
+      <p id="magazine-soon" class="sr-only">{% translate "Coming soon" %}</p>
     </div>
     <div class="tiles">
       <a class="tile" href="{% url 'compare' %}">{% icon "git-compare-arrows" 24 %}<span>{% translate "Compare products" %}</span></a>
       <a class="tile" href="{% url 'products' %}">{% icon "search" 24 %}<span>{% translate "Explore the catalogue" %}</span></a>
     </div>
   </div>
-  <img class="hero-art" src="{% asset 'img/hero' %}" alt="" width="640" height="320">
+  {# Magazine openers: desktop only (hidden below 768px). Without JS the first page shows. #}
+  <section class="mag" aria-roledescription="carousel" aria-label="{% translate 'Magazine' %}" data-mag>
+    <div class="mag-track">
+      <article class="mag-page is-active" aria-roledescription="slide" aria-label="{% translate '1 of 3' %}" data-mag-slide>
+        <h2 class="mag-title">{% translate "Breakfast, decoded" %}</h2>
+        <img class="mag-art" src="{% asset 'img/hero' %}" alt="{% translate 'A tub of natural yogurt, a bowl of rolled oats and a red apple' %}" width="1220" height="608">
+        <p class="mag-standfirst">{% translate "Yogurt, oats and an apple: simple foods, very different labels." %}</p>
+        <span class="mag-pill">{% translate "Read now" %}</span>
+      </article>
+      <article class="mag-page" aria-roledescription="slide" aria-label="{% translate '2 of 3' %}" data-mag-slide>
+        <h2 class="mag-title">{% translate "Sweet truths" %}</h2>
+        <img class="mag-art" src="{% asset 'img/hero-honey' %}" alt="{% translate 'A jar of honey with a wooden dipper, a bowl of walnuts and two slices of wholegrain bread' %}" width="1112" height="640">
+        <p class="mag-standfirst">{% translate "Honey, walnuts and wholegrain bread. How much of it is really whole?" %}</p>
+        <span class="mag-pill">{% translate "Read now" %}</span>
+      </article>
+      <article class="mag-page mag-page--side" aria-roledescription="slide" aria-label="{% translate '3 of 3' %}" data-mag-slide>
+        <div class="mag-hero">
+          <h2 class="mag-title">{% translate "No label needed" %}</h2>
+          <img class="mag-art" src="{% asset 'img/hero-salmon' %}" alt="{% translate 'Grilled salmon with roasted potatoes, asparagus and lemon, next to a bowl of fresh salad' %}" width="1098" height="1123">
+        </div>
+        <p class="mag-standfirst">{% translate "Salmon, potatoes, asparagus, a salad. The best ingredient lists are the shortest." %}</p>
+        <span class="mag-pill">{% translate "Read now" %}</span>
+      </article>
+    </div>
+    <div class="mag-dots" data-mag-dots hidden>
+      <button type="button" aria-label="{% translate 'Show page 1' %}" aria-current="true"></button>
+      <button type="button" aria-label="{% translate 'Show page 2' %}"></button>
+      <button type="button" aria-label="{% translate 'Show page 3' %}"></button>
+    </div>
+  </section>
 </div>
 
 <section class="recent" aria-labelledby="recent-h" data-recent hidden>
@@ -26,5 +57,4 @@
   <ul class="product-list" data-recent-list></ul>
 </section>
 
-<p class="source-note">{% translate "Source: Open Food Facts" %}</p>
 {% endblock %}

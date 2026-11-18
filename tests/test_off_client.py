@@ -47,8 +47,18 @@ def test_404_without_json_is_invalid_response_not_not_found():
 
 
 @respx.mock
-def test_timeout_is_retried_then_reported():
+def test_slow_server_is_not_retried():
     route = respx.get(URL).mock(side_effect=httpx.ReadTimeout("slow"))
+    c, sleeps = client(max_retries=2)
+    with pytest.raises(OFFError) as exc:
+        c.get_product("5941234567899")
+    assert exc.value.kind == "timeout"
+    assert route.call_count == 1 and sleeps == []
+
+
+@respx.mock
+def test_connect_timeout_is_retried_then_reported():
+    route = respx.get(URL).mock(side_effect=httpx.ConnectTimeout("unreachable"))
     c, sleeps = client(max_retries=2)
     with pytest.raises(OFFError) as exc:
         c.get_product("5941234567899")

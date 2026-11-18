@@ -1,6 +1,6 @@
 """ODbL export of published derived data (gzipped JSON Lines).
 
-Contains only published revisions of non-demo products. Excluded: drafts, unapproved
+Contains only published revisions. Excluded: drafts, unapproved
 contributions, sessions, tokens, private images, OCR output, moderation data, logs.
 """
 
@@ -82,7 +82,7 @@ def product_record(p: Product) -> dict[str, Any]:
 
 def iter_records():
     qs = (
-        Product.objects.filter(is_demo=False, current_revision__isnull=False)
+        Product.objects.filter(current_revision__isnull=False)
         .select_related("current_revision")
         .prefetch_related(
             "identifiers", "images__contribution_image", "current_revision__assessments"

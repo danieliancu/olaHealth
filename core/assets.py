@@ -1,8 +1,7 @@
 """Optional raster artwork with SVG fallbacks.
 
 Drop ``<name>.webp`` (or ``.png``/``.jpg``) next to the shipped ``<name>.svg`` under
-``static/`` and it is used automatically. Products may reference such artwork with the
-marker ``static:<name>`` (used only by fictional demo products).
+``static/`` and it is used automatically.
 """
 
 from __future__ import annotations

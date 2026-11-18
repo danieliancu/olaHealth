@@ -21,6 +21,19 @@ from catalog.nutrition import BASIS_LABELS, NUTRIENT_BY_KEY, NUTRIENTS, PREPARAT
 from catalog.presenters import NOVA_LABELS, format_value, humanize_tag
 
 MIN_PRODUCTS, MAX_PRODUCTS = 2, 3
+# Same icons as the nutrient rows on the product page (Lucide).
+CHART_ICONS = {
+    "energy-kj": "flame",
+    "energy-kcal": "flame",
+    "fat": "droplet",
+    "saturated-fat": "droplets",
+    "carbohydrates": "wheat",
+    "sugars": "candy",
+    "fiber": "leaf",
+    "proteins": "egg",
+    "salt": "cuboid",
+    "sodium": "cuboid",
+}
 
 
 class ComparisonError(ValueError):
@@ -43,12 +56,14 @@ class Row:
 
 @dataclass
 class Group:
-    basis: str
+    basis: str  # "per_100" (g, ml or unspecified, one per column) or "per_serving"
     preparation: str
     title: str
     comparable: bool
     rows: list[Row]
     missing_for: list[str]
+    column_bases: list[str] = field(default_factory=list)  # basis label per product column
+    mixed_bases: bool = False
 
 
 @dataclass
@@ -60,6 +75,8 @@ class Comparison:
     nova: list[dict[str, Any]] = field(default_factory=list)
     groups: list[Group] = field(default_factory=list)
     differences: list[str] = field(default_factory=list)
+    # Data for the comparison charts: one entry per basis shared by >= 2 products.
+    charts: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _label(p: Product) -> str:
@@ -108,7 +125,7 @@ def _sentence(
     ]
     if len(values) == 1:
         text = _("%(n)s %(b)s: the same for %(p)s (%(v)s).") % {
-            "n": label.capitalize(),
+            "n": label[:1].upper() + label[1:],
             "b": title,
             "p": " and ".join(f"“{_label(p)}”" for _v, p in known),
             "v": format_value(known[0][0], unit),
@@ -118,7 +135,7 @@ def _sentence(
         parts = ", ".join(f"“{_label(p)}” {format_value(v, unit)}" for v, p in ordered)
         diff = ordered[0][0] - ordered[-1][0]
         text = _("%(n)s %(b)s: %(parts)s (difference %(d)s).") % {
-            "n": label.capitalize(),
+            "n": label[:1].upper() + label[1:],
             "b": title,
             "parts": parts,
             "d": format_value(diff, unit),
@@ -175,32 +192,106 @@ def compare(products: list[Product]) -> Comparison:
     for f in NutrientFact.objects.filter(revision_id__in=revision_ids):
         facts[(f.basis, f.preparation)][f.revision_id][f.nutrient] = f
 
-    order = {b: i for i, b in enumerate(BASIS_LABELS)}
-    for basis, prep in sorted(facts, key=lambda k: (k[1] != "as_sold", order[k[0]])):
-        per_rev = facts[(basis, prep)]
-        title = f"{BASIS_LABELS[basis]}, {PREPARATION_LABELS[prep]}"
-        comparable = basis != "per_serving"
-        rows = []
-        for n in NUTRIENTS:
-            cells = []
-            for p in products:
-                f = per_rev.get(p.current_revision_id, {}).get(n.key)
-                if f is None:
-                    cells.append(Cell(None, "", "unknown"))
-                elif f.status == "not_on_label":
-                    cells.append(Cell(None, "", "not_on_label"))
-                else:
-                    cells.append(
-                        Cell(f.value, format_value(f.value, f.unit, f.modifier), "declared")
-                    )
-            if any(c.state != "unknown" for c in cells):
-                rows.append(Row(n.key, n.label, cells))
-        missing_for = [_label(p) for p in products if p.current_revision_id not in per_rev]
-        group = Group(basis, prep, title, comparable, rows, missing_for)
-        result.groups.append(group)
-        if comparable:
-            for row in rows:
-                sentence = _sentence(row.nutrient, title, products, row.cells, set(missing_for))
-                if sentence:
-                    result.differences.append(sentence)
+    # One table per preparation for the "per 100" values: every column keeps its own basis
+    # (g, ml or not stated). Per-serving values depend on portion size and stay apart.
+    per_100 = ("per_100g", "per_100ml", "per_100_unspecified")
+    preparations = sorted({prep for (_b, prep) in facts}, key=lambda prep: prep != "as_sold")
+    for prep in preparations:
+        column_basis: list[str | None] = []
+        for p in products:
+            have = [b for b in per_100 if p.current_revision_id in facts.get((b, prep), {})]
+            column_basis.append(have[0] if have else None)
+        if any(column_basis):
+            _add_group(result, products, facts, prep, column_basis, comparable=True)
+        if any(p.current_revision_id in facts.get(("per_serving", prep), {}) for p in products):
+            _add_group(
+                result, products, facts, prep, ["per_serving"] * len(products), comparable=False
+            )
     return result
+
+
+def _add_group(result, products, facts, prep, column_basis, *, comparable):
+    rows = []
+    for n in NUTRIENTS:
+        cells = []
+        for p, basis in zip(products, column_basis, strict=True):
+            f = (
+                facts.get((basis, prep), {}).get(p.current_revision_id, {}).get(n.key)
+                if basis
+                else None
+            )
+            if f is None:
+                cells.append(Cell(None, "", "unknown"))
+            elif f.status == "not_on_label":
+                cells.append(Cell(None, "", "not_on_label"))
+            else:
+                cells.append(Cell(f.value, format_value(f.value, f.unit, f.modifier), "declared"))
+        if any(c.state != "unknown" for c in cells):
+            rows.append(Row(n.key, n.label, cells))
+    present = {b for b in column_basis if b}
+    missing_for = [
+        _label(p)
+        for p, b in zip(products, column_basis, strict=True)
+        if not b or p.current_revision_id not in facts.get((b, prep), {})
+    ]
+    if comparable:
+        title = BASIS_LABELS[next(iter(present))] if len(present) == 1 else _("Per 100 g / 100 ml")
+    else:
+        title = BASIS_LABELS["per_serving"]
+    title = f"{title}, {PREPARATION_LABELS[prep]}"
+    group = Group(
+        "per_100" if comparable else "per_serving",
+        prep,
+        title,
+        comparable,
+        rows,
+        missing_for,
+        column_bases=[BASIS_LABELS[b] if b else "" for b in column_basis],
+        mixed_bases=comparable and len(present) > 1,
+    )
+    result.groups.append(group)
+    if not comparable:
+        return
+    # Differences only between products whose values share the same basis.
+    for basis in sorted(present):
+        idx = [i for i, b in enumerate(column_basis) if b == basis]
+        if len(idx) < 2:
+            continue
+        sub_products = [products[i] for i in idx]
+        sub_title = f"{BASIS_LABELS[basis]}, {PREPARATION_LABELS[prep]}"
+        panels = []
+        for row in rows:
+            cells = [row.cells[i] for i in idx]
+            if sum(c.value is not None for c in cells) < 2:
+                continue
+            unit = NUTRIENT_BY_KEY[row.nutrient].unit
+            label = row.label.removeprefix("of which ")
+            known = [c.value for c in cells if c.value is not None]
+            spread = max(known) - min(known)
+            panels.append(
+                {
+                    "key": row.nutrient,
+                    "icon": CHART_ICONS.get(row.nutrient, "circle-check"),
+                    "label": label[:1].upper() + label[1:],
+                    "unit": unit,
+                    "values": [float(c.value) if c.value is not None else None for c in cells],
+                    "display": [c.display or None for c in cells],
+                    "difference": format_value(spread, unit) if spread else "",
+                }
+            )
+        if panels:
+            result.charts.append(
+                {
+                    "title": sub_title[:1].upper() + sub_title[1:],
+                    # Colour follows the product's column in the comparison, never its rank.
+                    "slots": idx,
+                    "products": [_label(p) for p in sub_products],
+                    "panels": panels,
+                }
+            )
+        for row in rows:
+            sentence = _sentence(
+                row.nutrient, sub_title, sub_products, [row.cells[i] for i in idx], set(missing_for)
+            )
+            if sentence:
+                result.differences.append(sentence)

@@ -20,8 +20,12 @@
       <button type="button" class="btn btn-primary" data-start>{% icon "camera" 20 %}<span>{% translate "Start camera" %}</span></button>
     </div>
     <button type="button" class="btn btn-light stop" data-stop hidden>{% icon "x" 18 %}<span>{% translate "Stop camera" %}</span></button>
+    <div class="cam-tools" data-tools hidden>
+      <button type="button" class="cam-tool" data-torch aria-pressed="false" hidden>{% icon "flashlight" 20 %}<span>{% translate "Light" %}</span></button>
+      <button type="button" class="cam-tool" data-zoom hidden>{% icon "zoom-in" 20 %}<span data-zoom-label>1×</span></button>
+    </div>
   </div>
-  <p class="center hint">{% translate "Place the barcode inside the frame. The camera image stays on your device; only the number is sent." %}</p>
+  <p class="center hint">{% translate "Hold the phone 15–20 cm away with the barcode inside the frame; tap the picture to refocus. The camera image stays on your device; only the number is sent." %}</p>
   <p class="status" data-scan-status role="status"></p>
   <div data-result></div>
   <form method="post" action="{% url 'contribution-start' %}" data-contribute-template hidden>

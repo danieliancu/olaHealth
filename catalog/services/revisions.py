@@ -236,9 +236,7 @@ def apply_revision(
     )
     front = product.images.filter(is_active=True, kind="front").order_by("-created_at").first()
     if front is None:
-        # Keep shipped artwork markers (fictional demo products only).
-        if not product.front_image_url.startswith("static:"):
-            product.front_image_url = ""
+        product.front_image_url = ""
     elif front.remote_url:
         product.front_image_url = reverse("off-image", args=[front.id])
     else:

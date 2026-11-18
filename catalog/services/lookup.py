@@ -58,7 +58,7 @@ def find_local(parsed: ParsedCode, country: str = "") -> Product | None:
     idents = {
         i.context: i
         for i in ProductIdentifier.objects.select_related("product__current_revision").filter(
-            normalized=parsed.identity_key, context__in=contexts, product__is_demo=False
+            normalized=parsed.identity_key, context__in=contexts
         )
     }
     for ctx in contexts:
@@ -67,7 +67,7 @@ def find_local(parsed: ParsedCode, country: str = "") -> Product | None:
             return ident.product
     product = (
         Product.objects.select_related("current_revision")
-        .filter(off_code=parsed.off_code, is_demo=False, current_revision__isnull=False)
+        .filter(off_code=parsed.off_code, current_revision__isnull=False)
         .first()
     )
     # Same OFF code without a matching identifier yet (e.g. a different spelling).
@@ -125,7 +125,33 @@ def lookup(
     return fetch_from_off(parsed, client=client)
 
 
+CIRCUIT_KEY = "off-circuit-open"
+OUTAGE_KINDS = ("timeout", "upstream_unavailable")
+
+
+def off_circuit_open() -> bool:
+    """True while a recent outage says Open Food Facts is down (shared by all processes)."""
+    from core.models import Lease
+
+    return Lease.objects.filter(key=CIRCUIT_KEY, expires_at__gt=timezone.now()).exists()
+
+
+def _trip_circuit(kind: str) -> None:
+    # One failure is enough: OFF answers in well under a second when healthy, so a
+    # timeout or 5xx means users would otherwise each wait for the full retry budget.
+    if kind in OUTAGE_KINDS and settings.OFF_CIRCUIT_SECONDS > 0:
+        acquire_lease(CIRCUIT_KEY, settings.OFF_CIRCUIT_SECONDS)
+
+
 def fetch_from_off(parsed: ParsedCode, *, client: OFFClient | None = None) -> LookupResult:
+    if off_circuit_open():
+        return LookupResult(
+            "error",
+            parsed,
+            error="upstream_unavailable",
+            source="off",
+            retry_after=settings.OFF_CIRCUIT_SECONDS,
+        )
     key = f"off-lookup:{parsed.off_code}"
     owner = acquire_lease(key, settings.OFF_LEASE_SECONDS)
     if owner is None:
@@ -152,6 +178,7 @@ def fetch_from_off(parsed: ParsedCode, *, client: OFFClient | None = None) -> Lo
             )
             if exc.kind == "not_found":
                 return LookupResult("not_found", parsed, source="off")
+            _trip_circuit(exc.kind)
             logger.warning("OFF lookup failed for %s: %s", parsed.off_code, exc.kind)
             return LookupResult(
                 "error", parsed, error=exc.kind, source="off", retry_after=exc.retry_after
@@ -172,6 +199,8 @@ def refresh(product: Product, *, client: OFFClient | None = None) -> str:
     """Re-import one product from OFF. Local data is kept on any error."""
     from off.codes import parse_code as _parse
 
+    if off_circuit_open():
+        return "upstream_unavailable"
     client = client or default_client()
     now = timezone.now()
     key = f"off-lookup:{product.off_code}"
@@ -182,6 +211,7 @@ def refresh(product: Product, *, client: OFFClient | None = None) -> str:
         try:
             payload = client.get_product(product.off_code)
         except OFFError as exc:
+            _trip_circuit(exc.kind)
             Product.objects.filter(pk=product.pk).update(
                 off_sync_status=Product.SyncStatus.REFRESH_FAILED,
                 off_last_error=exc.kind,

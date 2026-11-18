@@ -18,7 +18,7 @@ def test_nutriscore_available_with_version_and_warning(off_payload):
     assert s.value["grade"] == "b"
     assert s.algorithm_version == "2023"
     assert s.value["other_versions"] == {"2021": "a"}
-    assert any("estimated it from the ingredient list" in w for w in s.warnings)
+    assert any("estimated from the ingredient list" in w for w in s.warnings)
 
 
 @pytest.mark.parametrize(

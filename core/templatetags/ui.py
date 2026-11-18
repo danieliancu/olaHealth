@@ -8,6 +8,8 @@ register = template.Library()
 
 ICONS = {
     "scan-barcode",
+    "flashlight",
+    "zoom-in",
     "search",
     "git-compare-arrows",
     "bookmark",
@@ -23,6 +25,19 @@ ICONS = {
     "arrow-right",
     "refresh-cw",
     "triangle-alert",
+    "droplet",
+    "droplets",
+    "candy",
+    "cuboid",
+    "wheat",
+    "leaf",
+    "egg",
+    "flame",
+    "flask-conical",
+    "salad",
+    "circle-check",
+    "user-round",
+    "book-open",
 }
 
 

@@ -15,12 +15,22 @@ NUTRITION_BASES = [
     ("per_100ml", _("per 100 ml")),
     ("per_serving", _("per serving")),
 ]
-LANG_CHOICES = [
-    ("", _("Not specified")),
-    ("en", "English"),
-    ("ro", "Română"),
-    ("other", _("Other")),
-]
+
+
+def _all_languages() -> list[tuple[str, str]]:
+    """Every language Django knows (about 100), by English name. OCR reads only English
+    and Romanian; other languages are recorded and typed in by hand."""
+    from django.conf.locale import LANG_INFO
+
+    langs = {
+        code: info["name"]
+        for code, info in LANG_INFO.items()
+        if isinstance(info, dict) and "name" in info and len(code) <= 8
+    }
+    return sorted(langs.items(), key=lambda kv: kv[1].lower())
+
+
+LANG_CHOICES = [("", _("Not specified")), *_all_languages(), ("other", _("Other"))]
 
 
 class PhotoForm(forms.Form):

@@ -42,7 +42,7 @@ core/           cross-process rate limits and leases (PostgreSQL), image validat
   13). Check digits are verified only for 8/12/13/14-digit GTINs; a failing check digit is
   rejected unless the user confirms ("look it up anyway", stored as *unverified*). GS1
   restricted-circulation prefixes (020–029, 040–049, 200–299, 980–999, RCN-8) are flagged
-  *restricted* and scoped by context (`off`, `country:<tag>`, `unscoped`, `demo`); they are
+  *restricted* and scoped by context (`off`, `country:<tag>`, `unscoped`); they are
   never merged into a global identity. An identifier that already belongs to another
   product raises an `identity_conflict` review flag instead of merging.
 * **Revisions:** `ProductRevision` is immutable (save/delete refuse). It stores the
@@ -57,6 +57,10 @@ core/           cross-process rate limits and leases (PostgreSQL), image validat
 * **Units:** Decimal everywhere. Only mg→g is converted. No kJ↔kcal, salt↔sodium,
   g↔ml, or as sold↔prepared conversion. OFF `_100g` values are classified as per 100 g or
   per 100 ml from the product quantity unit; if unclear: "per 100 g or ml (not stated)".
+* **Filters:** the full OFF category (~15 000) and country (~270) taxonomies are stored in
+  `Category` / `Country` (`sync_taxonomies`, weekly). The catalogue only offers values that
+  currently have products, computed in SQL for the other active filters (faceting), with
+  counts; Nutri-Score (A–E, none) and completeness bands work the same way.
 * **Queries:** denormalised columns on `Product` (name, brand, categories/countries as
   arrays with GIN indexes, Nutri-Score, NOVA, completeness) for search, filters and
   DB-side sorting. Search: `UPPER(search_text)` GIN trigram index used by `LIKE` and

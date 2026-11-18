@@ -8,7 +8,7 @@
   <p><strong>{% translate "Barcode" %}:</strong> <span class="mono">{{ code }}</span>
     {% if parsed and parsed.kind == "restricted" %}<br><span class="tag tag-warn">{% translate "Store-internal code: it may identify different products in different shops." %}</span>{% endif %}
   </p>
-  <p role="{% if status == 'pending' %}status{% else %}alert{% endif %}" class="{% if error %}error{% endif %}">{{ message }}</p>
+  <p role="{% if status == 'pending' %}status{% else %}alert{% endif %}" class="{% if error %}error{% endif %}{% if status == 'pending' %} pending{% endif %}">{% if status == "pending" %}<span class="spinner" aria-hidden="true"></span>{% endif %}{{ message }}</p>
 
   {% if status == "not_found" %}
     <p>{% translate "You can add this product. A moderator checks every contribution before it is published." %}</p>

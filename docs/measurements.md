@@ -30,14 +30,14 @@ on each, 0 wrong values (missed values are left empty for the user). These are g
 images, not real phone photos; no claim is made about accuracy on real labels. A
 benchmark on a set of real photos is needed before any engine change.
 
-## Database queries per page (`manage.py measure_queries`, demo + 3 OFF products)
+## Database queries per page (`manage.py measure_queries`, 3 OFF products)
 
 | Page | Queries |
 |---|---|
 | Home `/` | 0 |
 | Scan `/scan/` | 0 |
-| Products (list, filters, search + sort) | 4 |
-| Product page | 5 |
+| Products (list + dynamic filters with counts) | 8 |
+| Product page | 7 |
 | Compare (3 products) | 3 |
 | Saved, Sources | 0 |
 

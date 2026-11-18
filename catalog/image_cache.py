@@ -38,14 +38,29 @@ def allowed(url: str) -> bool:
     return parts.scheme == "https" and parts.hostname in settings.OFF_IMAGE_HOSTS
 
 
+_client: httpx.Client | None = None
+
+
+def _http() -> httpx.Client:
+    """One keep-alive client per worker process.
+
+    The OFF image host spends ~5 s on each TLS handshake; reusing the connection means
+    only the first photo pays it, later photos take well under a second.
+    """
+    global _client
+    if _client is None:
+        _client = httpx.Client(
+            # Runs in the worker only; the OFF image host can be very slow to accept.
+            timeout=httpx.Timeout(30.0, connect=20.0),
+            follow_redirects=False,
+            headers={"User-Agent": settings.OFF_USER_AGENT},
+            limits=httpx.Limits(max_keepalive_connections=4, keepalive_expiry=300),
+        )
+    return _client
+
+
 def _download(url: str) -> bytes | None:
-    # Runs in the worker only; the OFF image host can be very slow to accept connections.
-    timeout = httpx.Timeout(30.0, connect=20.0)
-    headers = {"User-Agent": settings.OFF_USER_AGENT}
-    with (
-        httpx.Client(timeout=timeout, follow_redirects=False, headers=headers) as client,
-        client.stream("GET", url) as response,
-    ):
+    with _http().stream("GET", url) as response:
         if response.status_code != 200:
             return None
         if not response.headers.get("content-type", "").startswith("image/"):

@@ -96,6 +96,8 @@ class OFFClient:
     def _retry_delay(self, exc: OFFError, attempt: int) -> float | None:
         if attempt > self.max_retries:
             return None
+        if exc.kind == "timeout" and exc.detail in ("ReadTimeout", "PoolTimeout", "WriteTimeout"):
+            return None  # the server is up but slow: retrying would only double the wait
         if exc.kind in ("timeout", "upstream_unavailable"):
             if exc.retry_after is not None:
                 return float(exc.retry_after) if exc.retry_after <= self.retry_after_cap else None

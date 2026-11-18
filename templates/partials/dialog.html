@@ -1,0 +1,12 @@
+{% load i18n ui %}{# Reusable confirmation dialog, driven by static/js/dialog.js (confirmDialog / data-confirm). #}
+<dialog class="dialog" data-dialog aria-labelledby="dialog-title" aria-describedby="dialog-message">
+  <form method="dialog" class="dialog-body">
+    <span class="dialog-icon" data-dialog-icon hidden>{% icon "trash-2" 24 %}</span>
+    <h2 id="dialog-title" data-dialog-title>{% translate "Are you sure?" %}</h2>
+    <p id="dialog-message" data-dialog-message hidden></p>
+    <div class="dialog-actions">
+      <button class="btn btn-outline" value="cancel" data-dialog-cancel>{% translate "Cancel" %}</button>
+      <button class="btn btn-primary" value="confirm" data-dialog-confirm>{% translate "Confirm" %}</button>
+    </div>
+  </form>
+</dialog>

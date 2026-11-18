@@ -25,7 +25,6 @@ class Product(models.Model):
         "ProductRevision", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
     off_code = models.CharField(max_length=14, null=True, blank=True, unique=True)
-    is_demo = models.BooleanField(default=False)
     locked_fields = ArrayField(models.CharField(max_length=40), default=list, blank=True)
 
     # Denormalised from the current revision for search, filters and sorting.
@@ -96,7 +95,7 @@ class ProductIdentifier(models.Model):
     normalized = models.CharField(max_length=14)
     off_code = models.CharField(max_length=14)
     kind = models.CharField(max_length=12, choices=Kind.choices)
-    # Context scopes codes that are not globally unique (store/country/demo). Empty for GTINs.
+    # Context scopes codes that are not globally unique (store/country). Empty for GTINs.
     context = models.CharField(max_length=40, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -120,14 +119,13 @@ class ProductRevision(models.Model):
     class Source(models.TextChoices):
         OFF_IMPORT = "off_import"
         CONTRIBUTION = "contribution"
-        DEMO = "demo"
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="revisions")
     number = models.PositiveIntegerField()
     source = models.CharField(max_length=20, choices=Source.choices)
     data = models.JSONField()
     content_hash = models.CharField(max_length=64)
-    # field -> {"source": "off"|"contribution"|"demo", "at": iso, "contribution": id?}
+    # field -> {"source": "off"|"contribution", "at": iso, "contribution": id?}
     field_sources = models.JSONField(default=dict)
     off_data = models.JSONField(null=True, blank=True)  # mapped OFF data used as source
     off_payload = models.JSONField(null=True, blank=True)  # raw OFF product object
@@ -280,3 +278,33 @@ class ReviewFlag(models.Model):
 
     def __str__(self) -> str:
         return f"{self.kind} {self.field}".strip()
+
+
+class Category(models.Model):
+    """Full Open Food Facts category taxonomy (reference data, see ``sync_taxonomies``)."""
+
+    tag = models.CharField(max_length=200, primary_key=True)
+    name = models.CharField(max_length=300)
+    parents = ArrayField(models.CharField(max_length=200), default=list, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "categories"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Country(models.Model):
+    """Full Open Food Facts country taxonomy (reference data, see ``sync_taxonomies``)."""
+
+    tag = models.CharField(max_length=100, primary_key=True)
+    name = models.CharField(max_length=200)
+    code = models.CharField(max_length=3, blank=True)  # ISO 3166-1 alpha-2 when known
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "countries"
+
+    def __str__(self) -> str:
+        return self.name

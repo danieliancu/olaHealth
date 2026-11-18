@@ -1,57 +1,77 @@
 {% extends "base.html" %}
-{% load i18n ui %}
+{% load i18n ui static %}
 {% block title %}{% translate "Compare" %}{% endblock %}
+{% block head %}{% if c.charts %}<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}" defer></script>
+<script type="module" src="{% static 'js/compare-charts.js' %}"></script>{% endif %}{% endblock %}
 {% block content %}
 <h1>{% translate "Compare products" %}</h1>
+<div data-compare-shown="{{ shown_ids }}"{% if requested %} data-compare-requested{% endif %} hidden></div>
+{% if missing %}<p class="notice notice-warn" role="status">{% icon "info" 18 %}<span>{% blocktranslate count n=missing %}{{ n }} product is no longer available and was removed from the comparison.{% plural %}{{ n }} products are no longer available and were removed from the comparison.{% endblocktranslate %}</span></p>{% endif %}
 {% if error %}
   <section class="card" data-compare-empty>
     <p>{{ error }}</p>
-    <p class="hint">{% translate "Use “Compare” on a product or in the catalogue. Products you selected:" %}</p>
     <div data-compare-tray></div>
     <a class="btn btn-outline btn-block" href="{% url 'products' %}">{% icon "plus" 18 %}<span>{% translate "Add product" %}</span></a>
   </section>
 {% else %}
 <div class="table-wrap">
 <table class="compare cols-{{ c.products|length }}">
+  <colgroup><col class="col-label">{% for p in c.products %}<col class="col-product">{% endfor %}</colgroup>
   <caption class="sr-only">{% translate "Indicators" %}</caption>
   <thead><tr><td></td>
     {% for p in c.products %}<th scope="col" class="compare-head">
+      <a class="icon-btn mini compare-remove" href="{{ p.remove_url }}" data-compare-remove="{{ p.pk }}"
+         aria-label="{% blocktranslate with n=p.name|default:_('this product') %}Remove {{ n }} from comparison{% endblocktranslate %}">{% icon "x" 16 %}</a>
       {% if p.front_image_url %}<img src="{{ p.front_image_url|img }}" alt="" width="64" height="64" loading="lazy">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="64" height="64">{% endif %}
       <a href="{% url 'product' p.pk %}">{{ p.name|default:_("Unnamed product") }}</a>
-      {% if p.is_demo %}<span class="tag tag-demo">{% translate "Illustrative data" %}</span>{% endif %}
     </th>{% endfor %}</tr></thead>
   <tbody>
     <tr><th scope="row">Nutri-Score</th>
-      {% for n in c.nutriscore %}<td>{% if n.grade %}<span class="grade grade-sm grade-{{ n.grade|lower }}"><span class="sr-only">Nutri-Score </span>{{ n.grade }}</span>{% if n.version %} <span class="hint">{{ n.version }}</span>{% endif %}{% elif n.status == "not_current" %}<span class="muted">{% translate "not current" %}</span>{% elif n.status == "not_applicable" %}<span class="muted">{% translate "n/a" %}</span>{% else %}<span class="muted">{% translate "unknown" %}</span>{% endif %}</td>{% endfor %}</tr>
+      {% for n in c.nutriscore %}<td>{% if n.grade %}<span class="grade grade-sm grade-{{ n.grade|lower }}"><span class="sr-only">Nutri-Score </span>{{ n.grade }}</span>{% if n.version %} <span class="hint">{{ n.version }}</span>{% endif %}{% elif n.status == "not_current" %}<span class="muted">{% translate "not current" %}</span>{% elif n.status == "not_applicable" %}<span class="muted">{% translate "n/a" %}</span>{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
     <tr><th scope="row">NOVA</th>
-      {% for n in c.nova %}<td>{% if n.group %}<span class="chip" title="{{ n.label }}">{{ n.group }}</span>{% else %}<span class="muted">{% translate "unknown" %}</span>{% endif %}</td>{% endfor %}</tr>
+      {% for n in c.nova %}<td>{% if n.group %}<span class="nova-num nova-sm nova-{{ n.group }} centered" title="{{ n.label }}"><span class="sr-only">NOVA </span>{{ n.group }}</span>{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
   </tbody>
 </table>
 </div>
-{% if c.nutriscore_note %}<p class="notice">{% icon "info" 18 %}<span>{{ c.nutriscore_note }}</span></p>{% endif %}
-{% for w in c.warnings %}<p class="notice">{% icon "triangle-alert" 18 %}<span>{{ w }}</span></p>{% endfor %}
+{% if c.nutriscore_note %}<p class="notice notice-warn" role="note">{% icon "triangle-alert" 18 %}<span>{{ c.nutriscore_note }}</span></p>{% endif %}
+{% for w in c.warnings %}<p class="notice notice-warn" role="note">{% icon "triangle-alert" 18 %}<span>{{ w }}</span></p>{% endfor %}
 
 {% for g in c.groups %}
 <div class="table-wrap">
 <table class="compare cols-{{ c.products|length }}">
+  <colgroup><col class="col-label">{% for p in c.products %}<col class="col-product">{% endfor %}</colgroup>
   <caption>{{ g.title|capfirst }}{% if not g.comparable %} – {% translate "depends on serving size, not compared" %}{% endif %}</caption>
-  <thead class="sr-only"><tr><th scope="col">{% translate "Nutrient" %}</th>{% for p in c.products %}<th scope="col">{{ p.name }}</th>{% endfor %}</tr></thead>
+  <thead class="thead-hidden"><tr><th scope="col"><span class="sr-only">{% translate "Nutrient" %}</span></th>{% for p in c.products %}<th scope="col"><span class="sr-only">{{ p.name }}</span></th>{% endfor %}</tr></thead>
   <tbody>
+  {% if g.comparable %}
+    <tr class="basis-row"><th scope="row">{% translate "Basis" %}</th>
+      {% for b in g.column_bases %}<td>{% if b %}{{ b }}{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
+  {% endif %}
   {% for r in g.rows %}
     <tr><th scope="row">{{ r.label }}</th>
-      {% for cell in r.cells %}<td>{% if cell.state == "declared" %}{{ cell.display }}{% elif cell.state == "not_on_label" %}<span class="muted">{% translate "not on label" %}</span>{% else %}<span class="muted">{% translate "unknown" %}</span>{% endif %}</td>{% endfor %}</tr>
+      {% for cell in r.cells %}<td>{% if cell.state == "declared" %}{{ cell.display }}{% elif cell.state == "not_on_label" %}<span class="muted">{% translate "not on label" %}</span>{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
-{% if g.missing_for %}<p class="caption">{% translate "No values on this basis for" %}: {{ g.missing_for|join:", " }}</p>{% endif %}
+{% if g.mixed_bases %}<p class="notice notice-warn" role="note">{% icon "triangle-alert" 18 %}<span>{% translate "These values are not all on the same basis (see “Basis”). Differences are only calculated between products with the same basis." %}</span></p>{% endif %}
+{% if g.missing_for %}<p class="caption">{% translate "No values for" %}: {{ g.missing_for|join:", " }}</p>{% endif %}
 {% empty %}
 <p>{% translate "No nutrition facts are available for these products." %}</p>
 {% endfor %}
 
 <p class="notice">{% icon "info" 18 %}<span>{% translate "No universal winner. Choose what suits you." %}</span></p>
 
-{% if c.differences %}
+{% if c.charts %}
+{{ c.charts|json_script:"compare-charts-data" }}
+<section class="card charts-card" aria-labelledby="charts-h">
+  <h2 id="charts-h">{% translate "Side by side" %}</h2>
+  <p class="caption">{% translate "Each nutrient has its own scale, with the difference between the highest and lowest value. Only products on the same basis are compared." %}</p>
+  <div data-compare-charts></div>
+</section>
+{% endif %}
+
+{% if c.differences and not c.charts %}
 <section class="card" aria-labelledby="diff-h">
   <h2 id="diff-h">{% translate "Differences" %}</h2>
   <ul class="diff-list">{% for d in c.differences %}<li>{{ d }}</li>{% endfor %}</ul>

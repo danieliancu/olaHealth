@@ -25,7 +25,7 @@
       {% if img %}
         <div class="slot-img">
           <img src="{% url 'contribution-image' c.access_token img.pk %}" alt="{{ label }}" width="120" height="120">
-          <form method="post" action="{% url 'contribution-image-delete' c.access_token img.pk %}">{% csrf_token %}
+          <form method="post" action="{% url 'contribution-image-delete' c.access_token img.pk %}" data-confirm="{% translate 'The photo will be removed from your contribution.' %}" data-confirm-title="{% translate 'Remove this photo?' %}" data-confirm-label="{% translate 'Remove' %}" data-confirm-tone="danger">{% csrf_token %}
             <button class="icon-btn mini" type="submit" aria-label="{% blocktranslate %}Remove photo: {{ label }}{% endblocktranslate %}">{% icon "x" 16 %}</button>
           </form>
         </div>
@@ -75,7 +75,7 @@
     <ul class="plain-list">
       {% for r in runs %}
       <li data-run="{{ r.pk }}">{{ r.image.get_kind_display }}:
-        <span data-run-status>{% if r.status == "done" %}{% translate "done" %}{% elif r.status == "failed" %}{% translate "failed" %}{% else %}{% translate "in progress…" %}{% endif %}</span>
+        <span data-run-status data-state="{{ r.status }}">{% if r.status == "queued" or r.status == "running" %}<span class="spinner" aria-hidden="true"></span> {% endif %}{% if r.status == "done" %}{% translate "done" %}{% elif r.status == "failed" %}{% translate "failed" %}{% else %}{% translate "in progress…" %}{% endif %}</span>
         {% if r.status == "failed" %}
           <form method="post" action="{% url 'contribution-ocr-retry' c.access_token r.pk %}" class="inline">{% csrf_token %}<button class="btn btn-small btn-outline" type="submit">{% icon "refresh-cw" 16 %}<span>{% translate "Try again" %}</span></button></form>
         {% endif %}
@@ -135,7 +135,7 @@
     {% endif %}
     {% if images %}<p class="caption">{% blocktranslate count n=images|length %}{{ n }} photo{% plural %}{{ n }} photos{% endblocktranslate %}</p>{% endif %}
     {% if c.note %}<p><strong>{% translate "Note" %}:</strong> {{ c.note }}</p>{% endif %}
-    {% if c.validation_warnings %}<div class="notice">{% icon "triangle-alert" 18 %}<div><p>{% translate "Please double-check (a moderator will too):" %}</p><ul>{% for w in c.validation_warnings %}<li>{{ w }}</li>{% endfor %}</ul></div></div>{% endif %}
+    {% if c.validation_warnings %}<div class="notice notice-warn">{% icon "triangle-alert" 18 %}<div><p>{% translate "Please double-check (a moderator will too):" %}</p><ul>{% for w in c.validation_warnings %}<li>{{ w }}</li>{% endfor %}</ul></div></div>{% endif %}
     <p><a href="?step=check">{% translate "Edit values" %}</a></p>
   </section>
   <form method="post" action="?step=submit" class="stack">

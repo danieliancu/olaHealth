@@ -1,0 +1,7 @@
+{% load i18n ui %}{% if options %}
+<label class="pill{% if value %} is-active{% endif %}"><span class="sr-only">{{ label }}</span>
+  <select name="{{ name }}" aria-label="{{ label }}">
+    <option value="">{% if value %}{% blocktranslate with l=label %}All – {{ l }}{% endblocktranslate %}{% else %}{{ label }}{% endif %}</option>
+    {% for o in options %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }} ({{ o.count }})</option>{% endfor %}
+  </select>{% icon "chevron-down" 16 %}</label>
+{% endif %}

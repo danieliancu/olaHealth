@@ -39,6 +39,7 @@ services:
       sh -c "python manage.py migrate --noinput &&
              python manage.py createcachetable &&
              python manage.py setup_schedules &&
+             python manage.py sync_taxonomies --if-empty &&
              gunicorn olahealth.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 30
              --access-logfile -"
     ports:
@@ -54,7 +55,7 @@ services:
     command: python manage.py qcluster
     environment:
       POSTGRES_HOST: postgres
-      # Tesseract: one thread per OCR job; the cluster runs Q_WORKERS jobs at a time.
+      # Tesseract: one thread per OCR job; the cluster runs Q_WORKERS (default 2) jobs at a time.
       OMP_THREAD_LIMIT: "1"
     mem_limit: ${WORKER_MEM_LIMIT:-768m}
 

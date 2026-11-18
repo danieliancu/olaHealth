@@ -14,6 +14,7 @@ SCHEDULES = [
         Schedule.DAILY,
     ),
     ("export-catalogue", "catalog.export.write_export", Schedule.DAILY),
+    ("sync-taxonomies", "catalog.tasks.sync_taxonomies", Schedule.WEEKLY),
 ]
 
 

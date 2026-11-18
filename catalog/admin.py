@@ -3,7 +3,15 @@ from django.utils import timezone
 from django.utils.html import format_html
 
 from assessments.models import AssessmentSnapshot
-from catalog.models import Product, ProductIdentifier, ProductImage, ProductRevision, ReviewFlag
+from catalog.models import (
+    Category,
+    Country,
+    Product,
+    ProductIdentifier,
+    ProductImage,
+    ProductRevision,
+    ReviewFlag,
+)
 
 
 class IdentifierInline(admin.TabularInline):
@@ -25,10 +33,9 @@ class ProductAdmin(admin.ModelAdmin):
         "nutriscore_grade",
         "completeness",
         "off_sync_status",
-        "is_demo",
         "updated_at",
     )
-    list_filter = ("off_sync_status", "is_demo", "nutriscore_grade")
+    list_filter = ("off_sync_status", "nutriscore_grade")
     search_fields = ("name", "brand", "off_code", "identifiers__normalized")
     readonly_fields = [f.name for f in Product._meta.fields]
     inlines = [IdentifierInline]
@@ -119,4 +126,32 @@ class ReviewFlagAdmin(admin.ModelAdmin):
         return request.user.has_perm("contributions.moderate_contribution")
 
     def has_add_permission(self, request) -> bool:
+        return False
+
+
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    """Reference data imported by ``sync_taxonomies`` (read only)."""
+
+    list_display = ("name", "tag")
+    search_fields = ("name", "tag")
+    readonly_fields = ("tag", "name", "parents")
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+    def has_change_permission(self, request, obj=None) -> bool:
+        return False
+
+
+@admin.register(Country)
+class CountryAdmin(admin.ModelAdmin):
+    list_display = ("name", "code", "tag")
+    search_fields = ("name", "tag", "code")
+    readonly_fields = ("tag", "name", "code")
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+    def has_change_permission(self, request, obj=None) -> bool:
         return False

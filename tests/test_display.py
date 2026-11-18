@@ -126,3 +126,11 @@ def test_disallowed_host_is_never_fetched(off_payload):
 
         assert ensure_cached(img) is None
         assert route.call_count == 0
+
+
+def test_decimal_comma_is_not_an_ingredient_separator():
+    items = split_ingredients("Brown rice 99,7%, salt 0,3%.")
+    assert [("".join(t for t, _a in i.parts), i.percent) for i in items] == [
+        ("Brown rice", "99,7%"),
+        ("salt", "0,3%"),
+    ]

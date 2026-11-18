@@ -20,8 +20,8 @@ class Command(BaseCommand):
         urls = [
             reverse("home"),
             reverse("scan"),
-            reverse("products") + "?include_demo=on",
-            reverse("products") + "?include_demo=on&q=yogurt&sort=nutriscore",
+            reverse("products"),
+            reverse("products") + "?q=yogurt&sort=nutriscore",
             reverse("saved"),
             reverse("sources"),
         ]

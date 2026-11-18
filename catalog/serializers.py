@@ -22,7 +22,6 @@ class ProductSummarySerializer(serializers.ModelSerializer):
             "image_url",
             "nutriscore",
             "completeness",
-            "is_demo",
         ]
 
     def get_image_url(self, obj: Product) -> str:

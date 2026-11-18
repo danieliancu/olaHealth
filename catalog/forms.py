@@ -65,7 +65,6 @@ class SearchForm(forms.Form):
         ],
     )
     sort = forms.ChoiceField(label=_("Sort by"), required=False, choices=list(SORTS.items()))
-    include_demo = forms.BooleanField(label=_("Show demo products"), required=False)
 
     def clean_sort(self) -> str:
         return self.cleaned_data.get("sort") or "relevance"

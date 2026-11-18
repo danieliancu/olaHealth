@@ -1,10 +1,17 @@
 // Small progressive enhancements. Every page works without JavaScript except the
 // camera scanner and the browser-local lists (favourites, history, compare selection).
 
+import { confirmDialog } from "./dialog.js";
+
 document.documentElement.classList.add("js");
 
-const KEYS = { history: "olahealth:history", favorites: "olahealth:favorites", compare: "olahealth:compare" };
-const LIMITS = { history: 50, favorites: 200, compare: 3 };
+const KEYS = {
+  history: "olahealth:history",
+  favorites: "olahealth:favorites",
+  compare: "olahealth:compare",
+  hidden: "olahealth:hidden", // products the user removed from their own list (this device only)
+};
+const LIMITS = { history: 50, favorites: 200, compare: 3, hidden: 1000 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function announce(message) {
@@ -79,23 +86,101 @@ function remove(kind, id) {
 const product = document.querySelector("[data-product]");
 if (product && UUID.test(product.dataset.id)) {
   add("history", entryFrom(product));
-  const fav = product.querySelector("[data-fav]");
-  if (fav) {
-    const sync = () => {
-      const on = has("favorites", product.dataset.id);
-      fav.setAttribute("aria-pressed", String(on));
-      fav.querySelector("span").textContent = on ? "Saved" : "Save";
-    };
+}
+// Save buttons: on the product page they use the page's product, on cards their own data.
+document.querySelectorAll("[data-fav]").forEach((fav) => {
+  const source = fav.dataset.id ? fav : fav.closest("[data-product]");
+  if (!source || !UUID.test(source.dataset.id || "")) return;
+  const id = source.dataset.id;
+  const label = fav.querySelector("span");
+  const sync = () => {
+    const on = has("favorites", id);
+    fav.setAttribute("aria-pressed", String(on));
+    if (label) label.textContent = on ? "Saved" : "Save";
+    else fav.title = on ? "Saved" : "Save";
+  };
+  sync();
+  fav.addEventListener("click", () => {
+    const on = has("favorites", id);
+    const ok = on ? remove("favorites", id) : add("favorites", entryFrom(source));
+    if (!ok) return announce("This browser does not allow saving.");
     sync();
-    fav.addEventListener("click", () => {
-      const on = has("favorites", product.dataset.id);
-      const ok = on ? remove("favorites", product.dataset.id) : add("favorites", entryFrom(product));
-      if (!ok) return announce("This browser does not allow saving.");
-      sync();
-      announce(on ? "Removed from saved products." : "Saved on this device.");
-    });
+    updateSavedCount();
+    announce(on ? "Removed from saved products." : "Saved on this device.");
+  });
+});
+
+// ---------- Card actions: a discreet arrow reveals Save / Compare / Remove ----------
+document.querySelectorAll(".actions-toggle").forEach((toggle) => {
+  const panel = document.getElementById(toggle.getAttribute("aria-controls"));
+  if (!panel) return;
+  toggle.addEventListener("click", () => {
+    const open = toggle.getAttribute("aria-expanded") !== "true";
+    toggle.setAttribute("aria-expanded", String(open));
+    panel.classList.toggle("is-open", open);
+    if (open) panel.querySelector("button")?.focus({ preventScroll: true });
+  });
+});
+
+// ---------- "Remove from my list" (this device only, never the database) ----------
+export function hiddenIds() {
+  return new Set(read("hidden").map((x) => x.id));
+}
+function applyHidden() {
+  const hidden = hiddenIds();
+  const cards = [...document.querySelectorAll(".product-card")];
+  let count = 0;
+  cards.forEach((card) => {
+    const btn = card.querySelector("[data-hide-product]");
+    const isHidden = !!btn && hidden.has(btn.dataset.id);
+    card.closest("li").hidden = isHidden;
+    if (isHidden) count += 1;
+  });
+  const counter = document.querySelector("[data-product-count]");
+  if (counter && counter.dataset.total) {
+    const visible = Number(counter.dataset.total) - count;
+    counter.textContent = `${visible} product${visible === 1 ? "" : "s"}`;
+  }
+  const note = document.querySelector("[data-hidden-note]");
+  if (note) {
+    note.hidden = count === 0;
+    note.querySelector("[data-hidden-text]").textContent =
+      `${count} product${count === 1 ? "" : "s"} hidden on this device.`;
   }
 }
+document.querySelectorAll("[data-hide-product]").forEach((btn) =>
+  btn.addEventListener("click", async () => {
+    const name = btn.dataset.name || "This product";
+    const ok = await confirmDialog({
+      title: "Remove from your list?",
+      message: `“${name}” will be hidden on this device only. It stays in the catalogue for everyone else.`,
+      confirmLabel: "Remove",
+      tone: "danger",
+    });
+    if (!ok) return;
+    if (!add("hidden", entryFrom(btn))) return announce("This browser does not allow saving.");
+    applyHidden();
+    announce(`${name} removed from your list.`);
+  })
+);
+document.querySelectorAll("[data-unhide-all]").forEach((btn) =>
+  btn.addEventListener("click", () => {
+    write("hidden", []);
+    applyHidden();
+    announce("Hidden products are shown again.");
+  })
+);
+applyHidden();
+
+// ---------- Saved counter in the menu ----------
+function updateSavedCount() {
+  const n = read("favorites").length;
+  document.querySelectorAll("[data-saved-count]").forEach((el) => {
+    el.textContent = String(n);
+    el.hidden = n === 0;
+  });
+}
+updateSavedCount();
 
 // ---------- Compare selection ----------
 function updateCompareCount() {
@@ -117,6 +202,7 @@ document.querySelectorAll("[data-compare-toggle]").forEach((btn) => {
     const on = has("compare", id);
     btn.setAttribute("aria-pressed", String(on));
     if (label) label.textContent = on ? "Added" : "Compare";
+    else btn.title = on ? "Added to compare" : "Compare";
   };
   sync();
   btn.addEventListener("click", () => {
@@ -139,6 +225,17 @@ document.querySelectorAll("[data-compare-toggle]").forEach((btn) => {
 });
 updateCompareCount();
 
+// The server tells which of the requested products still exist; drop the others.
+const shown = document.querySelector("[data-compare-shown]");
+if (shown && shown.hasAttribute("data-compare-requested")) {
+  const keep = new Set(shown.dataset.compareShown.split(",").filter(Boolean));
+  const items = read("compare");
+  if (items.some((x) => !keep.has(x.id))) {
+    write("compare", items.filter((x) => keep.has(x.id)));
+    updateCompareCount();
+  }
+}
+
 // Compare page without ids: send the stored selection, or render the tray.
 const comparePage = document.querySelector("[data-compare-empty]");
 if (comparePage && !new URLSearchParams(location.search).get("ids")) {
@@ -146,10 +243,7 @@ if (comparePage && !new URLSearchParams(location.search).get("ids")) {
 }
 document.querySelectorAll("[data-compare-tray]").forEach((tray) => {
   const items = read("compare");
-  if (!items.length) {
-    tray.textContent = "No products selected.";
-    return;
-  }
+  if (!items.length) return;
   const list = document.createElement("ul");
   list.className = "product-list";
   items.forEach((x) => list.append(row(x, "compare", () => location.reload())));
@@ -162,6 +256,12 @@ document.querySelectorAll("[data-compare-tray]").forEach((tray) => {
     tray.append(go);
   }
 });
+document.querySelectorAll("[data-compare-remove]").forEach((link) =>
+  link.addEventListener("click", () => {
+    remove("compare", link.dataset.compareRemove);
+    updateCompareCount();
+  })
+);
 document.querySelectorAll("[data-compare-clear]").forEach((btn) =>
   btn.addEventListener("click", () => {
     write("compare", []);
@@ -212,6 +312,7 @@ function renderList(kind, listSel, emptySel) {
   if (empty) empty.hidden = items.length > 0;
 }
 function renderSaved() {
+  updateSavedCount();
   renderList("favorites", "[data-favorites]", "[data-favorites-empty]");
   renderList("history", "[data-history]", "[data-history-empty]");
   const err = document.querySelector("[data-storage-error]");
@@ -220,8 +321,15 @@ function renderSaved() {
 renderSaved();
 
 document.querySelectorAll("[data-clear]").forEach((btn) =>
-  btn.addEventListener("click", () => {
+  btn.addEventListener("click", async () => {
     const what = btn.dataset.clear;
+    const ok = await confirmDialog({
+      title: what === "history" ? "Clear history?" : "Delete all saved products?",
+      message: "This removes them from this device only.",
+      confirmLabel: what === "history" ? "Clear" : "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     if (what === "history") write("history", []);
     else Object.keys(KEYS).forEach((k) => write(k, []));
     renderSaved();
@@ -270,6 +378,12 @@ document.querySelectorAll("form[data-autosubmit] select, form[data-autosubmit] i
 document.querySelectorAll("form[data-autoupload] input[type=file]").forEach((input) =>
   input.addEventListener("change", () => {
     if (input.files.length) {
+      const slot = input.closest(".slot-add");
+      if (slot) {
+        slot.querySelector(".icon")?.replaceWith(spinner());
+        slot.classList.add("is-uploading");
+      }
+      document.querySelectorAll("form[data-autoupload] input[type=file]").forEach((i) => (i.disabled = i !== input));
       announce("Uploading photo…");
       input.form.submit();
     }
@@ -289,9 +403,11 @@ if (ocrBox) {
       let failedChanged = false;
       for (const run of data.runs) {
         const li = ocrBox.querySelector(`[data-run="${run.id}"] [data-run-status]`);
-        if (li && li.textContent !== labels[run.status]) {
+        if (li && li.dataset.state !== run.status) {
           if (run.status === "failed") failedChanged = true;
+          li.dataset.state = run.status;
           li.textContent = labels[run.status];
+          if (run.status === "queued" || run.status === "running") li.prepend(spinner(), " ");
         }
         if (run.status === "queued" || run.status === "running") pending += 1;
       }
@@ -305,3 +421,54 @@ if (ocrBox) {
   };
   if (ocrBox.querySelector("[data-run-status]")) window.setTimeout(poll, 2000);
 }
+
+// ---------- Discreet activity indicators ----------
+export function spinner() {
+  const s = document.createElement("span");
+  s.className = "spinner";
+  s.setAttribute("aria-hidden", "true");
+  return s;
+}
+
+// Forms: the submit button shows a spinner and cannot be pressed twice.
+document.addEventListener("submit", (event) => {
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement) || form.hasAttribute("data-no-busy")) return;
+  window.setTimeout(() => {
+    if (event.defaultPrevented) return;
+    const button = event.submitter || form.querySelector("button[type=submit], button:not([type])");
+    if (!button || button.classList.contains("is-busy")) return;
+    button.classList.add("is-busy");
+    button.setAttribute("aria-disabled", "true");
+    button.prepend(spinner());
+    form.setAttribute("aria-busy", "true");
+  }, 0);
+});
+// Coming back with the browser's Back button restores the page from cache: reset buttons.
+window.addEventListener("pageshow", () => {
+  document.querySelectorAll(".btn.is-busy").forEach((b) => {
+    b.classList.remove("is-busy");
+    b.removeAttribute("aria-disabled");
+    b.querySelector(".spinner")?.remove();
+  });
+  document.querySelectorAll("form[aria-busy]").forEach((f) => f.removeAttribute("aria-busy"));
+});
+
+// Images: soft shimmer until each photo has loaded (OFF photos can be slow).
+function watchImage(img) {
+  if (img.complete && img.naturalWidth > 0) return;
+  img.classList.add("is-loading");
+  const done = () => img.classList.remove("is-loading");
+  img.addEventListener("load", done, { once: true });
+  img.addEventListener("error", done, { once: true });
+}
+document.querySelectorAll("img.product-photo, img.thumb, .gallery img, .compare-head img").forEach(watchImage);
+new MutationObserver((records) => {
+  for (const r of records) {
+    r.addedNodes.forEach((n) => {
+      if (n.nodeType !== 1) return;
+      n.querySelectorAll?.("img.product-photo, img.thumb").forEach(watchImage);
+      if (n.matches?.("img.product-photo, img.thumb")) watchImage(n);
+    });
+  }
+}).observe(document.body, { childList: true, subtree: true });

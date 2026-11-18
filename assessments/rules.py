@@ -34,12 +34,12 @@ INDICATORS = tuple(DEPENDENCIES)
 # is still shown, as the raw tag.
 NUTRISCORE_WARNINGS = {
     "en:nutrition-fruits-vegetables-nuts-estimate-from-ingredients": (
-        "The amount of fruits, vegetables and legumes is not on the label; Open Food Facts "
-        "estimated it from the ingredient list."
+        "The amount of fruits, vegetables and legumes is not on the label; it was "
+        "estimated from the ingredient list."
     ),
     "en:nutrition-fruits-vegetables-nuts-from-category": (
-        "The amount of fruits, vegetables and legumes is not on the label; Open Food Facts "
-        "estimated it from the product category."
+        "The amount of fruits, vegetables and legumes is not on the label; it was "
+        "estimated from the product category."
     ),
     "en:nutrition-no-fiber": "Fibre is not on the label; the score was computed without it.",
     "en:nutrition-no-fruits-vegetables-nuts": (
@@ -81,7 +81,7 @@ def _nutriscore(product: dict[str, Any]) -> IndicatorSpec:
     misc = _str_list(product.get("misc_tags"))
     warnings = [NUTRISCORE_WARNINGS[t] for t in misc if t in NUTRISCORE_WARNINGS]
     warnings += [
-        f"Open Food Facts note: {t.removeprefix('en:')}"
+        f"Note: {t.removeprefix('en:')}"
         for t in misc
         if t.startswith("en:nutriscore-")
         and t not in NUTRISCORE_WARNINGS
@@ -178,6 +178,6 @@ def apply_packaging_conflict(spec: IndicatorSpec, data: dict[str, Any]) -> Indic
         CONFLICTING,
         {**spec.value, "packaging_grade": declared_grade},
         spec.algorithm_version,
-        (*spec.warnings, "The grade printed on the package differs from Open Food Facts' grade."),
+        (*spec.warnings, "The grade printed on the package differs from the computed grade."),
         spec.origin,
     )

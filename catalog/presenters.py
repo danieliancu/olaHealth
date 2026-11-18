@@ -30,16 +30,22 @@ DATA_STATUS_LABELS = {
     "conflicting": "Conflicting",
 }
 SYNC_LABELS = {
-    "current": "Up to date with Open Food Facts",
+    "current": "Up to date",
     "stale": "Not refreshed recently",
-    "refresh_failed": "Last refresh from Open Food Facts failed",
-    "local_only": "Local data (not from Open Food Facts)",
+    "refresh_failed": "Last refresh failed",
+    "local_only": "Local data",
 }
 NOVA_LABELS = {
     1: "Unprocessed or minimally processed foods",
     2: "Processed culinary ingredients",
     3: "Processed foods",
     4: "Ultra-processed food and drink products",
+}
+NOVA_SHORT = {
+    1: "Unprocessed or minimally processed",
+    2: "Processed culinary ingredient",
+    3: "Processed food",
+    4: "Ultra-processed",
 }
 LEVEL_NUTRIENTS = {
     "fat": "Fat",
@@ -124,8 +130,7 @@ def _indicator_headline(s: AssessmentSnapshot) -> tuple[str, list[str], str]:
                 details.append(_("Algorithm version: %s") % s.algorithm_version)
             for version, other in (v.get("other_versions") or {}).items():
                 details.append(
-                    _("Open Food Facts also computed grade %(g)s with the %(v)s algorithm.")
-                    % {"g": other.upper(), "v": version}
+                    _("Grade %(g)s with the %(v)s algorithm.") % {"g": other.upper(), "v": version}
                 )
             if v.get("packaging_grade"):
                 details.append(_("Grade printed on the package: %s") % v["packaging_grade"].upper())
@@ -162,7 +167,7 @@ def _indicator_headline(s: AssessmentSnapshot) -> tuple[str, list[str], str]:
         if s.data_status != "available":
             return _("No ingredient list to identify additives from."), [], ""
         if not tags:
-            return _("Open Food Facts identified no additives in the ingredient list."), [], ""
+            return _("No additives identified in the ingredient list."), [], ""
         return (
             _("%d identified in the ingredient list") % len(tags),
             [additive_label(t) for t in tags],
@@ -279,13 +284,11 @@ def sources_view(product: Product) -> list[dict[str, str]]:
         src = revision.field_sources.get(key) or {}
         kind = src.get("source", "")
         if kind == "off":
-            text = _("Open Food Facts")
+            text = _("Product database")
             if src.get("off_last_modified"):
                 text += _(" (last modified %s)") % src["off_last_modified"][:10]
         elif kind == "contribution":
             text = _("Local correction, approved %s") % (src.get("approved_at") or "")[:10]
-        elif kind == "demo":
-            text = _("Demo data (fictional)")
         else:
             continue  # nothing recorded for this field: not shown
         if not _has_value(revision.data.get(key)):
@@ -325,12 +328,16 @@ class Ingredient:
 
 def _split_top_level(text: str) -> list[str]:
     items, depth, current = [], 0, []
-    for ch in text:
+    for i, ch in enumerate(text):
         if ch in "([{":
             depth += 1
         elif ch in ")]}":
             depth = max(0, depth - 1)
-        if ch in ",;" and depth == 0:
+        # A comma between two digits is a decimal comma ("99,7%"), not a separator.
+        decimal_comma = (
+            ch == "," and 0 < i < len(text) - 1 and text[i - 1].isdigit() and text[i + 1].isdigit()
+        )
+        if ch in ",;" and depth == 0 and not decimal_comma:
             items.append("".join(current))
             current = []
         else:
@@ -360,3 +367,129 @@ def split_ingredients(text: str | None) -> list[Ingredient]:
             continue
         result.append(Ingredient(parts, detail.replace("_", ""), percent))
     return result
+
+
+# ---------- Nutrient rows (product page) ----------
+# UK FSA front-of-pack thresholds, which Open Food Facts uses for its nutrient levels.
+# (low upper bound, high lower bound), grams per 100 g / per 100 ml.
+FSA_THRESHOLDS = {
+    "solid": {"fat": (3, 17.5), "saturated-fat": (1.5, 5), "sugars": (5, 22.5), "salt": (0.3, 1.5)},
+    "liquid": {
+        "fat": (1.5, 8.75),
+        "saturated-fat": (0.75, 2.5),
+        "sugars": (2.5, 11.25),
+        "salt": (0.3, 0.75),
+    },
+}
+ROW_META = {
+    # key: (label, icon, label used in "Low ..." sentences)
+    "energy-kcal": ("Energy", "flame", ""),
+    "fat": ("Fat", "droplet", "fat"),
+    "saturated-fat": ("Saturates", "droplets", "saturates"),
+    "carbohydrates": ("Carbohydrate", "wheat", ""),
+    "sugars": ("Sugars", "candy", "sugars"),
+    "fiber": ("Fibre", "leaf", ""),
+    "proteins": ("Protein", "egg", ""),
+    "salt": ("Salt", "cuboid", "salt"),
+}
+LEVEL_WORDS = {"low": "Low", "moderate": "Moderate", "high": "High"}
+GAUGE_WIDTH = 300
+
+
+@dataclass
+class Gauge:
+    segments: list[tuple[float, float, str]]  # x, width, level
+    marker_x: float
+    ticks: list[tuple[float, str, str]]  # x, label, text-anchor
+    low: str
+    high: str
+
+    @property
+    def marker_points(self) -> str:
+        x = self.marker_x
+        return f"{x - 6},1 {x + 6},1 {x},10"
+
+
+@dataclass
+class NutrientRow:
+    key: str
+    label: str
+    icon: str
+    value: str
+    level: str = ""  # low / moderate / high (from Open Food Facts) or ""
+    level_text: str = ""
+    gauge: Gauge | None = None
+
+
+def _gauge(value: Decimal, low: float, high: float) -> Gauge:
+    top = max(high * 2, float(value) * 1.1)
+    top = min(top, high * 4)
+    scale = GAUGE_WIDTH / top
+
+    def x(v: float) -> float:
+        return round(min(v, top) * scale, 1)
+
+    segments = [
+        (0.0, x(low), "low"),
+        (x(low), round(x(high) - x(low), 1), "moderate"),
+        (x(high), round(GAUGE_WIDTH - x(high), 1), "high"),
+    ]
+    ticks = [
+        (0.0, "0", "start"),
+        (x(low), format_number(Decimal(str(low))), "middle"),
+        (x(high), format_number(Decimal(str(high))), "middle"),
+    ]
+    return Gauge(
+        segments,
+        x(float(value)),
+        ticks,
+        format_number(Decimal(str(low))),
+        format_number(Decimal(str(high))),
+    )
+
+
+def nutrient_rows(
+    data: dict[str, Any], levels_snapshot: AssessmentSnapshot | None
+) -> tuple[list[NutrientRow], str]:
+    """Rows for the per-100 as-sold values that are available, with OFF levels if any."""
+    facts = (data.get("nutrition") or {}).get("facts") or []
+    group = [
+        f
+        for f in facts
+        if f["preparation"] == "as_sold"
+        and f["basis"] != "per_serving"
+        and f["status"] == "declared"
+    ]
+    if not group:
+        return [], ""
+    basis = group[0]["basis"]
+    by_key = {f["nutrient"]: f for f in group if f["basis"] == basis}
+    levels = {}
+    if (
+        levels_snapshot is not None
+        and levels_snapshot.data_status == "available"
+        and not levels_snapshot.invalidated_by_local_change
+    ):
+        levels = (levels_snapshot.value or {}).get("levels") or {}
+    if "energy-kcal" not in by_key and "energy-kj" in by_key:
+        by_key["energy-kcal"] = by_key["energy-kj"]  # show kJ when kcal is not declared
+    thresholds = FSA_THRESHOLDS["liquid" if basis == "per_100ml" else "solid"]
+    rows = []
+    for key, (label, icon, word) in ROW_META.items():
+        f = by_key.get(key)
+        if f is None:
+            continue
+        row = NutrientRow(
+            key, label, icon, format_value(f["value"], f["unit"], f.get("modifier") or "")
+        )
+        level = levels.get(key)
+        if level in LEVEL_WORDS and key in thresholds:
+            row.level = level
+            row.level_text = f"{LEVEL_WORDS[level]} {word}"
+            value = to_decimal(f["value"])
+            if value is not None:
+                row.gauge = _gauge(value, *thresholds[key])
+        rows.append(row)
+    # Levelled nutrients first (as on the label: fat, saturates, sugars, salt), then the rest.
+    rows.sort(key=lambda r: (r.level == "", list(ROW_META).index(r.key)))
+    return rows, BASIS_LABELS[basis]

@@ -31,7 +31,7 @@ def refresh_stale_products() -> dict[str, int]:
     """Refresh a small batch of stale products, within the shared OFF rate limit."""
     cutoff = timezone.now() - timedelta(hours=settings.OFF_FRESH_TTL_HOURS)
     candidates = (
-        Product.objects.filter(off_code__isnull=False, is_demo=False)
+        Product.objects.filter(off_code__isnull=False)
         .filter(Q(off_synced_at__lt=cutoff) | Q(off_sync_status=Product.SyncStatus.REFRESH_FAILED))
         .order_by("off_last_attempt_at", "off_synced_at")[: settings.OFF_REFRESH_BATCH]
     )
@@ -75,3 +75,10 @@ def cache_off_image(image_id: str) -> bool:
 
     image = ProductImage.objects.filter(pk=image_id).first()
     return bool(image and ensure_cached(image))
+
+
+def sync_taxonomies() -> str:
+    from django.core.management import call_command
+
+    call_command("sync_taxonomies")
+    return "ok"

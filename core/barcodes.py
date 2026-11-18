@@ -14,6 +14,7 @@ _FORMAT_NAMES = {
     "UPCA": "upca",
     "UPCE": "upce",
     "ITF": "itf14",
+    "ITF14": "itf14",  # zxing-cpp 3 reports ITF-14 as its own format
 }
 
 
