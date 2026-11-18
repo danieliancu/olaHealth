@@ -13,12 +13,13 @@ from typing import Any
 from django.utils.translation import gettext as _
 
 from assessments.models import AssessmentSnapshot
+from catalog import explanations
 from catalog.models import Product, ProductImage, ReviewFlag
 from catalog.nutrition import BASIS_LABELS, NUTRIENTS, PREPARATION_LABELS, to_decimal
 
 INDICATOR_LABELS = {
     "nutriscore": "Nutri-Score",
-    "nova": "NOVA group",
+    "nova": "Processing",
     "nutrient_levels": "Nutrient levels",
     "ingredients_analysis": "Ingredients analysis",
     "additives": "Additives identified",
@@ -141,14 +142,10 @@ def _indicator_headline(s: AssessmentSnapshot) -> tuple[str, list[str], str]:
     if s.indicator == "nova":
         group = v.get("group")
         if group:
-            return (
-                _("NOVA group %(g)s – %(l)s") % {"g": group, "l": NOVA_LABELS[group]},
-                [],
-                str(group),
-            )
+            return NOVA_LABELS[group], [], str(group)
         if s.data_status == "not_applicable":
-            return _("NOVA does not apply to this product."), [], ""
-        return _("Not enough data for a NOVA group."), [], ""
+            return _("The processing level does not apply to this product."), [], ""
+        return _("Not enough data to say how processed it is."), [], ""
     if s.indicator == "nutrient_levels":
         levels = v.get("levels") or {}
         if levels:
@@ -267,6 +264,39 @@ def gaps(product: Product, data: dict[str, Any], indicators: list[IndicatorView]
 
 def open_flags(product: Product) -> list[ReviewFlag]:
     return list(product.flags.filter(status=ReviewFlag.Status.OPEN))
+
+
+def quality_pills(
+    product: Product, data: dict[str, Any], flags: list[ReviewFlag]
+) -> list[dict[str, str]]:
+    """Compact data-quality states, only when the stored data supports them.
+
+    "Up to date with the source", "checked by a moderator" and "complete" are different things;
+    none of them is implied by the absence of a pill.
+    """
+    from contributions.models import Contribution
+
+    pills = []
+    if not ((data.get("ingredients") or {}).get("text") or "").strip():
+        pills.append({"key": "ingredients_missing", "label": _("Ingredients missing")})
+    nutrition = data.get("nutrition") or {}
+    if nutrition.get("status") != "not_on_package" and not nutrition.get("facts"):
+        pills.append({"key": "nutrition_missing", "label": _("Nutrition missing")})
+    if (data.get("allergens") or {}).get("status", "unknown") == "unknown":
+        pills.append({"key": "allergens_unknown", "label": _("Allergen information unavailable")})
+    if product.sync_label in ("stale", "refresh_failed"):
+        pills.append({"key": "needs_refresh", "label": _("Needs refresh")})
+    revision = product.current_revision
+    if revision and any(
+        (src or {}).get("source") == "contribution" for src in revision.field_sources.values()
+    ):
+        pills.append({"key": "local_contribution", "label": _("Local contribution")})
+    waiting = product.contributions.filter(
+        status__in=(Contribution.Status.SUBMITTED, Contribution.Status.CONFLICT)
+    ).exists()
+    if waiting or flags:
+        pills.append({"key": "awaiting_moderation", "label": _("Awaiting moderation")})
+    return pills
 
 
 def section_list(section: dict[str, Any] | None) -> dict[str, Any]:
@@ -419,6 +449,7 @@ class NutrientRow:
     level: str = ""  # low / moderate / high (from Open Food Facts) or ""
     level_text: str = ""
     gauge: Gauge | None = None
+    explain: str = ""  # short explanation shown on tap (catalog/explanations.py)
 
 
 def _gauge(value: Decimal, low: float, high: float) -> Gauge:
@@ -480,7 +511,11 @@ def nutrient_rows(
         if f is None:
             continue
         row = NutrientRow(
-            key, label, icon, format_value(f["value"], f["unit"], f.get("modifier") or "")
+            key,
+            label,
+            icon,
+            format_value(f["value"], f["unit"], f.get("modifier") or ""),
+            explain=explanations.nutrient(f["nutrient"], basis, by_key),
         )
         level = levels.get(key)
         if level in LEVEL_WORDS and key in thresholds:

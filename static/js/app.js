@@ -31,13 +31,15 @@ function read(kind) {
     if (!Array.isArray(data)) throw new Error("corrupt");
     // Keep only well-formed, minimal entries.
     return data
-      .filter((x) => x && typeof x === "object" && UUID.test(String(x.id)))
+      // Entries from the removed demo (fictional products) are dropped.
+      .filter((x) => x && typeof x === "object" && UUID.test(String(x.id)) && !String(x.url || "").startsWith("/demo/"))
       .map((x) => ({
         id: String(x.id),
         name: String(x.name || "").slice(0, 200),
         brand: String(x.brand || "").slice(0, 200),
         quantity: String(x.quantity || "").slice(0, 60),
         image: safeImage(x.image),
+        url: safeUrl(x.url),
         at: Number(x.at) || 0,
       }));
   } catch (err) {
@@ -58,6 +60,10 @@ function write(kind, items) {
     return false;
   }
 }
+function safeUrl(url) {
+  url = String(url || "");
+  return url.startsWith("/") && !url.startsWith("//") ? url.slice(0, 300) : "";
+}
 function safeImage(url) {
   url = String(url || "");
   return url.startsWith("/") || url.startsWith("https://") ? url.slice(0, 500) : "";
@@ -69,6 +75,7 @@ function entryFrom(el) {
     brand: el.dataset.brand || "",
     quantity: el.dataset.quantity || "",
     image: safeImage(el.dataset.image),
+    url: safeUrl(el.dataset.url),
     at: Date.now(),
   };
 }
@@ -96,8 +103,8 @@ document.querySelectorAll("[data-fav]").forEach((fav) => {
   const sync = () => {
     const on = has("favorites", id);
     fav.setAttribute("aria-pressed", String(on));
-    if (label) label.textContent = on ? "Saved" : "Save";
-    else fav.title = on ? "Saved" : "Save";
+    if (label) label.textContent = on ? "Favourite ✓" : "Favourite";
+    else fav.title = on ? "In favourites" : "Favourite";
   };
   sync();
   fav.addEventListener("click", () => {
@@ -106,7 +113,7 @@ document.querySelectorAll("[data-fav]").forEach((fav) => {
     if (!ok) return announce("This browser does not allow saving.");
     sync();
     updateSavedCount();
-    announce(on ? "Removed from saved products." : "Saved on this device.");
+    announce(on ? "Removed from favourites." : "Added to favourites on this device.");
   });
 });
 
@@ -284,7 +291,7 @@ function row(entry, kind, onRemove) {
   if (entry.image) img.src = entry.image;
   else img.src = document.body.dataset.placeholder || "/static/img/placeholder.svg";
   const link = li.querySelector("[data-link]");
-  link.href = `/p/${entry.id}/`;
+  link.href = entry.url || `/p/${entry.id}/`;
   link.textContent = entry.name || "Unnamed product";
   li.querySelector("[data-meta]").textContent = [entry.brand, entry.quantity].filter(Boolean).join(" · ");
   const btn = li.querySelector("[data-remove]");
@@ -472,3 +479,19 @@ new MutationObserver((records) => {
     });
   }
 }).observe(document.body, { childList: true, subtree: true });
+
+// ---------- Shared with the My Ola modules (same storage, same validation) ----------
+export const productLists = {
+  read: (kind) => read(kind),
+  has: (kind, id) => has(kind, id),
+  add: (kind, entry) => add(kind, entry),
+  remove: (kind, id) => remove(kind, id),
+  entryFrom,
+  safeUrl,
+  safeImage,
+  storageOk: () => storageOk,
+  refreshCounts() {
+    updateSavedCount();
+    updateCompareCount();
+  },
+};

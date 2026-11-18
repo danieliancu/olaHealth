@@ -148,7 +148,6 @@ def _sentence(
 def compare(products: list[Product]) -> Comparison:
     if not MIN_PRODUCTS <= len(products) <= MAX_PRODUCTS:
         raise ComparisonError(_("Choose 2 or 3 products to compare."))
-    result = Comparison(products=products, warnings=_category_warnings(products))
     revision_ids = [p.current_revision_id for p in products]
 
     snapshots = defaultdict(dict)
@@ -156,6 +155,26 @@ def compare(products: list[Product]) -> Comparison:
         revision_id__in=revision_ids, origin="off_computed", indicator__in=("nutriscore", "nova")
     ):
         snapshots[s.revision_id][s.indicator] = s
+
+    facts: dict[tuple[str, str], dict[Any, dict[str, Any]]] = defaultdict(lambda: defaultdict(dict))
+    for f in NutrientFact.objects.filter(revision_id__in=revision_ids):
+        facts[(f.basis, f.preparation)][f.revision_id][f.nutrient] = f
+    return build_comparison(products, snapshots, facts)
+
+
+def build_comparison(products: list[Any], snapshots: dict, facts: dict) -> Comparison:
+    """Pure part of the comparison (no database access).
+
+    ``products`` need ``name``, ``categories`` and ``current_revision_id`` (the key used in
+    ``snapshots[key][indicator]`` and ``facts[(basis, preparation)][key][nutrient]``). Snapshot
+    objects need ``data_status``, ``invalidated_by_local_change``, ``value`` and
+    ``algorithm_version``; facts need ``value``, ``unit``, ``modifier`` and ``status``. Used
+    for real products (loaded by ``compare``) and for the fictional demo products.
+    """
+    if not MIN_PRODUCTS <= len(products) <= MAX_PRODUCTS:
+        raise ComparisonError(_("Choose 2 or 3 products to compare."))
+    result = Comparison(products=products, warnings=_category_warnings(products))
+    snapshots = defaultdict(dict, snapshots)
 
     versions = set()
     for p in products:
@@ -185,12 +204,6 @@ def compare(products: list[Product]) -> Comparison:
             "These grades were computed with different Nutri-Score algorithm versions (%s) "
             "and are not directly comparable."
         ) % ", ".join(sorted(versions))
-
-    facts: dict[tuple[str, str], dict[int, dict[str, NutrientFact]]] = defaultdict(
-        lambda: defaultdict(dict)
-    )
-    for f in NutrientFact.objects.filter(revision_id__in=revision_ids):
-        facts[(f.basis, f.preparation)][f.revision_id][f.nutrient] = f
 
     # One table per preparation for the "per 100" values: every column keeps its own basis
     # (g, ml or not stated). Per-serving values depend on portion size and stay apart.

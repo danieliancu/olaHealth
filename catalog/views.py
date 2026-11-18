@@ -14,7 +14,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from assessments.services.compare import ComparisonError
 from assessments.services.compare import compare as compare_products
-from catalog import presenters
+from catalog import explanations, presenters
 from catalog.countries import country_from_accept_language
 from catalog.forms import LookupForm, ScanPhotoForm, SearchForm
 from catalog.models import Category, Country, Product
@@ -23,6 +23,8 @@ from catalog.services.search import SearchParams, facets, search_products, tag_n
 from core.barcodes import decode_product_barcodes
 from core.coordination import check_request_limit
 from core.images import ImageRejected, validate_and_reencode
+from myola.page import facts_from_product, ola_payload
+from myola.preferences import picker_context
 
 OFF_DOWN = (
     "The product database isn't responding right now (a temporary problem on its side). "
@@ -211,6 +213,17 @@ def product_detail(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
         else "",
         "restricted": any(i.kind == "restricted" for i in product.identifiers.all()),
     }
+    context["quality_pills"] = presenters.quality_pills(product, data, context["flags"])
+    context["explain"] = {k: explanations.indicator(k) for k in explanations.INDICATORS}
+    context["picker"] = picker_context()
+    context["product_url"] = reverse("product", args=[product.pk])
+    nutriscore_view = by_key.get("nutriscore")
+    nova_view = by_key.get("nova")
+    context["ola"] = ola_payload(
+        facts_from_product(product, snapshots),
+        nutriscore=nutriscore_view.badge if nutriscore_view else "",
+        nova=int(nova_view.badge) if nova_view and nova_view.badge else None,
+    )
     return render(request, "catalog/product.html", context)
 
 
@@ -282,6 +295,7 @@ def compare(request: HttpRequest) -> HttpResponse:
     }
     for p in comparison.products:
         p.remove_url = remove_urls[p.pk]
+        p.url = reverse("product", args=[p.pk])
     return render(request, "catalog/compare.html", {**context, "c": comparison})
 
 

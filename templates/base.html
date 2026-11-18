@@ -16,9 +16,7 @@
   <a class="skip-link" href="#main">{% translate "Skip to content" %}</a>
   <div class="shell">
     <header class="site-header">
-      <a class="brand" href="{% url 'home' %}"><span class="brand-ola">ola</span><span class="brand-health">Health</span></a>
-      <button type="button" class="icon-btn" aria-disabled="true" aria-label="{% translate 'Sign in (coming soon)' %}" title="{% translate 'Sign in – coming soon' %}">{% icon "user-round" 24 %}</button>
-    </header>
+      <a class="brand" href="{% url 'home' %}"><span class="brand-ola">ola</span><span class="brand-health">Health</span></a>    </header>
     <main id="main" tabindex="-1">
       {% if messages %}
         <div class="messages" role="status">
@@ -31,14 +29,13 @@
         <p><a href="{% url 'sources' %}">{% translate "Sources & methodology" %}</a> · {% translate "Information, not medical advice." %}</p>
       </footer>
     </main>
-    {% url 'home' as home_url %}{% url 'scan' as scan_url %}{% url 'products' as products_url %}{% url 'compare' as compare_url %}{% url 'saved' as saved_url %}
+    {% url 'home' as home_url %}{% url 'scan' as scan_url %}{% url 'products' as products_url %}{% url 'compare' as compare_url %}{% url 'saved' as saved_url %}{% url 'my-ola' as myola_url %}
     {% with p=request.path %}
     <nav class="tabbar" aria-label="{% translate 'Main' %}">
       <a href="{{ scan_url }}" {% if p == scan_url or p == home_url or nav_active == "scan" %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "scan-barcode" 22 %}</span><span>{% translate "Scan" %}</span></a>
       <a href="{{ products_url }}" {% if p == products_url or nav_active == "products" %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "search" 22 %}</span><span>{% translate "Products" %}</span></a>
       <a href="{{ compare_url }}" {% if p == compare_url %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "git-compare-arrows" 22 %}<span class="count" data-compare-count hidden></span></span><span>{% translate "Compare" %}</span></a>
-      <a href="{{ saved_url }}" {% if p == saved_url %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "bookmark" 22 %}<span class="count" data-saved-count hidden></span></span><span>{% translate "Saved" %}</span></a>
-      <button type="button" class="tab-soon" aria-disabled="true" title="{% translate 'Magazine – coming soon' %}"><span class="tab-icon">{% icon "leaf" 22 %}</span><span>{% translate "Magazine" %}</span><span class="sr-only"> ({% translate "coming soon" %})</span></button>
+      <a href="{{ myola_url }}" {% if p == myola_url or p == saved_url or nav_active == "my-ola" %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "user-round" 22 %}</span><span>{% translate "My Ola" %}</span></a>
     </nav>
     {% endwith %}
   </div>

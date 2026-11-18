@@ -45,7 +45,7 @@
       <p class="meta">{% if p.brand %}{{ p.brand }}{% endif %}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</p>
       <p class="scores">
         {% if p.nutriscore_grade %}<span class="grade grade-sm grade-{{ p.nutriscore_grade }}" title="Nutri-Score {{ p.nutriscore_grade|upper }}{% if p.nutriscore_version %} ({{ p.nutriscore_version }}){% endif %}"><span class="sr-only">Nutri-Score </span>{{ p.nutriscore_grade|upper }}</span>{% endif %}
-        {% if p.nova_group %}<span class="nova-inline"><span class="nova-num nova-sm nova-{{ p.nova_group }}" aria-hidden="true">{{ p.nova_group }}</span><span>NOVA</span><span class="sr-only"> {{ p.nova_group }}</span></span>{% endif %}
+        {% if p.nova_group %}<span class="processing processing-{{ p.nova_group }}"><span class="dot" aria-hidden="true"></span>{{ p.nova_group|processing }}</span>{% endif %}
       </p>
       <div class="card-actions">
         <div class="card-actions-panel" id="actions-{{ p.pk }}">

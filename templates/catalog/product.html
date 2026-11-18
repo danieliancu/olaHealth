@@ -1,13 +1,15 @@
 {% extends "base.html" %}
-{% load i18n ui %}
+{% load i18n ui static %}
 {% block title %}{{ product.name|default:_("Product") }}{% endblock %}
+{% block head %}<script type="module" src="{% static 'js/ola/product.js' %}"></script>
+{{ ola|json_script:"ola-data" }}{% endblock %}
 {% block content %}
 <p class="back"><a href="{% url 'products' %}">{% icon "chevron-left" 18 %}<span>{% translate "Back to products" %}</span></a></p>
 <article class="product" data-product
          data-id="{{ product.pk }}" data-name="{{ product.name }}" data-brand="{{ product.brand }}"
-         data-image="{{ product.front_image_url|img }}" data-quantity="{{ product.quantity }}">
+         data-image="{{ product.front_image_url|img }}" data-quantity="{{ product.quantity }}" data-url="{{ product_url }}">
 
-  {# 1. Identity + headline indicators #}
+  {# 1. Identity + headline indicators + actions #}
   <section class="card hero-card" aria-labelledby="name-h">
     <div class="hero-row">
       <div class="hero-photo">
@@ -27,15 +29,29 @@
         </div>
         {% endif %}
         {% if nova and nova.badge %}
-        <p class="nova-pill"><span class="nova-num nova-{{ nova.badge }}" aria-hidden="true">{{ nova.badge }}</span><span><strong>NOVA {{ nova.badge }}</strong><span class="nova-label"> · {{ nova_label }}</span></span></p>
+        <p class="processing processing-{{ nova.badge }}"><span class="dot" aria-hidden="true"></span>{{ nova_label }}</p>
         {% endif %}
       </div>
     </div>
+    {% if quality_pills %}
+    <ul class="status-pills" aria-label="{% translate 'Data status' %}">
+      {% for q in quality_pills %}<li class="status-pill status-{{ q.key }}">{{ q.label }}</li>{% endfor %}
+      <li><a class="status-source" href="{% url 'sources' %}">{% translate "Sources" %}</a></li>
+    </ul>
+    {% endif %}
     {% if restricted %}<p class="note note-warn">{% icon "triangle-alert" 16 %}<span>{% translate "Store code: may differ between shops." %}</span></p>{% endif %}
-    <div class="hero-actions">
-      <button type="button" class="btn btn-outline btn-small" data-fav aria-pressed="false">{% icon "bookmark" 18 %}<span>{% translate "Save" %}</span></button>
+    <div class="action-bar" role="group" aria-label="{% translate 'Product actions' %}">
+      <button type="button" class="btn btn-outline btn-small" data-fav aria-pressed="false">{% icon "heart" 18 %}<span>{% translate "Favourite" %}</span></button>
       <button type="button" class="btn btn-outline btn-small" data-compare-toggle aria-pressed="false"
-              data-id="{{ product.pk }}" data-name="{{ product.name }}" data-brand="{{ product.brand }}" data-quantity="{{ product.quantity }}" data-image="{{ product.front_image_url|img }}">{% icon "git-compare-arrows" 18 %}<span>{% translate "Compare" %}</span></button>
+              data-id="{{ product.pk }}" data-name="{{ product.name }}" data-brand="{{ product.brand }}" data-quantity="{{ product.quantity }}" data-image="{{ product.front_image_url|img }}" data-url="{{ product_url }}">{% icon "git-compare-arrows" 18 %}<span>{% translate "Compare" %}</span></button>
+      <div class="more js-only">
+        <button type="button" class="btn btn-outline btn-small" data-more-toggle aria-expanded="false" aria-controls="more-menu">{% translate "More" %}{% icon "chevron-down" 16 %}</button>
+        <div class="more-menu" id="more-menu" data-more-menu hidden>
+          <button type="button" data-list-toggle="buyOften" aria-pressed="false">{% icon "shopping-basket" 18 %}<span>{% translate "Buy often" %}</span></button>
+          <button type="button" data-list-toggle="avoid" aria-pressed="false">{% icon "ban" 18 %}<span>{% translate "Avoid" %}</span></button>
+          <button type="button" data-note-open>{% icon "notebook-pen" 18 %}<span>{% translate "Add note" %}</span></button>
+        </div>
+      </div>
     </div>
     {% if scanned %}
       <form method="post" action="{% url 'contribution-start' %}" class="not-mine">
@@ -48,7 +64,23 @@
     {% endif %}
   </section>
 
-  {# 2. Nutrients at a glance #}
+  {# 2. For you: restriction states for the chosen preferences, and Ask Ola #}
+  <section class="card ola-card" aria-labelledby="score-h">
+    <h2 id="score-h">{% translate "For you" %}</h2>
+    <div class="ola-restrictions" data-ola-restrictions aria-live="polite"></div>
+    <p class="ola-prefs-line js-only"><span data-ola-prefs></span> <button type="button" class="link-btn" data-prefs-edit aria-expanded="false" aria-controls="prefs-panel">{% translate "Change" %}</button></p>
+    <div class="prefs-panel" id="prefs-panel" data-prefs-panel hidden>
+      <p class="hint" data-onboarding hidden><strong>{% translate "What matters most to you?" %}</strong> {% translate "Optional – you can skip it." %}</p>
+      {% include "partials/pref_picker.html" %}
+      <div class="row">
+        <button type="button" class="btn btn-primary btn-small" data-onboarding-done>{% translate "Done" %}</button>
+        <button type="button" class="btn btn-link" data-onboarding-done data-onboarding-skip hidden>{% translate "Skip" %}</button>
+      </div>
+    </div>
+    <button type="button" class="btn btn-outline btn-block js-only ask-ola" data-chat-open="product">{% icon "sparkles" 18 %}<span>{% translate "Ask Ola about this product" %}</span></button>
+  </section>
+
+  {# 4. Nutrients at a glance: value first, explanation on tap #}
   {% if nutrient_rows or additives %}
   <section class="card nutri-card" aria-labelledby="nutri-h">
     <div class="section-head">
@@ -58,39 +90,38 @@
     <ul class="nrows">
       {% for r in nutrient_rows %}
       <li>
-        {% if r.gauge %}
-        <details class="nrow level-{{ r.level }}">
+        <details class="nrow{% if r.level %} level-{{ r.level }}{% endif %}">
           <summary>
             <span class="nrow-icon">{% icon r.icon 26 %}</span>
-            <span class="nrow-text"><span class="nrow-name">{{ r.label }}</span><span class="nrow-level">{{ r.level_text }}</span></span>
+            <span class="nrow-text"><span class="nrow-name">{{ r.label }}</span>{% if r.level_text %}<span class="nrow-level">{{ r.level_text }}</span>{% endif %}</span>
             <span class="nrow-value">{{ r.value }}</span>
-            <span class="dot dot-{{ r.level }}" aria-hidden="true"></span>
+            {% if r.level %}<span class="dot dot-{{ r.level }}" aria-hidden="true"></span>{% else %}<span aria-hidden="true"></span>{% endif %}
             <span class="nrow-chev">{% icon "chevron-down" 20 %}</span>
           </summary>
           <div class="gauge">
+            {% if r.gauge %}
             <svg viewBox="-8 0 316 40" width="100%" height="40" role="img" aria-label="{{ r.label }} {{ r.value }}">
               <polygon class="gauge-marker" points="{{ r.gauge.marker_points }}"/>
               {% for x, w, lvl in r.gauge.segments %}<rect class="seg seg-{{ lvl }}" x="{{ x }}" y="13" width="{{ w }}" height="7" rx="3.5"/>{% endfor %}
               {% for x, label, anchor in r.gauge.ticks %}<text x="{{ x }}" y="36" text-anchor="{{ anchor }}">{{ label }}</text>{% endfor %}
             </svg>
-            <p class="caption">{% blocktranslate with low=r.gauge.low high=r.gauge.high %}UK FSA thresholds: low up to {{ low }} g, high above {{ high }} g.{% endblocktranslate %}</p>
+            {% endif %}
+            <p class="caption">{{ r.explain }}</p>
           </div>
         </details>
-        {% else %}
-        <div class="nrow plain">
-          <span class="nrow-icon">{% icon r.icon 26 %}</span>
-          <span class="nrow-text"><span class="nrow-name">{{ r.label }}</span></span>
-          <span class="nrow-value">{{ r.value }}</span>
-        </div>
-        {% endif %}
       </li>
       {% endfor %}
       {% if additives %}
-      <li><div class="nrow plain">
-        <span class="nrow-icon">{% icon "flask-conical" 26 %}</span>
-        <span class="nrow-text"><span class="nrow-name">{% translate "Additives" %}</span><span class="nrow-level">{% if additives.details %}{{ additives.details|join:", " }}{% else %}{% translate "None identified in the ingredient list" %}{% endif %}</span></span>
-        <span class="nrow-value">{{ additives.details|length }}</span>
-      </div></li>
+      <li><details class="nrow">
+        <summary>
+          <span class="nrow-icon">{% icon "flask-conical" 26 %}</span>
+          <span class="nrow-text"><span class="nrow-name">{% translate "Additives" %}</span><span class="nrow-level">{% if additives.details %}{{ additives.details|join:", " }}{% else %}{% translate "None identified in the ingredient list" %}{% endif %}</span></span>
+          <span class="nrow-value">{{ additives.details|length }}</span>
+          <span aria-hidden="true"></span>
+          <span class="nrow-chev">{% icon "chevron-down" 20 %}</span>
+        </summary>
+        <div class="gauge"><p class="caption">{{ explain.additives }}</p></div>
+      </details></li>
       {% endif %}
     </ul>
   </section>
@@ -101,12 +132,13 @@
   <section class="card" aria-labelledby="ind-h">
     <details class="about">
       <summary><h2 id="ind-h">{% translate "About these indicators" %}</h2>{% icon "chevron-down" 20 %}</summary>
-      <p class="hint">{% translate "Official indicators. olaHealth does not compute its own score." %}
+      <p class="hint">{% translate "Official indicators from the source." %}
         {% if product.sync_label == "stale" or product.sync_label == "refresh_failed" %}<span class="badge badge-sync-{{ product.sync_label }}">{{ indicators.0.sync_label }}</span>{% endif %}</p>
       <ul class="indicators">
         {% for ind in indicators %}{% if ind.key != "additives" and ind.key != "nutrient_levels" %}
         <li class="indicator{% if ind.not_current %} not-current{% endif %}">
           <h3>{{ ind.label }}</h3>
+          {% if ind.key == "nutriscore" %}<p class="hint">{{ explain.nutriscore }}</p>{% elif ind.key == "nova" %}<p class="hint">{{ explain.nova }}</p>{% endif %}
           <p class="headline">{% if ind.not_current %}<del>{{ ind.headline }}</del>{% else %}{{ ind.headline }}{% endif %}</p>
           {% if ind.not_current or ind.data_status == "conflicting" %}<p class="badges">
             {% if ind.not_current %}<span class="badge badge-warn">{% translate "Not current: data was corrected after this was computed" %}</span>{% endif %}
@@ -124,7 +156,7 @@
   </section>
   {% endif %}
 
-  {# 3. Only things that need checking #}
+  {# Only things that need checking #}
   {% if gaps or flags %}
   <section class="card card-warn" aria-labelledby="gaps-h">
     <h2 id="gaps-h">{% translate "Being checked" %}</h2>
@@ -151,11 +183,12 @@
         </table>
         </div>
       {% endfor %}
+      {% if data.serving_size %}<p class="caption">{% blocktranslate with s=data.serving_size %}Declared serving: {{ s }}. Values per serving are shown only when the source gives them.{% endblocktranslate %}</p>{% endif %}
     </details>
   </section>
   {% endif %}
 
-  {# 5. Ingredients, allergens, traces, additives #}
+  {# Ingredients, allergens, traces #}
   <section class="card ingredients-card" aria-labelledby="ing-h">
     <div class="section-head">
       <h2 id="ing-h">{% translate "Ingredients" %}</h2>
@@ -173,6 +206,8 @@
         {% endfor %}
       </ol>
       <p class="caption">{% translate "In the order printed on the label (largest amount first). Words in bold are allergens marked by the source." %}</p>
+    {% else %}
+      <p class="caption">{% translate "The ingredient list is not available." %}</p>
     {% endif %}
 
     <div class="allergen-box {% if allergens.status == 'listed' %}has-allergens{% else %}is-warn{% endif %}">
@@ -188,6 +223,7 @@
         <h4>{% translate "May contain" %}</h4>
         <ul class="chips chips-outline">{% for t in traces.items %}<li>{{ t }}</li>{% endfor %}</ul>
       {% endif %}
+      <p class="caption allergen-note">{{ explain.allergens }}</p>
     </div>
 
     {% if categories %}<h3 class="sub-title">{% translate "Category" %}</h3><p class="breadcrumb">{{ categories|join:" › " }}</p>{% endif %}
@@ -207,7 +243,7 @@
   </section>
   {% endif %}
 
-  {# 7. Actions #}
+  {# Report or correct (existing contribution flow) #}
   <section class="card" aria-labelledby="act-h">
     <h2 id="act-h">{% translate "Help improve this product" %}</h2>
     <form method="post" action="{% url 'contribution-start' %}" class="stack">
@@ -224,4 +260,6 @@
     </form>
   </section>
 </article>
+{% include "partials/chat.html" %}
+{% include "partials/note_dialog.html" with name=data.name %}
 {% endblock %}

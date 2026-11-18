@@ -38,6 +38,21 @@ ICONS = {
     "circle-check",
     "user-round",
     "book-open",
+    # My Ola, preferences and lists
+    "heart",
+    "shopping-basket",
+    "ban",
+    "notebook-pen",
+    "message-circle",
+    "history",
+    "sparkles",
+    "vegan",
+    "wheat-off",
+    "milk-off",
+    "ham",
+    "shield-alert",
+    "send",
+    "pencil",
 }
 
 
@@ -62,6 +77,17 @@ def asset(name: str) -> str:
     from core.assets import asset_url
 
     return asset_url(name)
+
+
+@register.filter
+def processing(group) -> str:
+    """Plain words for a processing group (no group number shown)."""
+    from catalog.presenters import NOVA_SHORT
+
+    try:
+        return NOVA_SHORT.get(int(group), "")
+    except (TypeError, ValueError):
+        return ""
 
 
 @register.filter

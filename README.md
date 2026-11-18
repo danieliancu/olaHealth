@@ -48,6 +48,16 @@ Put a TLS-terminating reverse proxy in front of `web:8000` (it must set
 `private_media` volume and are only served through authorised views. Nothing is deployed
 by this repository.
 
+## MVP: preferences and My Ola
+
+* The home page goes straight to scanning (or typing a barcode); products come from Open Food
+  Facts and approved local corrections.
+* Each product page has a short “For you” card: the values that match your goals and the
+  diet/allergen states from the source (never “safe”), plus Ask Ola.
+* `/my-ola/` (Overview, Notes, Activity, Preferences) stores everything in this browser only
+  (`olahealth:myola`); `/saved/` stays as the previous route. Rules live in `myola/` (no tables).
+* Data contracts, and what is left for V2 (score, alternatives): `docs/mvp-api-contracts.md`.
+
 ## Admin and roles
 
 * `createsuperuser` – full access.

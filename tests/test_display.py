@@ -79,7 +79,10 @@ def test_product_page_hides_unavailable_data(client, off_payload):
     payload["nutriments"].pop("salt_100g")
     p = import_off_product(payload)
     html = client.get(reverse("product", args=[p.pk])).content.decode()
-    assert "NOVA group" not in html and "Nutrient levels" not in html
+    # Only what is shown: the page data for the scripts (in <head>) carries explicit
+    # "unknown" states on purpose (docs/mvp-api-contracts.md).
+    html = html.split("</head>")[1]
+    assert "Processing" not in html and "NOVA" not in html and "Nutrient levels" not in html
     assert "Grade B" in html
     assert ">Salt<" not in html and "unknown" not in html
     assert "Missing data" not in html and "Data: Available" not in html

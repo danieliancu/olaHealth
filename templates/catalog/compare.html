@@ -23,13 +23,13 @@
       <a class="icon-btn mini compare-remove" href="{{ p.remove_url }}" data-compare-remove="{{ p.pk }}"
          aria-label="{% blocktranslate with n=p.name|default:_('this product') %}Remove {{ n }} from comparison{% endblocktranslate %}">{% icon "x" 16 %}</a>
       {% if p.front_image_url %}<img src="{{ p.front_image_url|img }}" alt="" width="64" height="64" loading="lazy">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="64" height="64">{% endif %}
-      <a href="{% url 'product' p.pk %}">{{ p.name|default:_("Unnamed product") }}</a>
+      <a href="{{ p.url }}">{{ p.name|default:_("Unnamed product") }}</a>
     </th>{% endfor %}</tr></thead>
   <tbody>
     <tr><th scope="row">Nutri-Score</th>
       {% for n in c.nutriscore %}<td>{% if n.grade %}<span class="grade grade-sm grade-{{ n.grade|lower }}"><span class="sr-only">Nutri-Score </span>{{ n.grade }}</span>{% if n.version %} <span class="hint">{{ n.version }}</span>{% endif %}{% elif n.status == "not_current" %}<span class="muted">{% translate "not current" %}</span>{% elif n.status == "not_applicable" %}<span class="muted">{% translate "n/a" %}</span>{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
-    <tr><th scope="row">NOVA</th>
-      {% for n in c.nova %}<td>{% if n.group %}<span class="nova-num nova-sm nova-{{ n.group }} centered" title="{{ n.label }}"><span class="sr-only">NOVA </span>{{ n.group }}</span>{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
+    <tr><th scope="row">{% translate "Processing" %}</th>
+      {% for n in c.nova %}<td>{% if n.group %}<span class="processing processing-{{ n.group }}"><span class="dot" aria-hidden="true"></span>{{ n.group|processing }}</span>{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
   </tbody>
 </table>
 </div>
