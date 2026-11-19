@@ -33,8 +33,19 @@
         {{ form.portion }}
         <div class="diary-preview" id="add-preview" aria-live="polite">{% include "myola/partials/diary_preview.html" %}</div>
       </div>
-      <label for="{{ form.date.id_for_label }}">{% translate "Day" %}</label>
-      {{ form.date }}
+      <fieldset class="day-picker">
+        <legend class="day-legend">{% icon "calendar-days" 18 %}<span>{% translate "When did you have it?" %}</span></legend>
+        <div class="day-chips">
+          {% for o in day_options %}
+          <label><input type="radio" name="date" value="{{ o.value }}"{% if o.checked %} checked{% endif %}><span><strong>{{ o.label }}</strong><small>{{ o.sub }}</small></span></label>
+          {% endfor %}
+          <label><input type="radio" name="date" value="other"{% if day_is_other %} checked{% endif %}><span>{% icon "calendar-days" 18 %}<small>{% translate "Other day" %}</small></span></label>
+        </div>
+        <div class="day-other">
+          <label for="add-date-other">{% translate "Pick a day" %}</label>
+          <input type="date" id="add-date-other" name="date_other" value="{{ day|date:'Y-m-d' }}" max="{{ day_options.0.value }}">
+        </div>
+      </fieldset>
       {% for err in form.date.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
       {{ form.scanned }}
       <div class="add-actions">

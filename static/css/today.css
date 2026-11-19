@@ -61,3 +61,27 @@ form.water-actions { margin-bottom: .5rem; }
 a.chip-btn { display: inline-flex; align-items: center; text-decoration: none; color: inherit; }
 .chip-btn[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 .add-form input[type="date"] { width: 100%; }
+
+/* ---------- Add to diary: day chips (the calendar appears only for "Other day") ---------- */
+.day-picker { border: 0; padding: 0; margin: .9rem 0 .2rem; }
+.day-legend { display: flex; align-items: center; gap: .4rem; font-weight: 700; margin-bottom: .45rem; padding: 0; }
+.day-legend .icon { color: var(--accent); }
+.day-chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; }
+.day-chips label { position: relative; margin: 0; }
+.day-chips input { position: absolute; opacity: 0; }
+.day-chips span {
+  display: grid; place-items: center; align-content: center; gap: .1rem; min-height: 58px; padding: .35rem .2rem;
+  border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer;
+  text-align: center; transition: background .15s, border-color .15s;
+}
+.day-chips strong { font-size: .86rem; line-height: 1.15; }
+.day-chips small { font-size: .74rem; color: var(--muted); }
+.day-chips span .icon { color: var(--accent); }
+.day-chips label:hover span { border-color: var(--accent); }
+.day-chips input:checked + span { background: var(--accent); border-color: var(--accent); color: #fff; }
+.day-chips input:checked + span small, .day-chips input:checked + span .icon { color: rgba(255, 255, 255, .88); }
+.day-chips input:focus-visible + span { outline: 3px solid #f59e0b; outline-offset: 2px; }
+.day-other { display: none; margin-top: .6rem; padding: .7rem .8rem; border-radius: 12px; background: var(--accent-soft); }
+.day-other label { font-size: .85rem; }
+.day-other input[type="date"] { width: 100%; }
+.day-picker:has(input[value="other"]:checked) .day-other { display: block; }

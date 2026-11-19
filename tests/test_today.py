@@ -521,3 +521,23 @@ def test_scanner_close_returns_to_today(client):
 
     target = diary_target.from_params({"add": "lunch", "date": "2026-11-18"})
     assert diary_target.today_url(target) == f"{reverse('today')}?date=2026-11-18"
+
+
+@pytest.mark.django_db
+def test_add_food_day_chips_and_other_day(member_client, member, off_payload):
+    import datetime as dt
+
+    from myola.models import DiaryEntry
+    from myola.services.profiles import get_profile, local_today
+
+    p = import_off_product(off_payload(serving_size="125 g"))
+    url = reverse("add-food", args=[p.pk])
+    html = member_client.get(url).content.decode()
+    assert "When did you have it?" in html and "Yesterday" in html and "Other day" in html
+    earlier = local_today(get_profile(member)) - dt.timedelta(days=5)
+    r = member_client.post(
+        url,
+        {"meal": "lunch", "date": "other", "date_other": earlier.isoformat(), "amount": "125"},
+    )
+    assert r.status_code == 302
+    assert DiaryEntry.objects.get().date == earlier

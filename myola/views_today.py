@@ -436,7 +436,10 @@ def add_food(request: HttpRequest, pk) -> HttpResponse:
     product, facts, unit, per100, portion_data = _product_parts(request, pk)
     options = portion_data["options"]
     if request.method == "POST":
-        form = AddFoodForm(request.POST, today=today)
+        data = request.POST.copy()
+        if data.get("date") == "other":  # "Other day" chip: the date comes from the calendar
+            data["date"] = data.get("date_other", "")
+        form = AddFoodForm(data, today=today)
         if not unit:
             form.fields["unit"].required = True
         if form.is_valid():
@@ -522,11 +525,28 @@ def add_food(request: HttpRequest, pk) -> HttpResponse:
             "warnings": _warnings(profile, facts),
             "day": day,
             "day_label": _("Today") if day == today else date_format(day, "l j M"),
+            "day_options": _day_options(today, day),
+            "day_is_other": day < today - dt.timedelta(days=2),
             "back_url": _today_url(day),
             "pv": diary.preview_rows(per100, amount, bool(unit), _show_energy(profile)),
             "nav_active": "today",
         },
     )
+
+
+def _day_options(today: dt.date, day: dt.date) -> list[dict]:
+    """Quick day chips for the add-food form: today, yesterday and the day before."""
+    out = []
+    for back in range(3):
+        d = today - dt.timedelta(days=back)
+        if back == 0:
+            label, sub = _("Today"), date_format(d, "j M")
+        elif back == 1:
+            label, sub = _("Yesterday"), date_format(d, "j M")
+        else:
+            label, sub = date_format(d, "l"), date_format(d, "j M")
+        out.append({"value": d.isoformat(), "label": label, "sub": sub, "checked": d == day})
+    return out
 
 
 @login_required

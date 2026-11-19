@@ -28,11 +28,8 @@
     {% include "partials/facet_select.html" with name="completeness" label=l_comp options=facets.completeness value=form.completeness.value %}
   </div>
   <div class="sort-row">
-    <label for="sort">{% translate "Sort:" %}</label>
-    <select id="sort" name="sort" class="bare filter-select">
-      {% for v, l in form.fields.sort.choices %}<option value="{{ v }}" {% if form.sort.value == v or not form.sort.value and v == "relevance" %}selected{% endif %}>{{ l }}</option>{% endfor %}
-    </select>
-    <button class="btn btn-small btn-outline" type="submit">{% translate "Apply" %}</button>
+    {# Filters apply on change with htmx; the button is the no-JavaScript fallback. #}
+    <noscript><button class="btn btn-small btn-outline" type="submit">{% translate "Apply" %}</button></noscript>
     <span class="spinner htmx-indicator" aria-hidden="true"></span>
   </div>
 </form>
