@@ -99,6 +99,8 @@ DATABASES = {
         "PORT": env("POSTGRES_PORT", "5432"),
         "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
         "CONN_HEALTH_CHECKS": True,
+        # Separate test databases let several test runs share one Postgres server.
+        "TEST": {"NAME": env("POSTGRES_TEST_DB", "") or None},
     }
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

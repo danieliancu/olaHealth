@@ -1,12 +1,11 @@
-from django.urls import path
+from django.urls import include, path
 
 from myola import views
 
+# Each area has its own URL module and views module (see myola/views_*.py).
 urlpatterns = [
-    path("start/", views.start, name="start"),
-    path("today/", views.today, name="today"),
-    path("today/add/<uuid:pk>/", views.add_food, name="add-food"),
-    path("progress/", views.progress, name="progress"),
-    path("my-ola/", views.my_ola, name="my-ola"),
+    path("", include("myola.urls_today")),
+    path("", include("myola.urls_profile")),
+    path("", include("myola.urls_mytrack")),
     path("my-ola/delete-account/", views.delete_account, name="delete-account"),
 ]

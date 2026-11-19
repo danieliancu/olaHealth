@@ -1440,3 +1440,8 @@ input:disabled { background: #f4f8f6; color: var(--muted); }
 .t-diary h2 { font-weight: 700; }
 .meal-head h3 { font-weight: 500; }
 .entry-name { font-weight: 400; }
+
+/* htmx (indicator styles are not injected: CSP style-src 'self') */
+.htmx-indicator { opacity: 0; transition: opacity .2s ease-in; }
+.htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+.htmx-request[aria-busy="true"], form.htmx-request { cursor: progress; }
