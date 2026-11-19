@@ -144,3 +144,4 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 .foodo-score .score-value span { color: var(--muted); }
 .alt-list { list-style: none; padding: 0; margin: .5rem 0 0; }
 .alt-plus { margin: .2rem 0 0; color: var(--accent-strong); font-weight: 500; }
+.score-points summary { text-decoration: underline; text-underline-offset: 3px; cursor: pointer; color: var(--accent-strong); font-weight: 600; }
