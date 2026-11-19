@@ -12,6 +12,7 @@ from typing import Any
 from catalog import presenters
 from catalog.nutrition import BASIS_LABELS
 from myola.facts import ProductFacts
+from myola.portions import portions
 from myola.restrictions import all_statuses
 
 
@@ -73,6 +74,7 @@ def ola_payload(p: ProductFacts, *, nutriscore: str = "", nova: int | None = Non
         },
         "restrictions": all_statuses(p),
         "facts": chat_facts(p),
+        "portions": portions(p.data, p.per_100()[0]),
         "nutriscore": nutriscore,
         "nova": nova,
     }

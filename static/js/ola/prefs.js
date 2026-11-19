@@ -1,20 +1,18 @@
-// Preference picker: icon toggles with visible labels (aria-pressed), saved on this device.
-// Every change is applied at once on the page.
+// Restrictions and allergies picker (onboarding step 3, the product page and My Track).
+// It edits the profile; diets and allergens for the product checks are derived from it
+// (store.js derivePrefs). "None" is exclusive. Free notes never create a compatibility claim.
 
 import { announce } from "../app.js";
 import { load, update } from "./store.js";
 
 function sync(root, state) {
-  root.querySelectorAll("[data-pref]").forEach((btn) => {
-    const on = state.prefs[btn.dataset.pref].includes(btn.dataset.value);
-    btn.setAttribute("aria-pressed", String(on));
+  const p = state.profile;
+  root.querySelectorAll("[data-restriction]").forEach((b) => b.setAttribute("aria-pressed", String(p.restrictions.includes(b.dataset.restriction))));
+  root.querySelectorAll("[data-subtype]").forEach((b) => b.setAttribute("aria-pressed", String(p[b.dataset.subtype].includes(b.dataset.value))));
+  root.querySelectorAll("[data-sub]").forEach((box) => (box.hidden = !p.restrictions.includes(box.dataset.sub)));
+  root.querySelectorAll("[data-note-field]").forEach((input) => {
+    if (document.activeElement !== input) input.value = p[input.dataset.noteField] || "";
   });
-  const n = state.prefs.allergens.length;
-  root.querySelectorAll("[data-allergy-count]").forEach((el) => {
-    el.textContent = n ? String(n) : "";
-    el.hidden = n === 0;
-  });
-  root.querySelector("[data-allergy-toggle]")?.classList.toggle("has-selection", n > 0);
 }
 
 export function bindPicker(root) {
@@ -22,38 +20,32 @@ export function bindPicker(root) {
   root.dataset.bound = "1";
   sync(root, load());
   root.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-pref]");
-    if (btn) {
-      const kind = btn.dataset.pref;
-      const value = btn.dataset.value;
+    const r = e.target.closest("[data-restriction]");
+    if (r) {
+      const key = r.dataset.restriction;
       let on = false;
       update((s) => {
-        const list = s.prefs[kind];
-        on = !list.includes(value);
-        s.prefs[kind] = on ? [...list, value] : list.filter((v) => v !== value);
+        let list = s.profile.restrictions;
+        on = !list.includes(key);
+        if (key === "none") list = on ? ["none"] : [];
+        else list = on ? [...list.filter((x) => x !== "none"), key] : list.filter((x) => x !== key);
+        s.profile.restrictions = list;
       });
-      const label = btn.querySelector("span")?.textContent || value;
-      announce(`${label}: ${on ? "on" : "off"}.`);
+      announce(`${r.querySelector("span").textContent}: ${on ? "selected" : "not selected"}.`);
       return;
     }
-    const toggle = e.target.closest("[data-allergy-toggle]");
-    if (toggle) {
-      const grid = document.getElementById(toggle.getAttribute("aria-controls"));
-      const open = toggle.getAttribute("aria-expanded") !== "true";
-      toggle.setAttribute("aria-expanded", String(open));
-      if (grid) grid.hidden = !open;
-      if (open) grid?.querySelector("button")?.focus();
+    const sub = e.target.closest("[data-subtype]");
+    if (sub) {
+      update((s) => {
+        const list = s.profile[sub.dataset.subtype];
+        s.profile[sub.dataset.subtype] = list.includes(sub.dataset.value) ? list.filter((x) => x !== sub.dataset.value) : [...list, sub.dataset.value];
+      });
     }
   });
+  root.querySelectorAll("[data-note-field]").forEach((input) =>
+    input.addEventListener("change", () => update((s) => (s.profile[input.dataset.noteField] = input.value.trim())))
+  );
   window.addEventListener("ola:change", (e) => sync(root, e.detail));
-  // Open the allergen list when allergies are already chosen.
-  const state = load();
-  const toggle = root.querySelector("[data-allergy-toggle]");
-  if (toggle && state.prefs.allergens.length) {
-    toggle.setAttribute("aria-expanded", "true");
-    const grid = document.getElementById(toggle.getAttribute("aria-controls"));
-    if (grid) grid.hidden = false;
-  }
 }
 
-document.querySelectorAll("[data-pref-picker]").forEach(bindPicker);
+document.querySelectorAll("[data-restrictions-picker]").forEach(bindPicker);

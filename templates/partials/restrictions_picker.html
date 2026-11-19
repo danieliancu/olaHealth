@@ -1,0 +1,23 @@
+{% load i18n ui %}
+<div class="restr-picker" data-restrictions-picker>
+  <div class="choice-grid" role="group" aria-label="{% translate 'Restrictions and allergies' %}">
+    {% for r in picker.restrictions %}<button type="button" class="choice" aria-pressed="false" data-restriction="{{ r.key }}">{% icon r.icon 24 %}<span>{{ r.label }}</span></button>{% endfor %}
+  </div>
+  <div class="sub-choices" data-sub="nuts" hidden>
+    <p class="hint">{% translate "Which nuts? Leave both off if you are not sure: both are then checked." %}</p>
+    <div class="chip-row">{% for t in picker.nut_types %}<button type="button" class="chip-btn" aria-pressed="false" data-subtype="nutTypes" data-value="{{ t.key }}">{{ t.label }}</button>{% endfor %}</div>
+  </div>
+  <div class="sub-choices" data-sub="seafood" hidden>
+    <p class="hint">{% translate "Which ones? Leave all off if you are not sure: all are then checked." %}</p>
+    <div class="chip-row">{% for t in picker.seafood_types %}<button type="button" class="chip-btn" aria-pressed="false" data-subtype="seafoodTypes" data-value="{{ t.key }}">{{ t.label }}</button>{% endfor %}</div>
+  </div>
+  <div class="sub-choices" data-sub="religious" hidden>
+    <label for="{{ prefix|default:'r' }}-religious">{% translate "Religious restriction – note (optional)" %}</label>
+    <input id="{{ prefix|default:'r' }}-religious" type="text" maxlength="300" data-note-field="religiousNote">
+  </div>
+  <div class="sub-choices" data-sub="other" hidden>
+    <label for="{{ prefix|default:'r' }}-other">{% translate "Other – note (optional)" %}</label>
+    <input id="{{ prefix|default:'r' }}-other" type="text" maxlength="300" data-note-field="otherNote">
+  </div>
+  <p class="caption">{% translate "Notes are kept for you only; they never mark a product as suitable." %}</p>
+</div>

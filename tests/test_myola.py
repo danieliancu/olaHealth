@@ -1,4 +1,4 @@
-"""MVP: strict restrictions, the personal layer on real products, My Ola and the home page."""
+"""MVP: strict restrictions, the personal layer on real products, My Track and the home page."""
 
 from __future__ import annotations
 
@@ -82,8 +82,9 @@ def test_blocking_lists_only_unconfirmed_active_restrictions():
 @pytest.mark.django_db
 def test_home_is_scan_first(client):
     html = client.get(reverse("home")).content.decode()
-    assert "Scan a product" in html and 'action="/lookup/"' in html
-    assert "demo" not in html.lower() and "magazine" not in html.lower()
+    assert "Get started" in html and 'href="/start/"' in html and 'href="/scan/"' in html
+    assert 'aria-label="Example products"' in html  # the showcase is labelled as examples
+    assert "magazine" not in html.lower() and "try the demo" not in html.lower()
 
 
 @pytest.mark.django_db
@@ -91,13 +92,17 @@ def test_navigation_has_four_entries(client):
     html = client.get(reverse("home")).content.decode()
     nav = html.split('<nav class="tabbar"')[1].split("</nav>")[0]
     labels = re.findall(r"<span>([^<]+)</span></a>", nav)
-    assert labels == ["Scan", "Products", "Compare", "My Ola"]
-    assert 'href="/my-ola/"' in nav
+    assert labels == ["Today", "Scan", "Progress", "My Track"]
+    assert 'href="/my-ola/"' in nav and 'href="/today/"' in nav
+    # Search and favourites are in the header; comparison opens from the product pages.
+    header = html.split('<header class="site-header">')[1].split("</header>")[0]
+    assert 'href="/products/"' in header and 'href="/compare/"' not in header
+    assert 'href="/my-ola/#account"' in header
 
 
 @pytest.mark.django_db
 def test_my_ola_and_the_old_saved_route(client):
-    for name in ("my-ola", "saved"):
+    for name in ("my-ola", "saved", "start", "today", "progress"):
         assert client.get(reverse(name)).status_code == 200
     assert client.get("/demo/").status_code == 404
 
@@ -127,3 +132,116 @@ def test_product_page_states_and_personal_data(client, off_payload):
     full = import_off_product(off_payload(code="3017620422003"))
     body = client.get(reverse("product", args=[full.pk])).content.decode().split("</head>")[1]
     assert "Ingredients missing" not in body and "Awaiting moderation" not in body
+
+
+# ---------- Onboarding ----------
+@pytest.mark.django_db
+def test_onboarding_has_the_four_steps_in_order(client):
+    html = client.get(reverse("start")).content.decode()
+    titles = [
+        "What is your goal?",
+        "About you",
+        "Do you have any dietary restrictions or food allergies?",
+        "Have you ever had any of the following conditions?",
+    ]
+    positions = [html.index(t) for t in titles]
+    assert positions == sorted(positions)
+    for option in (
+        "Losing weight",
+        "Gaining muscle and losing fat",
+        "Gaining muscle, losing fat is secondary",
+        "Eating healthier without losing weight",
+        "Non-binary",
+        "Prefer not to say",
+        "Pescetarian­ism",  # soft hyphen: breaks only on narrow cards
+        "Lactose intolerant",
+        "Seafood or shellfish",
+        "Religious restriction",
+        "Tree nuts",
+        "Crustaceans",
+        "Eating disorders (anorexia, bulimia)",
+        "Prefer not to answer",
+    ):
+        assert option in html, option
+    # Examples are placeholders, never values.
+    for example in ('placeholder="48"', 'placeholder="180"', 'placeholder="100"'):
+        assert example in html
+    assert 'value="48"' not in html
+    for unwanted in ("hear about", "motivation", "ideal weight", "subscribe", "trial"):
+        assert unwanted not in html.lower()
+
+
+# ---------- Portions for the diary ----------
+def test_portions_follow_the_basis_and_never_mix_g_and_ml():
+    from myola.portions import portions
+
+    yogurt = portions({"serving_size": "125 g", "quantity": "4 x 125 g"}, "per_100g")
+    assert yogurt["unit"] == "g"
+    assert [o["amount"] for o in yogurt["options"]] == ["125"]
+    drink = portions({"serving_size": "250 ml", "quantity": "1 l"}, "per_100ml")
+    assert drink["unit"] == "ml" and [o["key"] for o in drink["options"]] == ["serving", "pack"]
+    mixed = portions({"serving_size": "200 ml", "quantity": "500 g"}, "per_100g")
+    assert mixed["unit"] == "g" and [o["key"] for o in mixed["options"]] == ["pack"]
+    unknown = portions({"serving_size": "30 g"}, None)
+    assert unknown == {"unit": None, "options": []}
+    multipack_unknown = portions({"quantity": "6 x"}, "per_100g")
+    assert multipack_unknown["options"] == []
+
+
+def test_pescetarian_rule():
+    fish = product(ingredients={"text": "Tuna, water, salt"}, analysis=["en:non-vegetarian"])
+    assert diet_status(fish, "pescatarian")["status"] == "unknown"
+    beef = product(ingredients={"text": "Beef 80%, salt"})
+    assert diet_status(beef, "pescatarian")["status"] == "incompatible"
+    veg = product(labels=["en:vegetarian"])
+    assert diet_status(veg, "pescatarian")["status"] == "compatible"
+
+
+@pytest.mark.django_db
+def test_product_page_offers_add_to_diary_with_portions(client, off_payload):
+    p = import_off_product(off_payload(serving_size="125 g"))
+    html = client.get(reverse("product", args=[p.pk])).content.decode()
+    assert "Add to diary" in html and "data-diary-dialog" in html
+    data = html.split('id="ola-data"')[1].split("</script>")[0]
+    assert '"portions": {"unit": "g"' in data and '"amount": "125"' in data
+
+
+# ---------- From the Food diary straight to "how much?" ----------
+@pytest.mark.django_db
+def test_diary_mode_goes_straight_to_the_amount_step(client, off_payload):
+    p = import_off_product(off_payload())
+    code = off_payload()["code"]
+    r = client.get(reverse("lookup"), {"code": code, "add": "lunch", "date": "2026-11-18"})
+    assert r.status_code == 302
+    assert r["Location"].startswith(reverse("add-food", args=[p.pk]))
+    assert "meal=lunch" in r["Location"] and "date=2026-11-18" in r["Location"]
+    assert f"scanned={code}" in r["Location"]
+    # Without the diary mode the product page opens, as before.
+    r = client.get(reverse("lookup"), {"code": code})
+    assert r["Location"].startswith(reverse("product", args=[p.pk]))
+
+
+@pytest.mark.django_db
+def test_diary_mode_in_scan_and_catalogue(client, off_payload):
+    p = import_off_product(off_payload())
+    scan = client.get(reverse("scan"), {"add": "dinner", "date": "2026-11-18"}).content.decode()
+    assert 'name="add" value="dinner"' in scan and "Adding to <strong>Dinner</strong>" in scan
+    assert 'data-diary-query="add=dinner&amp;date=2026-11-18"' in scan
+    listing = client.get(
+        reverse("products"), {"add": "dinner", "date": "2026-11-18"}
+    ).content.decode()
+    assert reverse("add-food", args=[p.pk]) + "?meal=dinner&amp;date=2026-11-18" in listing
+    # Unknown values are ignored: no diary mode.
+    plain = client.get(reverse("scan"), {"add": "brunch"}).content.decode()
+    assert 'name="add"' not in plain
+
+
+@pytest.mark.django_db
+def test_add_food_page(client, off_payload):
+    p = import_off_product(off_payload(serving_size="125 g"))
+    r = client.get(reverse("add-food", args=[p.pk]), {"meal": "lunch", "date": "2026-11-18"})
+    html = r.content.decode()
+    assert r.status_code == 200
+    assert 'data-meal="lunch"' in html and "How much did you have?" in html
+    assert 'id="ola-data"' in html and '"portions"' in html
+    assert reverse("product", args=[p.pk]) in html  # full details stay one tap away

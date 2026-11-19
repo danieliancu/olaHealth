@@ -1,28 +1,38 @@
-"""Preference vocabulary shared by the picker and the restriction rules.
+"""Profile and preference vocabulary (onboarding, My Track and the restriction rules).
 
-Three separate kinds, never mixed:
+Kinds that are never mixed:
 
-* goals: nutritional goals (their values are shown first on each product);
+* goal: one of four general goals (stored, never turned into calorie targets in the MVP);
 * diets: strict restrictions (a product is compatible, incompatible or unknown);
 * allergies: strict restrictions per allergen (contains, may contain, unknown, not declared).
 
-"Lactose-free" (a diet) and a milk allergy are different choices.
+Restrictions chosen in onboarding map to diets and allergens (see ``RESTRICTIONS`` and
+static/js/ola/store.js ``derivePrefs``). "Religious restriction" and "Other" keep a free note
+only: free text never creates a compatibility claim. "Lactose intolerant" maps to the
+lactose-free diet, which is not the same as a milk allergy.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from itertools import combinations
-
 from django.utils.translation import gettext_lazy as _
 
 GOALS = {
-    "lower_sugar": (_("Lower sugar"), "candy"),
-    "more_protein": (_("More protein"), "egg"),
+    "lose_weight": (_("Losing weight"), "scale"),
+    "muscle_and_fat": (_("Gaining muscle and losing fat"), "dumbbell"),
+    "muscle_first": (_("Gaining muscle, losing fat is secondary"), "biceps-flexed"),
+    "eat_healthier": (_("Eating healthier without losing weight"), "apple"),
+}
+GENDERS = {
+    "male": _("Male"),
+    "female": _("Female"),
+    "non_binary": _("Non-binary"),
+    "prefer_not": _("Prefer not to say"),
+    "other": _("Other"),
 }
 DIETS = {
     "vegetarian": (_("Vegetarian"), "salad"),
     "vegan": (_("Vegan"), "vegan"),
+    "pescatarian": (_("Pescetarian"), "fish"),
     "gluten_free": (_("Gluten-free"), "wheat-off"),
     "lactose_free": (_("Lactose-free"), "milk-off"),
     "pork_free": (_("Pork-free"), "ham"),
@@ -45,44 +55,60 @@ ALLERGENS = {
     "en:lupin": _("Lupin"),
     "en:molluscs": _("Molluscs"),
 }
-
-
-def goal_key(goals: list[str] | tuple[str, ...] | set[str]) -> str:
-    """Stable key of a goal combination: ``none``, ``lower_sugar``, ``lower_sugar+more_protein``."""
-    active = [g for g in GOALS if g in set(goals)]
-    return "+".join(active) or "none"
-
-
-def goal_combinations() -> list[tuple[str, ...]]:
-    keys = list(GOALS)
-    return [c for n in range(len(keys) + 1) for c in combinations(keys, n)]
-
-
-@dataclass(frozen=True)
-class Preferences:
-    goals: tuple[str, ...] = ()
-    diets: tuple[str, ...] = ()
-    allergens: tuple[str, ...] = ()
-    avoid: frozenset[str] = field(default_factory=frozenset)
-
-    @classmethod
-    def build(cls, goals=(), diets=(), allergens=(), avoid=()) -> Preferences:
-        return cls(
-            tuple(g for g in GOALS if g in goals),
-            tuple(d for d in DIETS if d in diets),
-            tuple(a for a in ALLERGENS if a in allergens),
-            frozenset(avoid),
-        )
-
-    @property
-    def key(self) -> str:
-        return goal_key(self.goals)
+# Onboarding step 3: key -> (label, icon, diets, allergens)
+RESTRICTIONS = {
+    "vegan": (_("Veganism"), "vegan", ["vegan"], []),
+    # Soft hyphens: long words break as "Vegetarian-ism" only when the card is narrow.
+    "vegetarian": (_("Vegetarian­ism"), "salad", ["vegetarian"], []),
+    "pescatarian": (_("Pescetarian­ism"), "fish", ["pescatarian"], []),
+    "gluten_free": (_("Gluten-free"), "wheat-off", ["gluten_free"], []),
+    "lactose": (_("Lactose intolerant"), "milk-off", ["lactose_free"], []),
+    "nuts": (_("Nut allergy"), "nut", [], ["en:peanuts", "en:nuts"]),
+    "seafood": (
+        _("Seafood or shellfish"),
+        "shell",
+        [],
+        ["en:fish", "en:crustaceans", "en:molluscs"],
+    ),
+    "religious": (_("Religious restriction"), "hand-heart", [], []),
+    "other": (_("Other"), "ellipsis", [], []),
+    "none": (_("None"), "circle-off", [], []),
+}
+NUT_TYPES = {"en:peanuts": _("Peanuts"), "en:nuts": _("Tree nuts")}
+SEAFOOD_TYPES = {
+    "en:fish": _("Fish"),
+    "en:crustaceans": _("Crustaceans"),
+    "en:molluscs": _("Molluscs"),
+}
+CONDITIONS = {
+    "hypertension": _("Hypertension or high blood pressure"),
+    "diabetes": _("Diabetes"),
+    "depression": _("Depression"),
+    "eating_disorder": _("Eating disorders (anorexia, bulimia)"),
+    "other": _("Other"),
+    "none": _("None"),
+    "prefer_not": _("Prefer not to answer"),
+}
+ACTIVITIES = {
+    "walking": (_("Walking"), "footprints"),
+    "running": (_("Running"), "person-standing"),
+    "gym": (_("Gym"), "dumbbell"),
+    "cycling": (_("Cycling"), "bike"),
+    "swimming": (_("Swimming"), "waves"),
+    "other": (_("Other"), "activity"),
+}
 
 
 def picker_context() -> dict:
-    """Options for the icon picker template."""
+    """Options for the onboarding steps, the restriction picker and My Track."""
     return {
         "goals": [{"key": k, "label": label, "icon": icon} for k, (label, icon) in GOALS.items()],
-        "diets": [{"key": k, "label": label, "icon": icon} for k, (label, icon) in DIETS.items()],
-        "allergens": [{"key": k, "label": label} for k, label in ALLERGENS.items()],
+        "genders": [{"key": k, "label": label} for k, label in GENDERS.items()],
+        "restrictions": [{"key": k, "label": v[0], "icon": v[1]} for k, v in RESTRICTIONS.items()],
+        "nut_types": [{"key": k, "label": label} for k, label in NUT_TYPES.items()],
+        "seafood_types": [{"key": k, "label": label} for k, label in SEAFOOD_TYPES.items()],
+        "conditions": [{"key": k, "label": label} for k, label in CONDITIONS.items()],
+        "activities": [
+            {"key": k, "label": label, "icon": icon} for k, (label, icon) in ACTIVITIES.items()
+        ],
     }

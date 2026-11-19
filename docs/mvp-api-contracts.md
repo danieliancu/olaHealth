@@ -52,7 +52,7 @@ Goals (`lower_sugar`, `more_protein`) only bring the matching value (sugars, pro
 
 ## 3. V2: score and alternatives (not in the MVP)
 
-* **Score**: a single Ola Score with reconstructible points, computed in Python; the production
+* **Score**: a single Foodo Score with reconstructible points, computed in Python; the production
   rule and weights are decided before it is published. Unknown values give `not_enough_data`.
 * **Alternatives**: up to 3 similar products recorded as sold in the UK, each with a verifiable
   advantage and its trade-offs, filtered by strict restrictions and the Avoid list.
@@ -95,6 +95,50 @@ Goals (`lower_sugar`, `more_protein`) only bring the matching value (sugars, pro
 * **Recently viewed**: the older `olahealth:history` key stays as "Recently viewed" (page views,
   not scans).
 
+## 4b. Profile, diary, water, activity and weight (same store)
+
+```json
+{
+  "profile": {"goal": "lose_weight" | "muscle_and_fat" | "muscle_first" | "eat_healthier" | null,
+              "gender": "male" | "female" | "non_binary" | "prefer_not" | "other" | null,
+              "age": 35 | null, "height": 170 | null, "weight": null,
+              "restrictions": ["vegan", "nuts"], "nutTypes": ["en:peanuts"], "seafoodTypes": [],
+              "religiousNote": "", "otherNote": "",
+              "conditions": ["none"] | ["prefer_not"] | ["hypertension", "diabetes", "depression", "eating_disorder", "other"],
+              "conditionsNote": ""},
+  "settings": {"showEnergy": true, "trackWeight": false, "useNotes": false,
+               "targets": {"energy-kcal": null, "proteins": 120, "carbohydrates": null, "fat": null}},
+  "diary": [{"id": "id", "date": "2026-11-18", "meal": "breakfast" | "lunch" | "dinner" | "snacks",
+             "product": Entry, "name": "", "amount": 200, "unit": "g" | "ml", "basisKnown": true,
+             "portion": "1 serving (125 g)",
+             "per100": {"energy-kcal": 47, "proteins": 3.3, "carbohydrates": 4.8, "fat": null}}],
+  "water": [{"id": "id", "date": "2026-11-18", "ml": 250}],
+  "activity": [{"id": "id", "date": "2026-11-18", "type": "walking" | "running" | "gym" | "cycling" | "swimming" | "other", "minutes": 30}],
+  "weights": [{"id": "id", "date": "2026-11-18", "kg": 72.5}]
+}
+```
+
+* **Dates** are the user's local calendar day (`YYYY-MM-DD`).
+* **Onboarding answers** are saved only when typed and valid (age 13–120, height 100–250 cm,
+  weight 25–400 kg). Placeholders are examples and are never saved. Every step can be left
+  empty, apart from the goal in step 1.
+* **Restrictions → checks**: diets and allergens for the product page are derived from
+  `restrictions` (`derivePrefs` in `store.js`). If no nut or seafood type is chosen, all of
+  them are checked. Religious restriction and Other are notes only and never create a rule.
+* **Health conditions** stay on the device. They are never used for diagnoses, plans or advice.
+  An eating-disorder answer starts with calories and weight hidden (`showEnergy`,
+  `trackWeight`), and this can be changed later.
+* **Diary**: an entry is saved only after the user confirms the amount. It keeps the per-100
+  values used at that moment, so catalogue updates never rewrite history. Values are
+  `per100 × amount / 100`, and only when the basis (g or ml) is known. Unknown values stay
+  `null`, and the day's total is then marked partial. A scan alone is not a diary entry.
+* **Portions** (`myola.portions`, in `#ola-data.portions`) are offered only in the basis unit.
+  They come from the declared serving, one unit of a multipack, or the whole pack. g and ml are
+  never converted into each other.
+* **No inferred targets**: calorie or macro targets are never inferred from the profile. Only
+  manual targets show progress. Activity is minutes only (no calories burned).
+* **Progress**: a day without diary entries is “No entries”, never zero.
+
 ## 5. Notes, memories and chat
 
 * **Note**: `{id, text ≤ 2000, kind: general|taste|prefer|avoid, product: Entry|null, createdAt, updatedAt}`.
@@ -106,7 +150,7 @@ Goals (`lower_sugar`, `more_protein`) only bring the matching value (sugars, pro
 * **Message**: `{role: user|ola, text, at}`, stored per context.
   * Contexts are `personal` and `product:<uuid>`.
   * Deleting the chat history removes all contexts.
-* **Ask Ola (MVP)**:
+* **Ask Foodo (MVP)**:
   * Intents are deterministic: values, indicators, restrictions, remember, avoid, scans, prefs.
   * Answers are built only from the page payload and the store.
   * Notes are used only when `settings.useNotes` is on, and only the relevant ones (same product,
@@ -125,4 +169,4 @@ available as `assessments.services.compare.build_comparison` (no database access
 
 ## 7. What stays out of the catalogue
 
-Data from My Ola stays on the device and never reaches the catalogue or the export.
+Data from My Track stays on the device and never reaches the catalogue or the export.

@@ -1,0 +1,15 @@
+{% load i18n %}
+    <fieldset class="meal-picker">
+      <legend class="sr-only">{% translate "Meal" %}</legend>
+      <label><input type="radio" name="meal" value="breakfast"><span>{% translate "Breakfast" %}</span></label>
+      <label><input type="radio" name="meal" value="lunch"><span>{% translate "Lunch" %}</span></label>
+      <label><input type="radio" name="meal" value="dinner"><span>{% translate "Dinner" %}</span></label>
+      <label><input type="radio" name="meal" value="snacks"><span>{% translate "Snacks" %}</span></label>
+    </fieldset>
+    <div class="chip-row" data-diary-portions hidden></div>
+    <label for="{{ prefix|default:'diary' }}-amount">{% translate "How much did you have?" %}</label>
+    <div class="amount-row">
+      <input id="{{ prefix|default:'diary' }}-amount" name="amount" type="number" inputmode="decimal" min="1" max="10000" step="any" required>
+      <select name="unit" aria-label="{% translate 'Unit' %}"><option value="g">g</option><option value="ml">ml</option></select>
+    </div>
+    <div class="diary-preview" data-diary-preview aria-live="polite"></div>

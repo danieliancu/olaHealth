@@ -1,10 +1,11 @@
 // Product page, personal layer: restriction states for the chosen preferences, lists
-// (Buy often / Avoid), scan history, quick notes, the preference picker and Ask Ola.
+// (Buy often / Avoid), scan history, quick notes, the preference picker and Ask Foodo.
 // Everything shown comes from the page data (#ola-data) and this device's preferences.
 
 import { announce } from "../app.js";
 import { blocking, confirmed, statusText, DIET_LABELS, GOAL_LABELS } from "./assess.js";
-import { load, update, toggleList, recordScan, inList, newId, storageOk } from "./store.js";
+import { load, update, toggleList, recordScan, inList, newId, storageOk, localDate } from "./store.js";
+import { setupDiaryForm, defaultMeal, MEAL_LABELS } from "./diary-form.js";
 import { bindPicker } from "./prefs.js";
 import { h } from "./dom.js";
 import "./chat.js";
@@ -69,13 +70,9 @@ function renderPrefsSummary(state) {
     ...p.diets.map((d) => DIET_LABELS[d]),
     ...(p.allergens.length ? [`${p.allergens.length} allerg${p.allergens.length === 1 ? "y" : "ies"}`] : []),
   ];
-  box.textContent = names.length
-    ? `Personalised for: ${names.join(", ")}.`
-    : state.onboarded
-      ? "Not personalised."
-      : "Add your diet, allergies or goals to see what matters first.";
+  box.textContent = names.length ? `Checked for: ${names.join(", ")}.` : "Add your diet or allergies to check this product.";
   const edit = document.querySelector("[data-prefs-edit]");
-  if (edit) edit.textContent = names.length ? "Change" : "Personalise";
+  if (edit) edit.textContent = names.length ? "Change" : "Add";
 }
 
 // ---------- Lists ----------
@@ -124,41 +121,54 @@ function bindNotes() {
     const now = Date.now();
     update((s) => s.notes.unshift({ id: newId(), text, kind: form.elements.kind.value, product: entry(), createdAt: now, updatedAt: now }));
     dialog.close();
-    announce(storageOk() ? "Note saved in My Ola → Notes." : "This browser does not allow saving notes.");
+    announce(storageOk() ? "Note saved in My Track → Notes." : "This browser does not allow saving notes.");
   });
 }
 
-// ---------- Onboarding (optional) and preference editing ----------
-function bindOnboarding(state) {
-  const intro = document.querySelector("[data-onboarding]");
+// ---------- Restrictions panel ----------
+function bindPrefsPanel() {
   const panel = document.querySelector("[data-prefs-panel]");
   const edit = document.querySelector("[data-prefs-edit]");
-  const skip = document.querySelector("[data-onboarding-skip]");
   if (!panel) return;
-  bindPicker(panel.querySelector("[data-pref-picker]"));
+  bindPicker(panel.querySelector("[data-restrictions-picker]"));
   const setOpen = (open) => {
     panel.hidden = !open;
     edit?.setAttribute("aria-expanded", String(open));
   };
-  const firstTime = () => !load().onboarded;
   panel.querySelectorAll("[data-onboarding-done]").forEach((b) =>
     b.addEventListener("click", () => {
-      const first = intro && !intro.hidden;
-      if (intro) intro.hidden = true;
-      if (skip) skip.hidden = true;
-      update((s) => (s.onboarded = true));
       setOpen(false);
       edit?.focus();
-      announce(first ? "Saved on this device. You can change your preferences any time in My Ola." : "Preferences updated.");
+      announce("Saved on this device.");
     })
   );
   edit?.addEventListener("click", () => {
     const open = panel.hidden;
     setOpen(open);
-    if (intro) intro.hidden = !(open && firstTime());
-    if (skip) skip.hidden = !(open && firstTime());
     if (open) panel.querySelector("button")?.focus();
   });
+}
+
+// ---------- Add to diary (dialog): the shared "how much?" form ----------
+function bindDiary() {
+  const dialog = document.querySelector("[data-diary-dialog]");
+  if (!dialog) return;
+  const diaryForm = setupDiaryForm(dialog, payload, (meal) => {
+    dialog.close();
+    const done = document.querySelector("[data-diary-done]");
+    if (done) {
+      done.hidden = false;
+      done.querySelector("[data-diary-done-text]").textContent = `Added to ${MEAL_LABELS[meal]}.`;
+    }
+  });
+  document.querySelectorAll("[data-diary-open]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      diaryForm.reset(defaultMeal(), localDate());
+      dialog.showModal ? dialog.showModal() : dialog.setAttribute("open", "");
+      dialog.querySelector("input[name=amount]").focus();
+    })
+  );
+  dialog.querySelector("[data-diary-cancel]").addEventListener("click", () => dialog.close());
 }
 
 function bindMoreMenu() {
@@ -199,7 +209,8 @@ if (payload && page) {
   bindLists();
   bindMoreMenu();
   bindNotes();
-  bindOnboarding(state);
+  bindPrefsPanel();
+  bindDiary();
   renderAll(state);
   window.addEventListener("ola:change", (e) => renderAll(e.detail));
   // Coming back from the comparison (bfcache): show the current preferences.

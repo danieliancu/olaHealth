@@ -1,0 +1,3 @@
+{% load i18n ui %}{% if diary %}
+<p class="notice notice-ok diary-banner" role="status">{% icon "utensils" 18 %}<span>{% blocktranslate with meal=diary_label %}Adding to <strong>{{ meal }}</strong>: pick a product, then say how much.{% endblocktranslate %} <a href="{% url 'today' %}{% if diary.date %}?date={{ diary.date }}{% endif %}">{% translate "Cancel" %}</a></span></p>
+{% endif %}

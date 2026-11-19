@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load i18n ui static %}
+{% block title %}{% translate "Add to diary" %}{% endblock %}
+{% block head %}<script type="module" src="{% static 'js/ola/add.js' %}"></script>
+{{ ola|json_script:"ola-data" }}{% endblock %}
+{% block content %}
+<div class="add-food" data-add-food data-meal="{{ meal }}" data-date="{{ date }}" data-scanned="{{ scanned }}">
+  <p class="back"><a href="{% url 'today' %}{% if date %}?date={{ date }}{% endif %}" data-add-back>{% icon "chevron-left" 18 %}<span>{% translate "Today" %}</span></a></p>
+  <section class="card add-card" aria-labelledby="add-h">
+    <div class="add-product">
+      {% if product.front_image_url %}<img class="thumb" src="{{ product.front_image_url|img }}" alt="" width="56" height="56">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="56" height="56">{% endif %}
+      <div class="grow">
+        <p class="add-name">{{ data.name|default:_("Unnamed product") }}</p>
+        {% if data.brand or data.quantity %}<p class="meta">{{ data.brand|default:"" }}{% if data.brand and data.quantity %} · {% endif %}{{ data.quantity|default:"" }}</p>{% endif %}
+      </div>
+    </div>
+    <div class="add-warnings" data-add-warnings></div>
+    <form class="stack add-form" data-no-busy novalidate>
+      <h1 id="add-h" class="add-title">{% translate "Add to diary" %} <span class="add-day" data-diary-day></span></h1>
+      {% include "partials/diary_fields.html" with prefix="add" %}
+      <div class="add-actions">
+        <a class="btn" href="{% url 'today' %}{% if date %}?date={{ date }}{% endif %}">{% translate "Cancel" %}</a>
+        <button type="submit" class="btn btn-primary">{% icon "plus" 18 %}<span>{% translate "Add" %}</span></button>
+      </div>
+    </form>
+    <p class="add-details"><a href="{% url 'product' product.pk %}">{% translate "See product details" %}</a></p>
+  </section>
+  <p class="notice notice-warn js-hide">{% icon "triangle-alert" 18 %}<span>{% translate "Adding to the diary needs JavaScript." %}</span></p>
+</div>
+{% endblock %}

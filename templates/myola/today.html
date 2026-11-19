@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load i18n ui static %}
+{% block title %}{% translate "Today" %}{% endblock %}
+{% block head %}<script type="module" src="{% static 'js/ola/today.js' %}"></script>{% endblock %}
+{% block content %}
+<div class="today" data-today>
+  <div class="today-head">
+    <div>
+      <p class="eyebrow" data-day-sub></p>
+      <h1 data-day-title>{% translate "Today" %}</h1>
+    </div>
+    <a class="btn btn-primary scan-cta" href="{% url 'scan' %}" data-scan-link data-meal="">{% icon "scan-barcode" 20 %}<span>{% translate "Scan barcode" %}</span></a>
+  </div>
+  <div class="day-band">
+    <nav class="day-strip" aria-label="{% translate 'Choose a day' %}">
+      <button type="button" class="icon-btn" data-day-prev aria-label="{% translate 'Previous week' %}">{% icon "chevron-left" 20 %}</button>
+      <ol class="days" data-days></ol>
+      <button type="button" class="icon-btn" data-day-next aria-label="{% translate 'Next week' %}">{% icon "chevron-right" 20 %}</button>
+    </nav>
+  </div>
+
+  <p class="notice" data-setup hidden>{% icon "info" 18 %}<span>{% translate "Set up your goal and allergies in a minute." %} <a href="{% url 'start' %}">{% translate "Get started" %}</a></span></p>
+  <p class="notice notice-warn" data-storage-error hidden>{% icon "triangle-alert" 18 %}<span>{% translate "Your browser does not allow local storage, so nothing here can be kept after you leave the page." %}</span></p>
+  <p class="notice notice-warn js-hide">{% icon "triangle-alert" 18 %}<span>{% translate "Today needs JavaScript: your diary is kept in this browser." %}</span></p>
+
+  <div class="today-grid">
+    <section class="card t-card" aria-labelledby="sum-h">
+      <div class="t-card-head"><h2 id="sum-h">{% translate "Daily summary" %}</h2><span class="targets-toggle"><a class="link-btn targets-edit" href="{% url 'my-ola' %}#targets" data-targets-edit hidden>{% translate "Edit" %}</a><button type="button" class="switch" role="switch" aria-checked="false" data-targets-switch><span class="switch-label">{% translate "Targets" %}</span><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span></button></span></div>
+      <div data-summary></div>
+    </section>
+
+    <section class="card t-card t-diary" aria-labelledby="diary-h">
+      <div class="t-card-head"><h2 id="diary-h">{% translate "Food diary" %}</h2></div>
+      <div data-diary></div>
+    </section>
+
+    <section class="card t-card" aria-labelledby="water-h">
+      <div class="t-card-head"><h2 id="water-h">{% icon "glass-water" 20 %} {% translate "Water" %}</h2><strong class="t-total" data-water-total></strong></div>
+      <div class="water-actions">
+        <button type="button" class="btn btn-outline" data-water-add="250">{% icon "plus" 18 %}<span>250 ml</span></button>
+        <button type="button" class="btn btn-outline" data-water-add="500">{% icon "plus" 18 %}<span>500 ml</span></button>
+      </div>
+      <form class="inline-form" data-water-form data-no-busy>
+        <label for="water-ml" class="sr-only">{% translate "Other amount in ml" %}</label>
+        <div class="unit-input"><input id="water-ml" name="ml" type="number" inputmode="numeric" min="1" max="5000" placeholder="{% translate 'Other' %}"><span>ml</span></div>
+        <button type="submit" class="btn btn-outline">{% translate "Add" %}</button>
+      </form>
+      <ul class="log-list" data-water-list></ul>
+    </section>
+
+    <section class="card t-card" aria-labelledby="act-h">
+      <div class="t-card-head"><h2 id="act-h">{% icon "activity" 20 %} {% translate "Activity" %}</h2><strong class="t-total" data-activity-total></strong></div>
+      <form class="activity-form" data-activity-form data-no-busy>
+        <fieldset class="activity-types">
+          <legend class="sr-only">{% translate "Type of activity" %}</legend>
+          {% for a in picker.activities %}<label class="activity-chip"><input type="radio" name="type" value="{{ a.key }}"{% if forloop.first %} checked{% endif %}><span>{% icon a.icon 18 %}{{ a.label }}</span></label>{% endfor %}
+        </fieldset>
+        <div class="inline-form">
+          <label for="act-min" class="sr-only">{% translate "Minutes" %}</label>
+          <div class="unit-input"><input id="act-min" name="minutes" type="number" inputmode="numeric" min="1" max="1440" placeholder="30" required><span>{% translate "min" %}</span></div>
+          <button type="submit" class="btn btn-outline">{% translate "Add" %}</button>
+        </div>
+      </form>
+      <p class="caption">{% translate "Minutes only – no calories burned are estimated." %}</p>
+      <ul class="log-list" data-activity-list></ul>
+    </section>
+  </div>
+</div>
+
+<dialog class="dialog" data-entry-dialog aria-labelledby="entry-title">
+  <form class="dialog-body" data-no-busy novalidate>
+    <h2 id="entry-title" data-entry-name></h2>
+    <p class="caption entry-meta"><span data-entry-meta></span> <a href="#" data-entry-product hidden>{% translate "Open product" %}</a></p>
+    <label for="entry-amount">{% translate "Amount" %}</label>
+    <div class="amount-row"><input id="entry-amount" name="amount" type="number" inputmode="decimal" min="1" max="10000" step="any" required><span class="unit-label" data-entry-unit></span></div>
+    <label for="entry-meal">{% translate "Meal" %}</label>
+    <select id="entry-meal" name="meal">
+      <option value="breakfast">{% translate "Breakfast" %}</option>
+      <option value="lunch">{% translate "Lunch" %}</option>
+      <option value="dinner">{% translate "Dinner" %}</option>
+      <option value="snacks">{% translate "Snacks" %}</option>
+    </select>
+    <div class="diary-preview" data-entry-preview aria-live="polite"></div>
+    <div class="dialog-actions entry-actions">
+      <button type="button" class="btn btn-link btn-danger-link" data-entry-delete>{% icon "trash-2" 18 %}<span>{% translate "Delete" %}</span></button>
+      <button type="button" class="btn" data-entry-cancel>{% translate "Cancel" %}</button>
+      <button type="submit" class="btn btn-primary">{% translate "Save" %}</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}

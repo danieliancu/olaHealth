@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load i18n ui static %}
+{% block title %}{% translate "Get started" %}{% endblock %}
+{% block head %}<script type="module" src="{% static 'js/ola/start.js' %}"></script>{% endblock %}
+{% block content %}
+<div class="onboard" data-onboard>
+  <div class="ob-top">
+    <div class="ob-progress" role="progressbar" aria-label="{% translate 'Onboarding progress' %}" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" data-ob-progress>
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <p class="ob-count" data-ob-count>{% translate "Step 1 of 4" %}</p>
+  </div>
+
+  {# Step 1 #}
+  <section class="ob-step" data-step="1" aria-labelledby="ob1">
+    <h1 id="ob1">{% translate "What is your goal?" %}</h1>
+    <fieldset class="option-list">
+      <legend class="sr-only">{% translate "Your goal" %}</legend>
+      {% for g in picker.goals %}
+      <label class="option"><input type="radio" name="goal" value="{{ g.key }}"><span class="option-icon">{% icon g.icon 22 %}</span><span>{{ g.label }}</span></label>
+      {% endfor %}
+    </fieldset>
+    <p class="field-error" data-error="goal" hidden>{% translate "Choose one goal to continue." %}</p>
+  </section>
+
+  {# Step 2 #}
+  <section class="ob-step" data-step="2" aria-labelledby="ob2" hidden>
+    <h1 id="ob2">{% translate "About you" %}</h1>
+    <p class="hint">{% translate "Optional. Leave any of these empty, or skip this step." %}</p>
+    <fieldset class="ob-field">
+      <legend>{% translate "What is your gender?" %}</legend>
+      <div class="chip-row">
+        {% for g in picker.genders %}<label class="chip-radio"><input type="radio" name="gender" value="{{ g.key }}"><span>{{ g.label }}</span></label>{% endfor %}
+      </div>
+    </fieldset>
+    <div class="ob-field">
+      <label for="ob-age">{% translate "How old are you?" %}</label>
+      <div class="unit-input"><input id="ob-age" name="age" type="number" inputmode="numeric" min="13" max="120" step="1" placeholder="48" aria-describedby="ob-age-err"><span>{% translate "years" %}</span></div>
+      <p class="field-error" id="ob-age-err" data-error="age" hidden>{% translate "Enter an age between 13 and 120, or leave it empty." %}</p>
+    </div>
+    <div class="ob-field">
+      <label for="ob-height">{% translate "What is your height?" %}</label>
+      <div class="unit-input"><input id="ob-height" name="height" type="number" inputmode="decimal" min="100" max="250" step="any" placeholder="180" aria-describedby="ob-height-err"><span>cm</span></div>
+      <p class="field-error" id="ob-height-err" data-error="height" hidden>{% translate "Enter a height between 100 and 250 cm, or leave it empty." %}</p>
+    </div>
+    <div class="ob-field">
+      <label for="ob-weight">{% translate "What is your current weight?" %}</label>
+      <div class="unit-input"><input id="ob-weight" name="weight" type="number" inputmode="decimal" min="25" max="400" step="any" placeholder="100" aria-describedby="ob-weight-err"><span>kg</span></div>
+      <p class="field-error" id="ob-weight-err" data-error="weight" hidden>{% translate "Enter a weight between 25 and 400 kg, or leave it empty." %}</p>
+    </div>
+    <button type="button" class="btn btn-link" data-ob-skip>{% translate "Skip this step" %}</button>
+  </section>
+
+  {# Step 3 #}
+  <section class="ob-step" data-step="3" aria-labelledby="ob3" hidden>
+    <h1 id="ob3">{% translate "Do you have any dietary restrictions or food allergies?" %}</h1>
+    <p class="ob-question">{% translate "Which restrictions or allergies do you have?" %}</p>
+    {% include "partials/restrictions_picker.html" with prefix="ob" %}
+  </section>
+
+  {# Step 4 #}
+  <section class="ob-step" data-step="4" aria-labelledby="ob4" hidden>
+    <h1 id="ob4">{% translate "Have you ever had any of the following conditions?" %}</h1>
+    <p class="hint">{% translate "Optional. This stays on this device, you can change or delete it in My Track, and it is never used for diagnoses, plans or advice." %}</p>
+    <div class="option-list" role="group" aria-label="{% translate 'Health conditions' %}">
+      {% for c in picker.conditions %}<button type="button" class="option option-check" aria-pressed="false" data-condition="{{ c.key }}"><span>{{ c.label }}</span></button>{% endfor %}
+    </div>
+  </section>
+
+  <div class="ob-actions">
+    <button type="button" class="btn btn-outline" data-ob-back>{% icon "chevron-left" 18 %}<span>{% translate "Back" %}</span></button>
+    <button type="button" class="btn btn-primary" data-ob-next><span data-ob-next-label>{% translate "Continue" %}</span>{% icon "chevron-right" 18 %}</button>
+  </div>
+  <p class="caption ob-privacy">{% translate "No account needed: your answers are kept in this browser only." %}</p>
+  <p class="notice notice-warn js-hide">{% icon "triangle-alert" 18 %}<span>{% translate "Onboarding needs JavaScript." %}</span></p>
+</div>
+{% endblock %}

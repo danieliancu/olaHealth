@@ -5,8 +5,8 @@ from catalog import views as catalog_views
 from contributions import views as contribution_views
 from core import views as core_views
 
-admin.site.site_header = "olaHealth moderation"
-admin.site.site_title = "olaHealth admin"
+admin.site.site_header = "FoodoTrack moderation"
+admin.site.site_title = "FoodoTrack admin"
 
 urlpatterns = [
     path("", catalog_views.home, name="home"),

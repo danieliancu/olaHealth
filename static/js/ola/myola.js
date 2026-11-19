@@ -1,19 +1,30 @@
-// My Ola page: Overview, Notes, Activity and Preferences (all on this device).
+// My Track page: Overview, Notes, Activity and Preferences (all on this device).
 
 import { announce, productLists } from "../app.js";
 import { confirmDialog } from "../dialog.js";
-import { ALLERGEN_LABELS, DIET_LABELS, GOAL_LABELS } from "./assess.js";
+import { ALLERGEN_LABELS, DIET_LABELS } from "./assess.js";
 import { h, fmtDate, icon } from "./dom.js";
-import { load, newId, save, storageOk, update } from "./store.js";
+import { load, newId, reset, save, storageOk, update } from "./store.js";
 import "./prefs.js";
+import { bindProfile } from "./profile.js";
 import "./chat.js";
 
 const root = document.querySelector("[data-myola-tabs]");
 
 // ---------- Tabs (hash keeps the tab on reload and Back) ----------
-const TABS = ["overview", "notes", "activity", "preferences"];
+const TABS = ["overview", "profile", "notes", "saved", "account"];
 function selectTab(name, focus = false) {
+  // "#targets" opens Profile at the daily targets form.
+  const toTargets = name === "targets";
+  if (toTargets) name = "profile";
   if (!TABS.includes(name)) name = "overview";
+  if (toTargets) {
+    window.setTimeout(() => {
+      const form = document.querySelector("[data-targets-form]");
+      form?.scrollIntoView({ block: "start" });
+      form?.querySelector("input:not([hidden])")?.focus({ preventScroll: true });
+    }, 60);
+  }
   root.querySelectorAll("[role=tab]").forEach((t) => {
     const on = t.dataset.tab === name;
     t.setAttribute("aria-selected", String(on));
@@ -63,20 +74,27 @@ function item(entry, { onRemove, removeLabel, meta } = {}) {
   return li;
 }
 
-function prefsChips(prefs) {
+const GOAL_TEXT = {
+  lose_weight: "Losing weight",
+  muscle_and_fat: "Gaining muscle and losing fat",
+  muscle_first: "Gaining muscle, losing fat is secondary",
+  eat_healthier: "Eating healthier without losing weight",
+};
+function prefsChips(state) {
+  const prefs = state.prefs;
   const chips = [
-    ...prefs.goals.map((g) => GOAL_LABELS[g]),
+    ...(state.profile.goal ? [GOAL_TEXT[state.profile.goal]] : []),
     ...prefs.diets.map((d) => DIET_LABELS[d]),
     ...prefs.allergens.map((a) => `Allergy: ${ALLERGEN_LABELS[a]}`),
   ];
   return chips.length
     ? h("ul", { class: "chips" }, chips.map((c) => h("li", { text: c })))
-    : h("p", { class: "caption", text: "No preferences yet. Choose what matters to you in Preferences." });
+    : h("p", { class: "caption", text: "Nothing set yet. Add your goal, diet and allergies in Profile." });
 }
 
 // ---------- Overview ----------
 function renderOverview(state) {
-  document.querySelector("[data-ov-prefs]").replaceChildren(prefsChips(state.prefs));
+  document.querySelector("[data-ov-prefs]").replaceChildren(prefsChips(state));
   const scans = state.scans.slice(0, 3);
   document.querySelector("[data-ov-scans]").replaceChildren(
     ...scans.map((s) => item(s, { meta: `Scanned ${fmtDate(s.at)}` }))
@@ -89,11 +107,11 @@ function renderOverview(state) {
     : "No scans recorded on this device yet.";
   const favs = productLists.read("favorites").length;
   const rows = [
-    ["Favourites", favs, "activity"],
-    ["Buy often", state.lists.buyOften.length, "activity"],
-    ["Avoid", state.lists.avoid.length, "activity"],
+    ["Favourites", favs, "saved"],
+    ["Buy often", state.lists.buyOften.length, "saved"],
+    ["Avoid", state.lists.avoid.length, "saved"],
     ["Notes", state.notes.length, "notes"],
-    ["Memories", state.memories.filter((m) => m.active && m.confirmedAt).length, "preferences"],
+    ["Memories", state.memories.filter((m) => m.active && m.confirmedAt).length, "profile"],
   ];
   document.querySelector("[data-ov-lists]").replaceChildren(
     ...rows.map(([label, n, tab]) => {
@@ -233,8 +251,7 @@ function bindNotes() {
 // ---------- Memories ----------
 function suggestions(state) {
   const out = [];
-  if (state.prefs.goals.includes("lower_sugar")) out.push(["goal:lower_sugar", "I'm looking for products with less sugar."]);
-  if (state.prefs.goals.includes("more_protein")) out.push(["goal:more_protein", "I'm looking for products with more protein."]);
+  if (state.profile.goal) out.push([`goal:${state.profile.goal}`, `My goal: ${GOAL_TEXT[state.profile.goal].toLowerCase()}.`]);
   state.prefs.diets.forEach((d) => out.push([`diet:${d}`, `I choose ${DIET_LABELS[d].toLowerCase()} products.`]));
   state.lists.avoid.slice(0, 3).forEach((x) => out.push([`avoid:${x.id}`, `I avoid “${x.name}”.`]));
   const known = new Set(state.memories.map((m) => m.suggestionKey).filter(Boolean));
@@ -246,9 +263,10 @@ function renderMemories(state) {
     ...state.memories.map((m) => {
       const text = h("p", { class: "memory-text", text: m.text });
       const status = h("p", { class: "caption", text: `${m.source === "suggestion" ? "From a suggestion" : "Added by you"} · ${m.confirmedAt ? `confirmed ${fmtDate(m.confirmedAt)}` : "not confirmed"}${m.active ? "" : " · paused"}` });
-      const active = h("button", { type: "button", class: "btn btn-link", "aria-pressed": String(m.active) }, m.active ? "Pause" : "Use again");
-      const edit = h("button", { type: "button", class: "btn btn-link" }, "Edit");
-      const del = h("button", { type: "button", class: "btn btn-link btn-danger-link" }, "Delete");
+      // Same quiet icon buttons as the notes: pause / use again, edit, delete.
+      const active = h("button", { type: "button", class: "note-action", "aria-label": m.active ? "Pause this memory" : "Use this memory again", title: m.active ? "Pause" : "Use again" }, icon(m.active ? "pause" : "play", 18));
+      const edit = h("button", { type: "button", class: "note-action", "aria-label": "Edit memory", title: "Edit" }, icon("pencil", 18));
+      const del = h("button", { type: "button", class: "note-action is-danger", "aria-label": "Delete memory", title: "Delete" }, icon("trash-2", 18));
       active.addEventListener("click", () => {
         update((s) => {
           const x = s.memories.find((y) => y.id === m.id);
@@ -277,7 +295,7 @@ function renderMemories(state) {
         update((s) => (s.memories = s.memories.filter((y) => y.id !== m.id)));
         announce("Memory deleted. It is no longer used in replies.");
       });
-      return h("li", { class: `memory${m.active ? "" : " is-paused"}` }, text, status, h("div", { class: "row" }, active, edit, del));
+      return h("li", { class: `memory${m.active ? "" : " is-paused"}` }, h("div", { class: "memory-top" }, text, h("span", { class: "note-actions" }, active, edit, del)), status);
     })
   );
   document.querySelector("[data-memories-empty]").hidden = state.memories.length > 0;
@@ -303,21 +321,34 @@ function bindMemories() {
     if (!text) return;
     update((s) => s.memories.unshift({ id: newId(), text, source: "manual", active: true, confirmedAt: Date.now(), createdAt: Date.now() }));
     form.reset();
-    announce("Ola will remember this.");
+    announce("Foodo will remember this.");
   });
   document.querySelector("[data-use-notes]").addEventListener("change", (e) => {
     update((s) => (s.settings.useNotes = e.target.checked));
     announce(e.target.checked ? "Relevant notes will be used in replies." : "Notes are no longer used in replies.");
   });
   document.querySelector("[data-clear-chats]").addEventListener("click", async () => {
-    const ok = await confirmDialog({ title: "Delete chat history?", message: "All conversations with Ola on this device are deleted.", confirmLabel: "Delete", tone: "danger" });
+    const ok = await confirmDialog({ title: "Delete chat history?", message: "All conversations with Foodo on this device are deleted.", confirmLabel: "Delete", tone: "danger" });
     if (!ok) return;
     update((s) => (s.chats = {}));
     announce("Chat history deleted.");
   });
-  document.querySelector("[data-reset-onboarding]").addEventListener("click", () => {
-    update((s) => (s.onboarded = false));
-    announce("The welcome questions will appear on the next product page.");
+  document.querySelector("[data-clear-all]").addEventListener("click", async () => {
+    const ok = await confirmDialog({
+      title: "Delete all your data?",
+      message: "Profile, diary, water, activity, weight, lists, notes, memories and chats are removed from this browser. This cannot be undone.",
+      confirmLabel: "Delete everything",
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      ["olahealth:myola", "olahealth:favorites", "olahealth:history", "olahealth:compare", "olahealth:hidden"].forEach((k) => window.localStorage.removeItem(k));
+    } catch (e) {
+      /* storage unavailable: nothing was kept */
+    }
+    reset();
+    productLists.refreshCounts();
+    announce("All your data was deleted from this browser.");
   });
   document.querySelector("[data-clear-scans]").addEventListener("click", async () => {
     const ok = await confirmDialog({ title: "Clear scan history?", message: "Scans are removed from this device.", confirmLabel: "Clear", tone: "danger" });
@@ -339,6 +370,7 @@ if (root) {
   bindTabs();
   bindNotes();
   bindMemories();
+  bindProfile();
   const state = load();
   save(state); // normalises old or partial data once
   renderAll(state);

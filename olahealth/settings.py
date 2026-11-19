@@ -241,4 +241,4 @@ LOGGING = {
     "loggers": {"httpx": {"level": "WARNING"}, "httpcore": {"level": "WARNING"}},
 }
 
-SITE_NAME = "olaHealth"
+SITE_NAME = "FoodoTrack"

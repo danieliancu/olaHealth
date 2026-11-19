@@ -1,0 +1,12 @@
+{% load i18n %}
+<dialog class="dialog diary-dialog" data-diary-dialog aria-labelledby="diary-title">
+  <form class="dialog-body" data-no-busy novalidate>
+    <h2 id="diary-title">{% translate "Add to diary" %}</h2>
+    <p class="caption">{{ name|default:_("This product") }} · <span data-diary-day></span></p>
+    {% include "partials/diary_fields.html" %}
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-diary-cancel>{% translate "Cancel" %}</button>
+      <button type="submit" class="btn btn-primary">{% translate "Add" %}</button>
+    </div>
+  </form>
+</dialog>

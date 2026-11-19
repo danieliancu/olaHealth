@@ -20,7 +20,7 @@ from core.images import ImageRejected, validate_and_reencode
 
 CONSENT_TEXT = (
     "I took these photos or have the right to share them. I agree that my photos and the "
-    "information I submit may be published by olaHealth after review and reused by others "
+    "information I submit may be published by FoodoTrack after review and reused by others "
     "under the Open Database License (data) and Creative Commons Attribution-ShareAlike 4.0 "
     "(photos)."
 )

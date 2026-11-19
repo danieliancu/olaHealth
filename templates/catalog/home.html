@@ -1,20 +1,109 @@
 {% extends "base.html" %}
 {% load static i18n ui %}
-{% block title %}{% translate "Scan food. See how it fits you." %}{% endblock %}
+{% block title %}{% translate "Scan food. Keep track." %}{% endblock %}
+{% block head %}<script type="module" src="{% static 'js/home.js' %}"></script>{% endblock %}
 {% block content %}
-<section class="home" aria-labelledby="hero-h">
+<section class="home" aria-labelledby="hero-h" data-home>
   <div class="home-copy">
-    <h1 id="hero-h" class="display">{% translate "Scan food. See how it fits you." %}</h1>
-    <p class="lead">{% translate "Understand the label, compare similar products and find options that match your preferences." %}</p>
-    <a class="btn btn-primary btn-cta" href="{% url 'scan' %}">{% icon "scan-barcode" 22 %}<span>{% translate "Scan a product" %}</span></a>
-    <form class="home-code" method="get" action="{% url 'lookup' %}" role="search">
-      <label for="home-code">{% translate "or type the barcode" %}</label>
-      <div class="home-code-row">
-        <input id="home-code" name="code" inputmode="numeric" autocomplete="off" maxlength="32" placeholder="5000000000000" required>
-        <button type="submit" class="btn btn-outline" aria-label="{% translate 'Look up' %}">{% icon "arrow-right" 20 %}</button>
-      </div>
-    </form>
+    <h1 id="hero-h" class="display">{% translate "Scan food." %}<br class="desktop-only"> {% translate "Keep track." %}</h1>
+    <p class="lead desktop-lead">{% translate "Scan a barcode, check the label against your allergies and log what you eat, with water and activity, in one calm daily view." %}</p>
+    <div class="home-actions">
+      <a class="btn btn-primary btn-cta" href="{% url 'start' %}" data-home-primary>{% icon "arrow-right" 20 %}<span>{% translate "Get started" %}</span></a>
+      <a class="btn btn-outline btn-cta-secondary" href="{% url 'scan' %}">{% icon "scan-barcode" 20 %}<span>{% translate "Scan a barcode" %}</span></a>
+    </div>
+    <p class="caption">{% translate "No account needed. Your diary stays in this browser." %}</p>
   </div>
-  <img class="home-img" src="{% asset 'img/hero' %}" alt="" width="1220" height="608">
+  <div class="home-visual" data-showcase aria-roledescription="carousel" aria-label="{% translate 'Example products' %}">
+    <div class="showcase-track">
+      <img class="showcase-img is-active" src="{% asset 'img/home/chickpea' %}" alt="{% translate 'A pouch of roasted chickpea snacks with a bowl of chickpeas' %}" width="1000" height="1000"
+           data-name="{% translate 'Roasted Chickpea Snacks' %}" data-meta="{% translate 'Snacks · 30 g · scanned' %}" data-meal="snacks"
+           data-kcal="125" data-protein="6.2" data-carbs="15.1" data-fat="3.9" data-water="1.25" data-activity="35">
+      <img class="showcase-img" src="{% asset 'img/home/apple-drink' %}" alt="{% translate 'A can of sparkling apple drink with a slice of green apple' %}" width="1000" height="1000" loading="lazy"
+           data-name="{% translate 'Sparkling Apple Drink' %}" data-meta="{% translate 'Lunch · 330 ml · scanned' %}" data-meal="lunch"
+           data-kcal="139" data-protein="0" data-carbs="34.3" data-fat="0" data-water="1.5" data-activity="42">
+      <img class="showcase-img" src="{% asset 'img/home/greek-yoghurt' %}" alt="{% translate 'A tub of Greek yoghurt with blueberries' %}" width="1000" height="1000" loading="lazy"
+           data-name="{% translate 'Greek Yoghurt' %}" data-meta="{% translate 'Breakfast · 150 g · scanned' %}" data-meal="breakfast"
+           data-kcal="146" data-protein="8.6" data-carbs="6" data-fat="9.8" data-water="0.75" data-activity="20">
+    </div>
+    <figure class="diary-preview-card" aria-label="{% translate 'Example of a day in the diary' %}">
+      <div class="dp-row">
+        <span class="dp-icon"><span data-meal-icon="snacks">{% icon "cookie" 18 %}</span><span data-meal-icon="lunch" hidden>{% icon "sandwich" 18 %}</span><span data-meal-icon="breakfast" hidden>{% icon "coffee" 18 %}</span></span>
+        <span class="dp-text"><strong data-sc="name">{% translate "Roasted Chickpea Snacks" %}</strong><small data-sc="meta">{% translate "Snacks · 30 g · scanned" %}</small></span>
+        <span class="dp-kcal"><span class="roll" data-sc="kcal">125</span> kcal</span>
+      </div>
+      <dl class="dp-macros">
+        <div><dt>{% translate "Protein" %}</dt><dd><span class="roll" data-sc="protein">6.2</span> g</dd></div>
+        <div><dt>{% translate "Carbs" %}</dt><dd><span class="roll" data-sc="carbs">15.1</span> g</dd></div>
+        <div><dt>{% translate "Fat" %}</dt><dd><span class="roll" data-sc="fat">3.9</span> g</dd></div>
+      </dl>
+      <div class="dp-row dp-split">
+        <span>{% icon "glass-water" 18 %} {% translate "Water" %} <strong><span class="roll" data-sc="water">1.25</span> l</strong></span>
+        <span>{% icon "activity" 18 %} {% translate "Activity" %} <strong><span class="roll" data-sc="activity">35</span> min</strong></span>
+      </div>
+    </figure>
+    <div class="showcase-dots" role="group" aria-label="{% translate 'Choose an example' %}" data-showcase-dots>
+      <button type="button" aria-label="{% translate 'Example 1: Roasted Chickpea Snacks' %}" aria-pressed="true"></button>
+      <button type="button" aria-label="{% translate 'Example 2: Sparkling Apple Drink' %}" aria-pressed="false"></button>
+      <button type="button" aria-label="{% translate 'Example 3: Greek Yoghurt' %}" aria-pressed="false"></button>
+    </div>
+  </div>
+</section>
+
+<section class="how" aria-labelledby="how-h">
+  <p class="features-kicker">{% translate "How it works" %}</p>
+  <h2 id="how-h" class="features-title">{% translate "From barcode to diary in three steps." %}</h2>
+  <ol class="steps">
+    <li class="step"><div class="phone"><img src="{% static 'img/home/screens/scan.webp' %}" alt="{% translate 'FoodoTrack scanner, opened from the lunch section of the diary' %}" width="780" height="1688" loading="lazy"></div>
+      <h3><span class="step-num">1</span>{% translate "Scan the barcode" %}</h3>
+      <p>{% translate "Use the camera or type the number. The product comes from Open Food Facts." %}</p></li>
+    <li class="step"><div class="phone"><img src="{% static 'img/home/screens/amount.webp' %}" alt="{% translate 'Choosing a portion of rice cakes, with energy, protein, carbs and fat worked out' %}" width="780" height="1688" loading="lazy"></div>
+      <h3><span class="step-num">2</span>{% translate "Say how much" %}</h3>
+      <p>{% translate "Pick a declared portion or type grams or millilitres. You see the values before you add." %}</p></li>
+    <li class="step"><div class="phone"><img src="{% static 'img/home/screens/today.webp' %}" alt="{% translate 'The Today screen with the daily summary and the food diary' %}" width="780" height="1688" loading="lazy"></div>
+      <h3><span class="step-num">3</span>{% translate "See your day" %}</h3>
+      <p>{% translate "Energy, protein, carbs and fat add up as you go, meal by meal." %}</p></li>
+  </ol>
+</section>
+
+<section class="story" aria-labelledby="story-allergy-h">
+  <div class="phone"><img src="{% static 'img/home/screens/allergy.webp' %}" alt="{% translate 'A product checked against a lactose intolerance and a peanut allergy' %}" width="780" height="1688" loading="lazy"></div>
+  <div class="story-text">
+    <p class="features-kicker">{% translate "Diets and allergies" %}</p>
+    <h2 id="story-allergy-h">{% translate "Every label, checked against you." %}</h2>
+    <p>{% translate "Tell FoodoTrack your diet and allergies once. Each product then shows what the source says about them." %}</p>
+    <ul class="ticks">
+      <li>{% translate "Contains, may contain, or cannot be confirmed" %}</li>
+      <li>{% translate "Lactose intolerance and a milk allergy are kept apart" %}</li>
+      <li>{% translate "Never called “safe”: the physical label stays the reference" %}</li>
+    </ul>
+  </div>
+</section>
+
+<section class="story story-reverse" aria-labelledby="story-progress-h">
+  <div class="phone"><img src="{% static 'img/home/screens/progress.webp' %}" alt="{% translate 'Seven-day trends for energy and protein, with one day without entries' %}" width="780" height="1688" loading="lazy"></div>
+  <div class="story-text">
+    <p class="features-kicker">{% translate "Progress" %}</p>
+    <h2 id="story-progress-h">{% translate "Consistency, not pressure." %}</h2>
+    <p>{% translate "Seven- and thirty-day trends for what you eat, drink and move. A day you skip is simply “no entries”, never a zero." %}</p>
+    <ul class="ticks">
+      <li>{% translate "Water in one tap, activity in minutes" %}</li>
+      <li>{% translate "Targets only if you set them" %}</li>
+      <li>{% translate "Weight tracking only if you switch it on" %}</li>
+    </ul>
+  </div>
+</section>
+
+<section class="home-more" aria-label="{% translate 'More in FoodoTrack' %}">
+  <ul class="mini-list">
+    <li><span class="feature-icon">{% icon "heart" 40 %}</span><h3>{% translate "Favourites and lists" %}</h3><p>{% translate "Keep the products you like, buy often or avoid." %}</p></li>
+    <li><span class="feature-icon">{% icon "notebook-pen" 40 %}</span><h3>{% translate "Notes" %}</h3><p>{% translate "A word on taste or why you avoid something, next to the product." %}</p></li>
+    <li><span class="feature-icon">{% icon "sparkles" 40 %}</span><h3>{% translate "Ask Foodo" %}</h3><p>{% translate "Quick answers from the label and your own lists." %}</p></li>
+  </ul>
+</section>
+
+<section class="closing" aria-labelledby="closing-h">
+  <h2 id="closing-h">{% translate "Private by default." %}</h2>
+  <p>{% translate "No account, no sign-up. Your diary, notes and preferences stay in this browser, and you can delete them at any time." %}</p>
+  <a class="btn btn-primary btn-cta" href="{% url 'start' %}">{% icon "arrow-right" 20 %}<span>{% translate "Get started" %}</span></a>
 </section>
 {% endblock %}

@@ -1,36 +1,32 @@
 {% extends "base.html" %}
 {% load i18n ui static %}
-{% block title %}{% translate "My Ola" %}{% endblock %}
+{% block title %}{% translate "My Track" %}{% endblock %}
 {% block head %}<script type="module" src="{% static 'js/ola/myola.js' %}"></script>{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h1>{% translate "My Ola" %}</h1>
-  <button type="button" class="btn btn-primary btn-small js-only" data-chat-open="personal">{% icon "sparkles" 18 %}<span>{% translate "Ask Ola" %}</span></button>
+  <h1>{% translate "My Track" %}</h1>
+  <button type="button" class="btn btn-primary btn-small js-only" data-chat-open="personal">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo" %}</span></button>
 </div>
 <p class="notice notice-ok">{% icon "info" 18 %}<span>{% translate "Stored on this device: no account and no sync between devices. Clearing your browser data removes it." %}</span></p>
 <p class="notice notice-warn" data-storage-error hidden>{% icon "triangle-alert" 18 %}<span>{% translate "Your browser does not allow local storage, so nothing here can be kept after you leave the page." %}</span></p>
-<p class="notice notice-warn js-hide">{% icon "triangle-alert" 18 %}<span>{% translate "My Ola needs JavaScript: everything is stored in this browser." %}</span></p>
+<p class="notice notice-warn js-hide">{% icon "triangle-alert" 18 %}<span>{% translate "My Track needs JavaScript: everything is stored in this browser." %}</span></p>
 
-<div class="segmented seg-4" role="tablist" aria-label="{% translate 'My Ola sections' %}" data-myola-tabs>
+<div class="segmented seg-5" role="tablist" aria-label="{% translate 'My Track sections' %}" data-myola-tabs>
   <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true" data-tab="overview">{% translate "Overview" %}</button>
+  <button type="button" role="tab" id="tab-profile" aria-controls="panel-profile" aria-selected="false" tabindex="-1" data-tab="profile">{% translate "Profile" %}</button>
   <button type="button" role="tab" id="tab-notes" aria-controls="panel-notes" aria-selected="false" tabindex="-1" data-tab="notes">{% translate "Notes" %}</button>
-  <button type="button" role="tab" id="tab-activity" aria-controls="panel-activity" aria-selected="false" tabindex="-1" data-tab="activity">{% translate "Activity" %}</button>
-  <button type="button" role="tab" id="tab-preferences" aria-controls="panel-preferences" aria-selected="false" tabindex="-1" data-tab="preferences">{% translate "Preferences" %}</button>
+  <button type="button" role="tab" id="tab-saved" aria-controls="panel-saved" aria-selected="false" tabindex="-1" data-tab="saved">{% translate "Saved" %}</button>
+  <button type="button" role="tab" id="tab-account" aria-controls="panel-account" aria-selected="false" tabindex="-1" data-tab="account">{% translate "Account" %}</button>
 </div>
 
 {# ---------- Overview ---------- #}
 <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="myola-grid">
   <div class="card">
-    <div class="section-head"><h2>{% translate "Your preferences" %}</h2><button type="button" class="btn btn-link" data-goto="preferences">{% translate "Edit" %}</button></div>
+    <div class="section-head"><h2>{% translate "Your profile" %}</h2><button type="button" class="btn btn-link" data-goto="profile">{% translate "Edit" %}</button></div>
     <div data-ov-prefs></div>
   </div>
   <div class="card">
-    <h2>{% translate "Ask Ola" %}</h2>
-    <p class="caption">{% translate "Questions about your preferences, saved products, scans, allowed notes and confirmed memories." %}</p>
-    <button type="button" class="btn btn-outline btn-block js-only" data-chat-open="personal">{% icon "message-circle" 18 %}<span>{% translate "Start a conversation" %}</span></button>
-  </div>
-  <div class="card">
-    <div class="section-head"><h2>{% translate "Recent scans" %}</h2><button type="button" class="btn btn-link" data-goto="activity">{% translate "All activity" %}</button></div>
+    <div class="section-head"><h2>{% translate "Recent scans" %}</h2><button type="button" class="btn btn-link" data-goto="saved">{% translate "All" %}</button></div>
     <p class="caption" data-ov-observation></p>
     <ul class="product-list compact" data-ov-scans></ul>
   </div>
@@ -77,8 +73,8 @@
   <p class="empty" data-notes-empty hidden></p>
 </section>
 
-{# ---------- Activity ---------- #}
-<section id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden>
+{# ---------- Saved: scans and lists ---------- #}
+<section id="panel-saved" role="tabpanel" aria-labelledby="tab-saved" hidden>
   <p class="caption">{% translate "Scans come from the scanner or the code entry; opening a product page is not a scan." %}</p>
   <div class="card">
     <div class="section-head"><h2>{% icon "history" 20 %} {% translate "Scan history" %}</h2><button type="button" class="btn btn-link" data-clear-scans>{% translate "Clear" %}</button></div>
@@ -103,20 +99,60 @@
   <p class="caption"><a href="{% url 'saved' %}">{% translate "Recently viewed products and the previous Saved page" %}</a></p>
 </section>
 
-{# ---------- Preferences ---------- #}
-<section id="panel-preferences" role="tabpanel" aria-labelledby="tab-preferences" hidden>
+{# ---------- Profile ---------- #}
+<section id="panel-profile" role="tabpanel" aria-labelledby="tab-profile" class="profile-panel" hidden>
+  <form class="card stack" data-profile-form data-no-busy novalidate>
+    <h2>{% translate "Your goal" %}</h2>
+    <fieldset class="option-list compact">
+      <legend class="sr-only">{% translate "Your goal" %}</legend>
+      {% for g in picker.goals %}<label class="option"><input type="radio" name="goal" value="{{ g.key }}"><span class="option-icon">{% icon g.icon 20 %}</span><span>{{ g.label }}</span></label>{% endfor %}
+    </fieldset>
+    <h2>{% translate "About you" %}</h2>
+    <fieldset class="ob-field">
+      <legend>{% translate "Gender" %}</legend>
+      <div class="chip-row">{% for g in picker.genders %}<label class="chip-radio"><input type="radio" name="gender" value="{{ g.key }}"><span>{{ g.label }}</span></label>{% endfor %}</div>
+    </fieldset>
+    <div class="grid-3">
+      <div><label for="mo-age">{% translate "Age" %}</label><div class="unit-input"><input id="mo-age" name="age" type="number" inputmode="numeric" min="13" max="120" placeholder="48"><span>{% translate "years" %}</span></div></div>
+      <div><label for="mo-height">{% translate "Height" %}</label><div class="unit-input"><input id="mo-height" name="height" type="number" inputmode="decimal" min="100" max="250" step="any" placeholder="180"><span>cm</span></div></div>
+      <div><label for="mo-weight">{% translate "Weight" %}</label><div class="unit-input"><input id="mo-weight" name="weight" type="number" inputmode="decimal" min="25" max="400" step="any" placeholder="100"><span>kg</span></div></div>
+    </div>
+    <p class="field-error" data-profile-error hidden>{% translate "Check the highlighted value: age 13–120, height 100–250 cm, weight 25–400 kg, or leave it empty." %}</p>
+    <div class="row"><button type="submit" class="btn btn-primary">{% translate "Save" %}</button><a class="btn btn-link" href="{% url 'start' %}">{% translate "Go through the questions again" %}</a></div>
+  </form>
   <div class="card">
-    <h2>{% translate "What matters most to you?" %}</h2>
-    {% include "partials/pref_picker.html" %}
-    <button type="button" class="btn btn-link" data-reset-onboarding>{% translate "Show the welcome questions again on product pages" %}</button>
+    <h2>{% translate "Restrictions and allergies" %}</h2>
+    {% include "partials/restrictions_picker.html" with prefix="mo" %}
   </div>
   <div class="card">
-    <h2>{% icon "sparkles" 20 %} {% translate "Ola remembers" %}</h2>
-    <p class="caption">{% translate "Only confirmed, active memories are used in Ola's replies. Suggestions do nothing until you confirm them." %}</p>
+    <h2>{% translate "Health conditions" %}</h2>
+    <p class="caption">{% translate "Kept on this device only. Never used for diagnoses, plans or advice." %}</p>
+    <div class="chip-row" role="group" aria-label="{% translate 'Health conditions' %}">{% for c in picker.conditions %}<button type="button" class="chip-btn" aria-pressed="false" data-condition="{{ c.key }}">{{ c.label }}</button>{% endfor %}</div>
+    <button type="button" class="btn btn-link btn-danger-link" data-clear-health>{% icon "trash-2" 16 %}<span>{% translate "Delete health information" %}</span></button>
+  </div>
+  <form class="card stack" data-targets-form data-no-busy novalidate>
+    <h2>{% translate "Daily targets" %}</h2>
+    <p class="caption">{% translate "Optional and set by you. Without a target, Today shows totals only." %}</p>
+    <div class="grid-2">
+      <div data-target-energy><label for="t-kcal">{% translate "Energy" %}</label><div class="unit-input"><input id="t-kcal" name="energy-kcal" type="number" inputmode="numeric" min="1" max="10000"><span>kcal</span></div></div>
+      <div><label for="t-protein">{% translate "Protein" %}</label><div class="unit-input"><input id="t-protein" name="proteins" type="number" inputmode="numeric" min="1" max="1000"><span>g</span></div></div>
+      <div><label for="t-carbs">{% translate "Carbs" %}</label><div class="unit-input"><input id="t-carbs" name="carbohydrates" type="number" inputmode="numeric" min="1" max="2000"><span>g</span></div></div>
+      <div><label for="t-fat">{% translate "Fat" %}</label><div class="unit-input"><input id="t-fat" name="fat" type="number" inputmode="numeric" min="1" max="1000"><span>g</span></div></div>
+    </div>
+    <div class="row"><button type="submit" class="btn btn-outline">{% translate "Save targets" %}</button><button type="button" class="btn btn-link" data-targets-clear>{% translate "Clear targets" %}</button></div>
+  </form>
+  <div class="card">
+    <h2>{% translate "Display" %}</h2>
+    <label class="check"><input type="checkbox" data-show-energy> <span>{% translate "Show calories" %}</span></label>
+    <label class="check"><input type="checkbox" data-track-weight> <span>{% translate "Track my weight in Progress" %}</span></label>
+  </div>
+  <div class="card">
+    <h2>{% icon "sparkles" 20 %} {% translate "Foodo remembers" %}</h2>
+    <p class="caption">{% translate "Only confirmed, active memories are used in Foodo's replies. Suggestions do nothing until you confirm them." %}</p>
     <ul class="memory-list" data-memories></ul>
     <p class="empty" data-memories-empty hidden>{% translate "Nothing remembered yet." %}</p>
     <form class="row memory-add" data-memory-form data-no-busy>
-      <label for="mo-memory" class="sr-only">{% translate "Something Ola should remember" %}</label>
+      <label for="mo-memory" class="sr-only">{% translate "Something Foodo should remember" %}</label>
       <input id="mo-memory" name="text" maxlength="300" placeholder="{% translate 'e.g. I prefer plain yogurts' %}" required>
       <button type="submit" class="btn btn-outline btn-small">{% icon "plus" 18 %}<span>{% translate "Add" %}</span></button>
     </form>
@@ -127,13 +163,40 @@
   </div>
   <div class="card">
     <h2>{% translate "Notes in replies" %}</h2>
-    <label class="check"><input type="checkbox" data-use-notes> <span>{% translate "Use my Notes to personalise Ola’s replies" %}</span></label>
-    <p class="caption">{% translate "Off by default. When on, Ola uses only the notes relevant to the current conversation (the same product, or matching words)." %}</p>
+    <label class="check"><input type="checkbox" data-use-notes> <span>{% translate "Use my Notes to personalise Foodo’s replies" %}</span></label>
+    <p class="caption">{% translate "Off by default. When on, Foodo uses only the notes relevant to the current conversation (the same product, or matching words)." %}</p>
   </div>
   <div class="card">
     <h2>{% translate "Conversation history" %}</h2>
     <p class="caption">{% translate "Past conversations can contain text that was already shown, including what came from notes or memories you later deleted. Deleting a memory does not change old messages; delete the history to remove them." %}</p>
     <button type="button" class="btn btn-outline" data-clear-chats>{% icon "trash-2" 18 %}<span>{% translate "Delete chat history" %}</span></button>
+  </div>
+  <div class="card">
+    <h2>{% translate "Your data" %}</h2>
+    <p class="caption">{% translate "Everything here – profile, diary, water, activity, weight, lists, notes and chats – is stored in this browser only." %}</p>
+    <button type="button" class="btn btn-danger" data-clear-all>{% icon "trash-2" 18 %}<span>{% translate "Delete all my data on this device" %}</span></button>
+  </div>
+</section>
+
+{# ---------- Account (accounts arrive later: nothing here is collected or saved) ---------- #}
+<section id="panel-account" role="tabpanel" aria-labelledby="tab-account" hidden>
+  <p class="notice">{% icon "info" 18 %}<span>{% translate "Accounts are coming soon. Until then FoodoTrack works without one and nothing on this tab is collected or saved." %}</span></p>
+  <form class="card stack account-form" aria-describedby="account-soon" novalidate>
+    <h2>{% translate "Your details" %}</h2>
+    <p class="caption" id="account-soon">{% translate "Available once accounts are switched on." %}</p>
+    <div><label for="acc-name">{% translate "Name" %}</label><input id="acc-name" type="text" autocomplete="off" disabled placeholder="{% translate 'Your name' %}"></div>
+    <div><label for="acc-email">{% translate "Email" %}</label><input id="acc-email" type="email" autocomplete="off" disabled placeholder="name@example.com"></div>
+    <button type="button" class="btn btn-outline" disabled>{% translate "Save details" %}</button>
+  </form>
+  <div class="card stack">
+    <h2>{% translate "Password" %}</h2>
+    <p class="caption">{% translate "You will be able to change your password here." %}</p>
+    <button type="button" class="btn btn-outline" disabled>{% icon "settings" 18 %}<span>{% translate "Change password" %}</span></button>
+  </div>
+  <div class="card stack">
+    <h2>{% translate "Subscription" %}</h2>
+    <p class="caption">{% translate "No subscription. FoodoTrack is free to use." %}</p>
+    <button type="button" class="btn btn-outline" disabled>{% translate "Manage subscription" %}</button>
   </div>
 </section>
 

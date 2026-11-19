@@ -40,6 +40,8 @@
     </ul>
     {% endif %}
     {% if restricted %}<p class="note note-warn">{% icon "triangle-alert" 16 %}<span>{% translate "Store code: may differ between shops." %}</span></p>{% endif %}
+    <button type="button" class="btn btn-primary btn-block add-diary js-only" data-diary-open>{% icon "plus" 20 %}<span>{% translate "Add to diary" %}</span></button>
+    <p class="notice notice-ok diary-done" data-diary-done hidden role="status">{% icon "check" 18 %}<span><span data-diary-done-text></span> <a href="{% url 'today' %}">{% translate "Open Today" %}</a></span></p>
     <div class="action-bar" role="group" aria-label="{% translate 'Product actions' %}">
       <button type="button" class="btn btn-outline btn-small" data-fav aria-pressed="false">{% icon "heart" 18 %}<span>{% translate "Favourite" %}</span></button>
       <button type="button" class="btn btn-outline btn-small" data-compare-toggle aria-pressed="false"
@@ -53,6 +55,7 @@
         </div>
       </div>
     </div>
+    <a class="compare-open" href="{% url 'compare' %}" data-compare-open hidden>{% icon "git-compare-arrows" 18 %}<span>{% translate "Open comparison" %} (<span data-compare-n></span>)</span></a>
     {% if scanned %}
       <form method="post" action="{% url 'contribution-start' %}" class="not-mine">
         {% csrf_token %}
@@ -64,20 +67,18 @@
     {% endif %}
   </section>
 
-  {# 2. For you: restriction states for the chosen preferences, and Ask Ola #}
+  {# 2. For you: restriction states for the chosen preferences, and Ask Foodo #}
   <section class="card ola-card" aria-labelledby="score-h">
     <h2 id="score-h">{% translate "For you" %}</h2>
     <div class="ola-restrictions" data-ola-restrictions aria-live="polite"></div>
     <p class="ola-prefs-line js-only"><span data-ola-prefs></span> <button type="button" class="link-btn" data-prefs-edit aria-expanded="false" aria-controls="prefs-panel">{% translate "Change" %}</button></p>
     <div class="prefs-panel" id="prefs-panel" data-prefs-panel hidden>
-      <p class="hint" data-onboarding hidden><strong>{% translate "What matters most to you?" %}</strong> {% translate "Optional – you can skip it." %}</p>
-      {% include "partials/pref_picker.html" %}
+      {% include "partials/restrictions_picker.html" with prefix="pp" %}
       <div class="row">
         <button type="button" class="btn btn-primary btn-small" data-onboarding-done>{% translate "Done" %}</button>
-        <button type="button" class="btn btn-link" data-onboarding-done data-onboarding-skip hidden>{% translate "Skip" %}</button>
       </div>
     </div>
-    <button type="button" class="btn btn-outline btn-block js-only ask-ola" data-chat-open="product">{% icon "sparkles" 18 %}<span>{% translate "Ask Ola about this product" %}</span></button>
+    <button type="button" class="btn btn-outline btn-block js-only ask-ola" data-chat-open="product">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo about this product" %}</span></button>
   </section>
 
   {# 4. Nutrients at a glance: value first, explanation on tap #}
@@ -262,4 +263,5 @@
 </article>
 {% include "partials/chat.html" %}
 {% include "partials/note_dialog.html" with name=data.name %}
+{% include "partials/diary_dialog.html" with name=data.name %}
 {% endblock %}

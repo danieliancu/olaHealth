@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <!-- Fallback illustration; replace with apple-drink.webp / .png / .jpg next to this file. -->
+  <ellipse cx="500" cy="860" rx="260" ry="34" fill="#e6dccf"/>
+  <rect x="330" y="230" width="340" height="620" rx="48" fill="#1f5130"/>
+  <rect x="330" y="560" width="340" height="290" rx="48" fill="#a7d34a" opacity=".85"/>
+  <text x="500" y="420" font-family="Georgia, serif" font-size="58" fill="#fffaf2" text-anchor="middle">Sparkling</text>
+  <text x="500" y="490" font-family="Georgia, serif" font-size="58" fill="#fffaf2" text-anchor="middle">Apple</text>
+</svg>

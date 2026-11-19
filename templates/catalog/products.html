@@ -5,8 +5,10 @@
 {% block content %}
 <h1>{% translate "Products" %}</h1>
 
+{% include "partials/diary_banner.html" %}
 <form method="get" class="filters" role="search" aria-label="{% translate 'Search the catalogue' %}" data-autosubmit>
-  <div class="search-box" data-suggest data-suggest-url="{% url 'api-suggest' %}">
+  {% if diary %}<input type="hidden" name="add" value="{{ diary.add }}"><input type="hidden" name="date" value="{{ diary.date }}">{% endif %}
+  <div class="search-box" data-suggest data-suggest-url="{% url 'api-suggest' %}"{% if diary_query %} data-diary-query="{{ diary_query }}"{% endif %}>
     {% icon "search" 20 %}
     <label for="{{ form.q.id_for_label }}" class="sr-only">{% translate "Search name or brand" %}</label>
     <input type="search" name="q" id="{{ form.q.id_for_label }}" value="{{ form.q.value|default:'' }}" placeholder="{% translate 'Search name or brand' %}" maxlength="100"
@@ -14,7 +16,7 @@
     <ul id="suggest-list" class="suggest" role="listbox" aria-label="{% translate 'Suggestions' %}" hidden></ul>
     <p class="sr-only" aria-live="polite" data-suggest-status></p>
   </div>
-  <p class="caption">{% translate "Products in the olaHealth catalogue" %}<span class="sr-only"> – {% translate "only products already scanned or added here" %}</span></p>
+  <p class="caption">{% translate "Products in the FoodoTrack catalogue" %}<span class="sr-only"> – {% translate "only products already scanned or added here" %}</span></p>
   <div class="pills">
     {% translate "Category" as l_cat %}{% translate "Country" as l_country %}{% translate "Completeness" as l_comp %}
     {% include "partials/facet_select.html" with name="category" label=l_cat options=facets.category value=form.category.value %}
@@ -35,13 +37,14 @@
   <p class="notice notice-warn">{% icon "triangle-alert" 18 %}<span>{% translate "Nutri-Score grades here come from different algorithm versions (2021 and 2023). They are listed by letter but are not directly comparable." %}</span></p>
 {% endif %}
 
+<a class="compare-open" href="{% url 'compare' %}" data-compare-open hidden>{% icon "git-compare-arrows" 18 %}<span>{% translate "Open comparison" %} (<span data-compare-n></span>)</span></a>
 <p class="caption" role="status" data-product-count data-total="{{ page.paginator.count }}">{% blocktranslate count counter=page.paginator.count %}{{ counter }} product{% plural %}{{ counter }} products{% endblocktranslate %}</p>
 <ul class="product-list">
   {% for p in page.object_list %}
   <li class="product-card">
     {% if p.front_image_url %}<img class="thumb" src="{{ p.front_image_url|img }}" alt="" width="64" height="64" loading="lazy">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="64" height="64">{% endif %}
     <div class="grow">
-      <a href="{% url 'product' p.pk %}" class="product-link">{{ p.name|default:_("Unnamed product") }}</a>
+      <a href="{% if diary %}{{ p.diary_url }}{% else %}{% url 'product' p.pk %}{% endif %}" class="product-link">{{ p.name|default:_("Unnamed product") }}</a>
       <p class="meta">{% if p.brand %}{{ p.brand }}{% endif %}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</p>
       <p class="scores">
         {% if p.nutriscore_grade %}<span class="grade grade-sm grade-{{ p.nutriscore_grade }}" title="Nutri-Score {{ p.nutriscore_grade|upper }}{% if p.nutriscore_version %} ({{ p.nutriscore_version }}){% endif %}"><span class="sr-only">Nutri-Score </span>{{ p.nutriscore_grade|upper }}</span>{% endif %}

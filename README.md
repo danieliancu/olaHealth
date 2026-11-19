@@ -48,15 +48,18 @@ Put a TLS-terminating reverse proxy in front of `web:8000` (it must set
 `private_media` volume and are only served through authorised views. Nothing is deployed
 by this repository.
 
-## MVP: preferences and My Ola
+## MVP: onboarding, food diary and progress
 
-* The home page goes straight to scanning (or typing a barcode); products come from Open Food
-  Facts and approved local corrections.
-* Each product page has a short “For you” card: the values that match your goals and the
-  diet/allergen states from the source (never “safe”), plus Ask Ola.
-* `/my-ola/` (Overview, Notes, Activity, Preferences) stores everything in this browser only
-  (`olahealth:myola`); `/saved/` stays as the previous route. Rules live in `myola/` (no tables).
-* Data contracts, and what is left for V2 (score, alternatives): `docs/mvp-api-contracts.md`.
+* `/` → **Get started** (`/start/`): four short steps (goal, about you, restrictions and
+  allergies, health conditions), then **Today** (`/today/`).
+* **Today**: daily summary, food diary (breakfast, lunch, dinner, snacks), water and activity.
+  Scan a barcode (Open Food Facts lookup), check the label, then **Add to diary** with the meal
+  and the amount, with a preview before saving.
+* **Progress** (`/progress/`): 7- and 30-day trends; optional weight.
+* **My Track** (`/my-ola/`): profile and settings, scans and lists, Notes, Ask Foodo, and deleting
+  your data. Search and comparison are in the header.
+* No account: everything personal stays in this browser (`olahealth:myola`). Data contracts are
+  in `docs/mvp-api-contracts.md`.
 
 ## Admin and roles
 

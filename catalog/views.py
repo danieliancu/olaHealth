@@ -23,6 +23,7 @@ from catalog.services.search import SearchParams, facets, search_products, tag_n
 from core.barcodes import decode_product_barcodes
 from core.coordination import check_request_limit
 from core.images import ImageRejected, validate_and_reencode
+from myola import diary_target
 from myola.page import facts_from_product, ola_payload
 from myola.preferences import picker_context
 
@@ -59,13 +60,27 @@ def scan(request: HttpRequest) -> HttpResponse:
         {
             "form": LookupForm(),
             "photo_form": ScanPhotoForm(),
+            **_diary_context(diary_target.from_params(request.GET)),
         },
     )
+
+
+def _diary_context(target) -> dict:
+    """Context for the “add to diary” mode (Food diary → scan or search → how much?)."""
+    if not target:
+        return {}
+    return {
+        "diary": target,
+        "diary_query": diary_target.query(target),
+        "diary_label": diary_target.LABELS.get(target["add"], _("your diary")),
+        "diary_back_url": diary_target.today_url(target),
+    }
 
 
 @require_GET
 def lookup_view(request: HttpRequest) -> HttpResponse:
     form = LookupForm(request.GET)
+    target = diary_target.from_params(request.GET)
     if not form.is_valid():
         return render(
             request,
@@ -73,6 +88,7 @@ def lookup_view(request: HttpRequest) -> HttpResponse:
             {
                 "form": form,
                 "photo_form": ScanPhotoForm(),
+                **_diary_context(target),
             },
             status=400,
         )
@@ -96,6 +112,8 @@ def lookup_view(request: HttpRequest) -> HttpResponse:
         allow_bad_check=form.cleaned_data.get("allow_bad_check") or False,
     )
     if result.status == "found":
+        if target:
+            return redirect(diary_target.add_url(result.product.pk, target, code))
         url = reverse("product", args=[result.product.pk])
         return redirect(f"{url}?{urlencode({'scanned': code})}")
     context = {
@@ -118,7 +136,8 @@ def lookup_view(request: HttpRequest) -> HttpResponse:
 @require_POST
 def scan_photo(request: HttpRequest) -> HttpResponse:
     form = ScanPhotoForm(request.POST, request.FILES)
-    ctx = {"form": LookupForm()}
+    target = diary_target.from_params(request.POST)
+    ctx = {"form": LookupForm(), **_diary_context(target)}
     if not form.is_valid():
         return render(request, "catalog/scan.html", {**ctx, "photo_form": form}, status=400)
     decision = check_request_limit(request, "scan_photo")
@@ -135,9 +154,8 @@ def scan_photo(request: HttpRequest) -> HttpResponse:
     finally:
         form.cleaned_data["photo"].close()
     if len(found) == 1:
-        return redirect(
-            f"{reverse('lookup')}?{urlencode({'code': found[0].text, 'format': found[0].format})}"
-        )
+        params = {"code": found[0].text, "format": found[0].format, **(target or {})}
+        return redirect(f"{reverse('lookup')}?{urlencode(params)}")
     if not found:
         form.add_error(
             "photo",
@@ -147,7 +165,7 @@ def scan_photo(request: HttpRequest) -> HttpResponse:
             ),
         )
         return render(request, "catalog/scan.html", {**ctx, "photo_form": form}, status=422)
-    return render(request, "catalog/photo_choices.html", {"codes": found})
+    return render(request, "catalog/photo_choices.html", {"codes": found, **_diary_context(target)})
 
 
 @require_GET
@@ -237,6 +255,10 @@ def product_list(request: HttpRequest) -> HttpResponse:
     page = paginator.get_page(request.GET.get("page"))
     query = request.GET.copy()
     query.pop("page", None)
+    target = diary_target.from_params(request.GET)
+    if target:
+        for p in page.object_list:
+            p.diary_url = diary_target.add_url(p.pk, target)
     mixed_versions = (
         params.sort == "nutriscore"
         and len({p.nutriscore_version for p in page.object_list if p.nutriscore_grade}) > 1
@@ -250,6 +272,7 @@ def product_list(request: HttpRequest) -> HttpResponse:
             "query": query.urlencode(),
             "mixed_versions": mixed_versions,
             "facets": facets(params),
+            **_diary_context(target),
         },
     )
 

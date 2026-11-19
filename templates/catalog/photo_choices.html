@@ -7,7 +7,7 @@
   <p>{% translate "Choose the one printed on the product:" %}</p>
   <ul class="plain-list">
     {% for c in codes %}
-      <li><a class="btn" href="{% url 'lookup' %}?code={{ c.text|urlencode }}&amp;format={{ c.format }}">{{ c.text }} <span class="hint">({{ c.format }})</span></a></li>
+      <li><a class="btn" href="{% url 'lookup' %}?code={{ c.text|urlencode }}&amp;format={{ c.format }}{% if diary_query %}&amp;{{ diary_query }}{% endif %}">{{ c.text }} <span class="hint">({{ c.format }})</span></a></li>
     {% endfor %}
   </ul>
 </section>

@@ -272,8 +272,13 @@ function init(root) {
     if (body.stale) info.append(el("p", "hint", `Saved data from ${(body.synced_at || "").slice(0, 10)}; a refresh was requested.`));
     if (body.code && body.code.kind === "restricted")
       info.append(el("p", "tag tag-warn", "Store-internal code: it may identify different products in different shops."));
-    const open = el("a", "btn btn-primary", "Open product");
-    open.href = `${p.url}?scanned=${encodeURIComponent(code)}`;
+    // From the Food diary: go straight to "how much?" (the full product page stays one tap away).
+    const diary = root.dataset.diaryQuery ? new URLSearchParams(root.dataset.diaryQuery) : null;
+    const open = el("a", "btn btn-primary", diary ? "Add to diary" : "Open product");
+    open.href = diary
+      ? `/today/add/${p.id}/?${new URLSearchParams({ meal: diary.get("add"), date: diary.get("date") || "", scanned: code })}`
+      : `${p.url}?scanned=${encodeURIComponent(code)}`;
+    if (diary) window.location.assign(open.href);
     open.classList.add("btn-block", "open-product");
     card.append(info, open);
     resultEl.replaceChildren(card);

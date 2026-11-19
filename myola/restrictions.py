@@ -36,6 +36,11 @@ PORK_WORDS = re.compile(
     r"\b(pork|ham|bacon|lard|gammon|prosciutto|pancetta|chorizo|salami|pepperoni)\b"
 )
 LACTOSE_WORD = re.compile(r"\blactose\b")
+# Meat (not fish or seafood), for the pescetarian diet.
+MEAT_WORDS = re.compile(
+    r"\b(pork|ham|bacon|lard|gammon|beef|veal|lamb|mutton|chicken|turkey|duck|goose|venison|"
+    r"gelatine|gelatin|chorizo|salami|pepperoni|sausage|meat)\b"
+)
 
 
 def _state(status: str, reason: str) -> dict[str, str]:
@@ -77,6 +82,13 @@ def diet_status(p: ProductFacts, diet: str) -> dict[str, str]:
                 COMPATIBLE, _("Vegetarian according to the source's ingredient analysis.")
             )
         return _state(UNKNOWN, _("Not confirmed as vegetarian by the source."))
+
+    if diet == "pescatarian":
+        if MEAT_WORDS.search(p.ingredients_text):
+            return _state(INCOMPATIBLE, _("The ingredient list mentions meat."))
+        if diet_status(p, "vegetarian")["status"] == COMPATIBLE:
+            return _state(COMPATIBLE, _("Vegetarian according to the source, so no meat."))
+        return _state(UNKNOWN, _("The source does not confirm that this product has no meat."))
 
     if diet == "gluten_free":
         if "en:gluten" in listed:

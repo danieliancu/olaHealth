@@ -1,17 +1,30 @@
-// My Ola: one local store for preferences, lists, scans, notes, memories and chats.
+// My Track: one local store for the profile, food diary, water, activity, weight, lists, scans,
+// notes, memories and chats.
 // Everything stays on this device (no account, no sync). Unavailable or corrupt storage is
 // handled: the page keeps working with an in-memory copy and says that nothing is kept.
 // Favourites keep their existing key (olahealth:favorites, see app.js), unchanged.
 
 export const KEY = "olahealth:myola";
 export const GOALS = ["lower_sugar", "more_protein"];
-export const DIETS = ["vegetarian", "vegan", "gluten_free", "lactose_free", "pork_free"];
+export const DIETS = ["vegetarian", "vegan", "pescatarian", "gluten_free", "lactose_free", "pork_free"];
+export const PROFILE_GOALS = ["lose_weight", "muscle_and_fat", "muscle_first", "eat_healthier"];
+export const GENDERS = ["male", "female", "non_binary", "prefer_not", "other"];
+export const RESTRICTIONS = ["vegan", "vegetarian", "pescatarian", "gluten_free", "lactose", "nuts", "seafood", "religious", "other", "none"];
+export const NUT_TYPES = ["en:peanuts", "en:nuts"];
+export const SEAFOOD_TYPES = ["en:fish", "en:crustaceans", "en:molluscs"];
+export const CONDITIONS = ["hypertension", "diabetes", "depression", "eating_disorder", "other", "none", "prefer_not"];
+export const MEALS = ["breakfast", "lunch", "dinner", "snacks"];
+export const ACTIVITY_TYPES = ["walking", "running", "gym", "cycling", "swimming", "other"];
+// Valid ranges for the optional "About you" answers (anything else is not saved).
+export const RANGES = { age: [13, 120], height: [100, 250], weight: [25, 400] };
 export const ALLERGENS = [
   "en:gluten", "en:crustaceans", "en:eggs", "en:fish", "en:peanuts", "en:soybeans", "en:milk",
   "en:nuts", "en:celery", "en:mustard", "en:sesame-seeds", "en:sulphur-dioxide-and-sulphites",
   "en:lupin", "en:molluscs",
 ];
-const LIMITS = { list: 300, scans: 100, notes: 300, memories: 100, messages: 60, chats: 30 };
+const LIMITS = { list: 300, scans: 100, notes: 300, memories: 100, messages: 60, chats: 30, diary: 3000, water: 3000, activity: 2000, weights: 1000 };
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const NUTRIENTS = ["energy-kcal", "proteins", "carbohydrates", "fat"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NOTE_KINDS = ["general", "taste", "prefer", "avoid"];
 
@@ -75,9 +88,71 @@ function empty() {
     notes: [],
     memories: [],
     chats: {},
-    settings: { useNotes: false },
+    settings: { useNotes: false, showEnergy: true, trackWeight: false, targets: {} },
     onboarded: false,
+    profile: { goal: null, gender: null, age: null, height: null, weight: null, restrictions: [], nutTypes: [], seafoodTypes: [], religiousNote: "", otherNote: "", conditions: [], conditionsNote: "" },
+    diary: [],
+    water: [],
+    activity: [],
+    weights: [],
   };
+}
+
+const inRange = (v, [lo, hi]) => {
+  const n = Number(v);
+  return v !== null && v !== undefined && v !== "" && Number.isFinite(n) && n >= lo && n <= hi ? Math.round(n * 10) / 10 : null;
+};
+const amount = (v, max) => {
+  const n = Number(v);
+  return v !== null && v !== "" && Number.isFinite(n) && n > 0 && n <= max ? Math.round(n * 10) / 10 : null;
+};
+
+function sanitizeProfile(p) {
+  p = p && typeof p === "object" ? p : {};
+  let restrictions = pick(p.restrictions, RESTRICTIONS);
+  if (restrictions.includes("none")) restrictions = ["none"];
+  let conditions = pick(p.conditions, CONDITIONS);
+  if (conditions.includes("prefer_not")) conditions = ["prefer_not"];
+  else if (conditions.includes("none")) conditions = ["none"];
+  return {
+    goal: PROFILE_GOALS.includes(p.goal) ? p.goal : null,
+    gender: GENDERS.includes(p.gender) ? p.gender : null,
+    age: inRange(p.age, RANGES.age),
+    height: inRange(p.height, RANGES.height),
+    weight: inRange(p.weight, RANGES.weight),
+    restrictions,
+    nutTypes: pick(p.nutTypes, NUT_TYPES),
+    seafoodTypes: pick(p.seafoodTypes, SEAFOOD_TYPES),
+    religiousNote: str(p.religiousNote, 300),
+    otherNote: str(p.otherNote, 300),
+    conditions,
+    conditionsNote: str(p.conditionsNote, 300),
+  };
+}
+
+/** Diets and allergens used by the product page, from the onboarding restrictions. */
+export function derivePrefs(profile) {
+  const diets = new Set();
+  const allergens = new Set();
+  const r = profile.restrictions;
+  if (r.includes("vegan")) diets.add("vegan");
+  if (r.includes("vegetarian")) diets.add("vegetarian");
+  if (r.includes("pescatarian")) diets.add("pescatarian");
+  if (r.includes("gluten_free")) diets.add("gluten_free");
+  if (r.includes("lactose")) diets.add("lactose_free");
+  if (r.includes("nuts")) (profile.nutTypes.length ? profile.nutTypes : NUT_TYPES).forEach((a) => allergens.add(a));
+  if (r.includes("seafood")) (profile.seafoodTypes.length ? profile.seafoodTypes : SEAFOOD_TYPES).forEach((a) => allergens.add(a));
+  // "Religious restriction" and "Other" are notes only: free text never creates a rule.
+  return { goals: [], diets: DIETS.filter((d) => diets.has(d)), allergens: ALLERGENS.filter((a) => allergens.has(a)) };
+}
+
+function per100(values) {
+  const out = {};
+  for (const k of NUTRIENTS) {
+    const v = values && values[k];
+    out[k] = v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v);
+  }
+  return out;
 }
 
 function sanitize(raw) {
@@ -126,8 +201,54 @@ function sanitize(raw) {
       .map((m) => ({ role: m.role, text: str(m.text, 2000), at: num(m.at) }))
       .slice(-LIMITS.messages);
   }
-  s.settings = { useNotes: Boolean(raw.settings && raw.settings.useNotes) };
+  const st = raw.settings || {};
+  const t = st.targets || {};
+  s.settings = {
+    useNotes: Boolean(st.useNotes),
+    showEnergy: st.showEnergy !== false,
+    showTargets: st.showTargets !== false,
+    trackWeight: Boolean(st.trackWeight),
+    targets: {
+      "energy-kcal": amount(t["energy-kcal"], 10000),
+      proteins: amount(t.proteins, 1000),
+      carbohydrates: amount(t.carbohydrates, 2000),
+      fat: amount(t.fat, 1000),
+    },
+  };
   s.onboarded = Boolean(raw.onboarded);
+  s.profile = sanitizeProfile(raw.profile);
+  // The product page reads diets and allergens derived from the profile.
+  s.prefs = raw.profile ? derivePrefs(s.profile) : s.prefs;
+  // Diary: the per-100 values used at the time are kept, so later catalogue updates never
+  // change the history.
+  s.diary = (Array.isArray(raw.diary) ? raw.diary : [])
+    .filter((d) => d && DATE.test(d.date) && MEALS.includes(d.meal) && amount(d.amount, 10000))
+    .map((d) => ({
+      id: str(d.id || newId(), 64),
+      date: d.date,
+      meal: d.meal,
+      product: productEntry(d.product),
+      name: str(d.name, 200),
+      amount: amount(d.amount, 10000),
+      unit: ["g", "ml"].includes(d.unit) ? d.unit : "g",
+      basisKnown: Boolean(d.basisKnown),
+      portion: str(d.portion, 80),
+      per100: per100(d.per100),
+      at: num(d.at) || Date.now(),
+    }))
+    .slice(-LIMITS.diary);
+  s.water = (Array.isArray(raw.water) ? raw.water : [])
+    .filter((w) => w && DATE.test(w.date) && amount(w.ml, 5000))
+    .map((w) => ({ id: str(w.id || newId(), 64), date: w.date, ml: amount(w.ml, 5000), at: num(w.at) || Date.now() }))
+    .slice(-LIMITS.water);
+  s.activity = (Array.isArray(raw.activity) ? raw.activity : [])
+    .filter((a) => a && DATE.test(a.date) && ACTIVITY_TYPES.includes(a.type) && amount(a.minutes, 1440))
+    .map((a) => ({ id: str(a.id || newId(), 64), date: a.date, type: a.type, minutes: amount(a.minutes, 1440), at: num(a.at) || Date.now() }))
+    .slice(-LIMITS.activity);
+  s.weights = (Array.isArray(raw.weights) ? raw.weights : [])
+    .filter((w) => w && DATE.test(w.date) && inRange(w.kg, RANGES.weight))
+    .map((w) => ({ id: str(w.id || newId(), 64), date: w.date, kg: inRange(w.kg, RANGES.weight) }))
+    .slice(-LIMITS.weights);
   return s;
 }
 
@@ -201,4 +322,49 @@ export function recordScan(entry, code) {
   return update((s) => {
     s.scans.unshift({ ...entry, scanId: newId(), code: str(code, 32), at: Date.now() });
   });
+}
+
+// ---------- Dates: the user's local calendar day ----------
+export function localDate(d = new Date()) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+export function shiftDate(iso, days) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return localDate(new Date(y, m - 1, d + days));
+}
+export function dateFrom(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// ---------- Diary maths: unknown stays unknown, totals say when they are partial ----------
+export const DIARY_NUTRIENTS = NUTRIENTS;
+export function entryValues(e) {
+  const out = {};
+  for (const k of NUTRIENTS) {
+    const v = e.per100[k];
+    out[k] = v === null || !e.basisKnown ? null : (v * e.amount) / 100;
+  }
+  return out;
+}
+export function dayTotals(state, date) {
+  const entries = state.diary.filter((e) => e.date === date);
+  const totals = {};
+  for (const k of NUTRIENTS) {
+    const vals = entries.map((e) => entryValues(e)[k]);
+    totals[k] = { value: vals.reduce((a, v) => a + (v || 0), 0), partial: vals.some((v) => v === null), count: entries.length };
+  }
+  return { entries, totals };
+}
+
+/** Forget everything My Track keeps in this browser (and the in-memory copy). */
+export function reset() {
+  fallback = null;
+  try {
+    window.localStorage.removeItem(KEY);
+  } catch (e) {
+    /* nothing stored */
+  }
+  window.dispatchEvent(new CustomEvent("ola:change", { detail: empty() }));
 }

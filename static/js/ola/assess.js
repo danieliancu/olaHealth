@@ -5,6 +5,7 @@
 export const DIET_LABELS = {
   vegetarian: "Vegetarian",
   vegan: "Vegan",
+  pescatarian: "Pescetarian",
   gluten_free: "Gluten-free",
   lactose_free: "Lactose-free",
   pork_free: "Pork-free",

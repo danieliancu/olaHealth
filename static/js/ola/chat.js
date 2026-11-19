@@ -1,5 +1,5 @@
-// Ask Ola (MVP): deterministic answers built only from the facts already on the page
-// (the product's values, its Nutri-Score, processing level and restriction states) and from this device's My Ola data
+// Ask Foodo (MVP): deterministic answers built only from the facts already on the page
+// (the product's values, its Nutri-Score, processing level and restriction states) and from this device's My Track data
 // (lists, scans, confirmed memories, and notes only when the user allows it).
 // It never invents values, ingredients, effects, availability or compatibility, and gives no
 // medical advice. In V2, Python provides the facts and an AI only phrases the answer.
@@ -93,7 +93,7 @@ export function answer(intent, ctx, question = "") {
     if (!p) {
       lines.push("Open a product and ask there: I check its recorded allergens and diet information.");
     } else if (!prefs.diets.length && !prefs.allergens.length) {
-      lines.push("You haven't chosen any diet or allergy. You can set them in My Ola → Preferences.");
+      lines.push("You haven't chosen any diet or allergy. You can set them in My Track → Profile.");
     } else {
       for (const d of prefs.diets) {
         const s = p.restrictions.diets[d];
@@ -108,7 +108,7 @@ export function answer(intent, ctx, question = "") {
   } else if (intent === "remember") {
     const mem = state.memories.filter((m) => m.active && m.confirmedAt);
     if (mem.length) lines.push(`You asked me to remember: ${mem.map((m) => quote(m.text)).join("; ")}.`);
-    else lines.push("I don't remember anything yet. You can add or confirm memories in My Ola → Preferences → Ola remembers.");
+    else lines.push("I don't remember anything yet. You can add or confirm memories in My Track → Profile → Foodo remembers.");
     const summary = prefsSummary(prefs);
     if (summary) lines.push(`Your preferences on this device: ${summary}.`);
   } else if (intent === "avoid") {
@@ -145,7 +145,7 @@ function render() {
       li.className = `chat-msg chat-${m.role}`;
       const who = document.createElement("span");
       who.className = "sr-only";
-      who.textContent = m.role === "user" ? "You: " : "Ola: ";
+      who.textContent = m.role === "user" ? "You: " : "Foodo: ";
       const text = document.createElement("p");
       text.textContent = m.text; // plain text only
       li.append(who, text);

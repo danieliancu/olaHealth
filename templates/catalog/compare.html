@@ -21,7 +21,7 @@
   <thead><tr><td></td>
     {% for p in c.products %}<th scope="col" class="compare-head">
       <a class="icon-btn mini compare-remove" href="{{ p.remove_url }}" data-compare-remove="{{ p.pk }}"
-         aria-label="{% blocktranslate with n=p.name|default:_('this product') %}Remove {{ n }} from comparison{% endblocktranslate %}">{% icon "x" 16 %}</a>
+         aria-label="{% blocktranslate with n=p.name|default:_('this product') %}Remove {{ n }} from comparison{% endblocktranslate %}" title="{% translate 'Remove' %}">{% icon "x" 18 %}</a>
       {% if p.front_image_url %}<img src="{{ p.front_image_url|img }}" alt="" width="64" height="64" loading="lazy">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="64" height="64">{% endif %}
       <a href="{{ p.url }}">{{ p.name|default:_("Unnamed product") }}</a>
     </th>{% endfor %}</tr></thead>

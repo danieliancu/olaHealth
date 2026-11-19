@@ -103,7 +103,7 @@ document.querySelectorAll("[data-fav]").forEach((fav) => {
   const sync = () => {
     const on = has("favorites", id);
     fav.setAttribute("aria-pressed", String(on));
-    if (label) label.textContent = on ? "Favourite ✓" : "Favourite";
+    if (label) label.textContent = "Favourite"; // the filled button shows the state
     else fav.title = on ? "In favourites" : "Favourite";
   };
   sync();
@@ -192,6 +192,9 @@ updateSavedCount();
 // ---------- Compare selection ----------
 function updateCompareCount() {
   const n = read("compare").length;
+  // With two or more products selected, a link to the comparison appears where it is useful.
+  document.querySelectorAll("[data-compare-open]").forEach((el) => (el.hidden = n < 2));
+  document.querySelectorAll("[data-compare-n]").forEach((el) => (el.textContent = String(n)));
   document.querySelectorAll("[data-compare-count]").forEach((el) => {
     el.textContent = String(n);
     el.hidden = n === 0;
@@ -480,7 +483,20 @@ new MutationObserver((records) => {
   }
 }).observe(document.body, { childList: true, subtree: true });
 
-// ---------- Shared with the My Ola modules (same storage, same validation) ----------
+// Home: once onboarding is done, the main action opens Today.
+const homePrimary = document.querySelector("[data-home-primary]");
+if (homePrimary) {
+  try {
+    if (JSON.parse(window.localStorage.getItem("olahealth:myola") || "{}").onboarded) {
+      homePrimary.href = "/today/";
+      homePrimary.querySelector("span").textContent = "Open Today";
+    }
+  } catch (e) {
+    /* keep "Get started" */
+  }
+}
+
+// ---------- Shared with the My Track modules (same storage, same validation) ----------
 export const productLists = {
   read: (kind) => read(kind),
   has: (kind, id) => has(kind, id),

@@ -75,7 +75,9 @@ function setup(box) {
         parts.push(g);
       }
       const li = option(`suggest-${i}`, parts);
-      li.dataset.href = p.url;
+      const diary = box.dataset.diaryQuery ? new URLSearchParams(box.dataset.diaryQuery) : null;
+      // From the Food diary: open the "how much?" step instead of the product page.
+      li.dataset.href = diary ? `/today/add/${p.id}/?${new URLSearchParams({ meal: diary.get("add"), date: diary.get("date") || "" })}` : p.url;
       list.append(li);
     });
     if (!results.length) {

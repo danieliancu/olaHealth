@@ -206,7 +206,7 @@ def _publish_images(c: Contribution, product: Product) -> None:
                 "lang": img.lang,
                 "source": ProductImage.Source.CONTRIBUTION,
                 "license": CONTRIBUTED_IMAGE_LICENSE,
-                "attribution": "olaHealth contributor",
+                "attribution": "FoodoTrack contributor",
                 "is_active": True,
             },
         )
