@@ -563,9 +563,16 @@ def test_edit_entry_day_is_a_button_with_the_calendar(member_client, member):
     html = html.content.decode()
     assert 'class="day-drop"' in html and 'class="cal-grid"' in html and 'type="date"' not in html
     earlier = today - dt.timedelta(days=4)
+    p = f"e{e.pk.hex[:8]}"
+    assert f'name="{p}-date"' in html
     member_client.post(
         reverse("today-entry", args=[e.pk]),
-        {"amount": "200", "unit": "g", "meal": "dinner", "date": earlier.isoformat()},
+        {
+            f"{p}-amount": "200",
+            f"{p}-unit": "g",
+            f"{p}-meal": "dinner",
+            f"{p}-date": earlier.isoformat(),
+        },
     )
     e.refresh_from_db()
     assert e.date == earlier and e.meal == "dinner"

@@ -10,7 +10,7 @@ register = template.Library()
 
 
 @register.inclusion_tag("myola/partials/day_calendar.html", takes_context=True)
-def day_calendar(context, day, *, check: bool = True):
+def day_calendar(context, day, *, check: bool = True, name: str = "date"):
     """Calendar grid of the last weeks for ``day`` in the signed-in user's timezone.
     ``check`` marks ``day`` as chosen; a day outside the grid is kept in a hidden input."""
     from myola.services.profiles import get_profile, local_today
@@ -26,4 +26,10 @@ def day_calendar(context, day, *, check: bool = True):
             day = today
     cal = _calendar(today, day or today)
     in_grid = any(c["checked"] for week in cal["weeks"] for c in week)
-    return {"calendar": cal, "check": check, "day": day, "outside": check and not in_grid}
+    return {
+        "calendar": cal,
+        "check": check,
+        "day": day,
+        "outside": check and not in_grid,
+        "name": name,
+    }

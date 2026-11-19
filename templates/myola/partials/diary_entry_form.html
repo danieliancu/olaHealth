@@ -12,7 +12,7 @@
     <div class="day-field"><span class="day-field-label" id="day-l-{{ e.pk }}">{% translate "Day" %}</span>
       <details class="day-drop">
         <summary aria-labelledby="day-l-{{ e.pk }} day-v-{{ e.pk }}">{% icon "calendar-days" 18 %}<span id="day-v-{{ e.pk }}" data-day-value>{{ e.date|date:"D j M" }}</span></summary>
-        <div class="day-drop-panel">{% day_calendar e.date %}</div>
+        <div class="day-drop-panel">{% day_calendar e.date name=form.date.html_name %}</div>
       </details>
       {% for err in form.date.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
     </div>

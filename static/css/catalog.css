@@ -166,3 +166,6 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 .alt-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: .4rem; padding: .5rem .6rem .6rem; }
 .alt-brand { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .alt-score { flex: none; display: grid; place-items: center; min-width: 34px; height: 26px; padding: 0 .4rem; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 700; font-size: .8rem; }
+
+/* Product page: a bit of room above "Ask Foodo about this product" */
+.ola-card .btn-ask { margin-top: 1.1rem; }
