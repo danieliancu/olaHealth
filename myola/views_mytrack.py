@@ -132,6 +132,11 @@ SUB_ICONS = {
 TARGET_ICONS = {"energy": "flame", "protein": "egg", "carbs": "wheat", "fat": "droplet"}
 
 
+def _num(value) -> str:
+    """178.0 -> "178", 72.5 -> "72.5"."""
+    return f"{value:f}".rstrip("0").rstrip(".") if "." in f"{value:f}" else f"{value:f}"
+
+
 def _profile_summary(profile) -> dict:
     """The profile tab: every item carries its icon (names from core/templatetags/ui.py)."""
     restrictions = []
@@ -157,10 +162,10 @@ def _profile_summary(profile) -> dict:
     if profile.age:
         about.append((_("Age"), _("%(n)s years") % {"n": profile.age}, "calendar-days"))
     if profile.height:
-        about.append((_("Height"), f"{profile.height:g} cm", "person-standing"))
+        about.append((_("Height"), f"{_num(profile.height)} cm", "person-standing"))
     # Weight stays hidden when an eating-disorder answer turned weight tracking off.
     if profile.weight and (profile.track_weight or not profile.eating_disorder):
-        about.append((_("Weight"), f"{profile.weight:g} kg", "scale"))
+        about.append((_("Weight"), f"{_num(profile.weight)} kg", "scale"))
     consented = profile.health_consent_at is not None
     targets = [
         (label, value, unit, TARGET_ICONS[key])
