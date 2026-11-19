@@ -141,5 +141,5 @@ rebuild the image (`docker compose build`) so `collectstatic` includes them.
 * Bundled third-party code: zxing-wasm (MIT, `static/vendor/zxing-wasm/LICENSE`),
   Lucide icons (ISC, `static/vendor/lucide/LICENSE`), Chart.js 4.6.1 (MIT,
   `static/vendor/chartjs/LICENSE.md`, loaded only on the Compare page).
-* The licence of the olaHealth **code** has not been chosen yet; it is independent of
-  the data licence. Add a `LICENSE` file when the owner decides.
+* The FoodoTrack **code** is proprietary, all rights reserved (see `LICENSE`). This is
+  independent of the data licences above.

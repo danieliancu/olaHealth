@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: olahealth
+          POSTGRES_USER: olahealth
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U olahealth"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DJANGO_SECRET_KEY: ci-only-not-secret
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: olahealth
+      POSTGRES_USER: olahealth
+      POSTGRES_PASSWORD: ci-only-password
+      OFF_USER_AGENT: FoodoTrack-CI/1.0
+      TESTING: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Migrations are up to date
+        run: uv run python manage.py makemigrations --check --dry-run
+
+      - name: Deploy checks
+        env:
+          DJANGO_DEBUG: "0"
+          TESTING: "0"
+          DJANGO_SECRET_KEY: ci-only-not-secret-but-long-enough-for-check-deploy-0123456789abcdef
+          SECURE_SSL_REDIRECT: "1"
+          SECURE_COOKIES: "1"
+          SECURE_HSTS_SECONDS: "31536000"
+        run: uv run python manage.py check --deploy
+
+      - name: Tests
+        run: uv run pytest
