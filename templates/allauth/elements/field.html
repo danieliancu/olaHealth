@@ -1,0 +1,14 @@
+{% load allauth %}{% if attrs.type == "checkbox" or attrs.type == "radio" %}
+<label class="check"><input type="{{ attrs.type }}"{% if attrs.name %} name="{{ attrs.name }}"{% endif %}{% if attrs.id %} id="{{ attrs.id }}"{% endif %}{% if attrs.value is not None %} value="{{ attrs.value }}"{% endif %}{% if attrs.checked %} checked{% endif %}{% if attrs.disabled %} disabled{% endif %}{% if attrs.required %} required{% endif %}> <span>{% slot label %}{% endslot %}</span></label>
+{% else %}
+<div class="field{% if attrs.errors %} has-error{% endif %}">
+  <label for="{{ attrs.id }}">{% slot label %}{% endslot %}</label>
+  {% if attrs.type == "textarea" %}
+  <textarea{% if attrs.name %} name="{{ attrs.name }}"{% endif %}{% if attrs.id %} id="{{ attrs.id }}"{% endif %}{% if attrs.rows %} rows="{{ attrs.rows }}"{% endif %}{% if attrs.required %} required{% endif %}{% if attrs.disabled %} disabled{% endif %}{% if attrs.readonly %} readonly{% endif %}>{% slot value %}{% endslot %}</textarea>
+  {% else %}
+  <input type="{{ attrs.type }}"{% if attrs.name %} name="{{ attrs.name }}"{% endif %}{% if attrs.id %} id="{{ attrs.id }}"{% endif %}{% if attrs.value is not None %} value="{{ attrs.value }}"{% endif %}{% if attrs.placeholder %} placeholder="{{ attrs.placeholder }}"{% endif %}{% if attrs.autocomplete %} autocomplete="{{ attrs.autocomplete }}"{% endif %}{% if attrs.required %} required{% endif %}{% if attrs.disabled %} disabled{% endif %}{% if attrs.readonly %} readonly{% endif %}>
+  {% endif %}
+  {% if slots.help_text %}<p class="caption">{% slot help_text %}{% endslot %}</p>{% endif %}
+  {% for e in attrs.errors %}<p class="error">{{ e }}</p>{% endfor %}
+</div>
+{% endif %}

@@ -22,6 +22,7 @@ urlpatterns = [
     path("images/<uuid:pk>/", contribution_views.public_image, name="public-image"),
     path("images/off/<uuid:pk>/", catalog_views.off_image, name="off-image"),
     path("contribute/", include("contributions.urls")),
+    path("accounts/", include("allauth.urls")),
     path("", include("myola.urls")),
     path("api/v1/", include("catalog.api_urls")),
     path("admin/", admin.site.urls),

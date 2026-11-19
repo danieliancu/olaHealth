@@ -86,6 +86,11 @@ ICONS = {
     "utensils",
     "pause",
     "play",
+    # Accounts
+    "log-in",
+    "log-out",
+    "mail",
+    "key-round",
 }
 
 

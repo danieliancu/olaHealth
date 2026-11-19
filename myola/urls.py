@@ -8,4 +8,5 @@ urlpatterns = [
     path("today/add/<uuid:pk>/", views.add_food, name="add-food"),
     path("progress/", views.progress, name="progress"),
     path("my-ola/", views.my_ola, name="my-ola"),
+    path("my-ola/delete-account/", views.delete_account, name="delete-account"),
 ]

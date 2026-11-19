@@ -1,0 +1,4 @@
+{% load allauth %}<form class="card stack auth-form" method="{{ attrs.method }}"{% if attrs.action %} action="{{ attrs.action }}"{% endif %} novalidate>
+  {% slot body %}{% endslot %}
+  {% if slots.actions %}<div class="stack">{% slot actions %}{% endslot %}</div>{% endif %}
+</form>

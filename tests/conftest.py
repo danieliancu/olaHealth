@@ -38,6 +38,25 @@ def queued_tasks(monkeypatch):
 
 
 @pytest.fixture
+def member(db):
+    """A signed-up user with a confirmed email address."""
+    from allauth.account.models import EmailAddress
+    from django.contrib.auth import get_user_model
+
+    user = get_user_model().objects.create_user(
+        username="member", email="member@example.com", password="a-long-test-password-1"
+    )
+    EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
+    return user
+
+
+@pytest.fixture
+def member_client(client, member):
+    client.force_login(member)
+    return client
+
+
+@pytest.fixture
 def off_payload():
     data = json.loads((FIXTURES / "off" / "product_yogurt.json").read_text(encoding="utf-8"))
     return lambda **changes: {**copy.deepcopy(data), **changes}

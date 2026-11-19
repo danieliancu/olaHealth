@@ -82,7 +82,7 @@ def test_blocking_lists_only_unconfirmed_active_restrictions():
 @pytest.mark.django_db
 def test_home_is_scan_first(client):
     html = client.get(reverse("home")).content.decode()
-    assert "Get started" in html and 'href="/start/"' in html and 'href="/scan/"' in html
+    assert "Get started" in html and 'href="/accounts/signup/"' in html and 'href="/scan/"' in html
     assert 'aria-label="Example products"' in html  # the showcase is labelled as examples
     assert "magazine" not in html.lower() and "try the demo" not in html.lower()
 
@@ -101,18 +101,20 @@ def test_navigation_has_four_entries(client):
 
 
 @pytest.mark.django_db
-def test_my_ola_and_the_old_saved_route(client):
+def test_my_ola_and_the_old_saved_route(member_client):
     for name in ("my-ola", "saved", "start", "today", "progress"):
-        assert client.get(reverse(name)).status_code == 200
-    assert client.get("/demo/").status_code == 404
+        assert member_client.get(reverse(name)).status_code == 200
+    assert member_client.get("/demo/").status_code == 404
 
 
 @pytest.mark.django_db
-def test_only_json_data_scripts_and_no_inline_code(client, off_payload):
+def test_only_json_data_scripts_and_no_inline_code(member_client, off_payload):
+    client = member_client
     pages = [
         reverse("product", args=[import_off_product(off_payload()).pk]),
         reverse("my-ola"),
-        reverse("home"),
+        reverse("today"),
+        reverse("account_email"),
     ]
     for url in pages:
         html = client.get(url).content.decode()
@@ -136,8 +138,8 @@ def test_product_page_states_and_personal_data(client, off_payload):
 
 # ---------- Onboarding ----------
 @pytest.mark.django_db
-def test_onboarding_has_the_four_steps_in_order(client):
-    html = client.get(reverse("start")).content.decode()
+def test_onboarding_has_the_four_steps_in_order(member_client):
+    html = member_client.get(reverse("start")).content.decode()
     titles = [
         "What is your goal?",
         "About you",
@@ -237,9 +239,9 @@ def test_diary_mode_in_scan_and_catalogue(client, off_payload):
 
 
 @pytest.mark.django_db
-def test_add_food_page(client, off_payload):
+def test_add_food_page(member_client, off_payload):
     p = import_off_product(off_payload(serving_size="125 g"))
-    r = client.get(reverse("add-food", args=[p.pk]), {"meal": "lunch", "date": "2026-11-18"})
+    r = member_client.get(reverse("add-food", args=[p.pk]), {"meal": "lunch", "date": "2026-11-18"})
     html = r.content.decode()
     assert r.status_code == 200
     assert 'data-meal="lunch"' in html and "How much did you have?" in html

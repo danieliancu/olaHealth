@@ -178,20 +178,26 @@
   </div>
 </section>
 
-{# ---------- Account (accounts arrive later: nothing here is collected or saved) ---------- #}
+{# ---------- Account ---------- #}
 <section id="panel-account" role="tabpanel" aria-labelledby="tab-account" hidden>
-  <p class="notice">{% icon "info" 18 %}<span>{% translate "Accounts are coming soon. Until then FoodoTrack works without one and nothing on this tab is collected or saved." %}</span></p>
-  <form class="card stack account-form" aria-describedby="account-soon" novalidate>
-    <h2>{% translate "Your details" %}</h2>
-    <p class="caption" id="account-soon">{% translate "Available once accounts are switched on." %}</p>
-    <div><label for="acc-name">{% translate "Name" %}</label><input id="acc-name" type="text" autocomplete="off" disabled placeholder="{% translate 'Your name' %}"></div>
-    <div><label for="acc-email">{% translate "Email" %}</label><input id="acc-email" type="email" autocomplete="off" disabled placeholder="name@example.com"></div>
-    <button type="button" class="btn btn-outline" disabled>{% translate "Save details" %}</button>
-  </form>
+  <div class="card stack">
+    <h2>{% translate "Your account" %}</h2>
+    <p class="meta">{% icon "mail" 18 %} <span>{{ user.email }}</span></p>
+    <a class="btn btn-outline" href="{% url 'account_email' %}">{% icon "mail" 18 %}<span>{% translate "Change email" %}</span></a>
+  </div>
   <div class="card stack">
     <h2>{% translate "Password" %}</h2>
-    <p class="caption">{% translate "You will be able to change your password here." %}</p>
-    <button type="button" class="btn btn-outline" disabled>{% icon "settings" 18 %}<span>{% translate "Change password" %}</span></button>
+    <a class="btn btn-outline" href="{% url 'account_change_password' %}">{% icon "key-round" 18 %}<span>{% translate "Change password" %}</span></a>
+  </div>
+  <form class="card stack" method="post" action="{% url 'account_logout' %}">
+    {% csrf_token %}
+    <h2>{% translate "Sign out" %}</h2>
+    <button type="submit" class="btn btn-outline">{% icon "log-out" 18 %}<span>{% translate "Sign out" %}</span></button>
+  </form>
+  <div class="card stack">
+    <h2>{% translate "Delete account" %}</h2>
+    <p class="caption">{% translate "Deletes your account and everything stored with it. This cannot be undone." %}</p>
+    <a class="btn btn-danger" href="{% url 'delete-account' %}">{% icon "trash-2" 18 %}<span>{% translate "Delete my account" %}</span></a>
   </div>
   <div class="card stack">
     <h2>{% translate "Subscription" %}</h2>

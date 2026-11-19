@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% comment %}
+  Every allauth page (sign in, sign up, email confirmation, password reset and change)
+  renders inside the FoodoTrack shell. allauth fills "content"; its page title goes in "title".
+{% endcomment %}
+{% block title %}{% block head_title %}{% endblock head_title %}{% endblock title %}

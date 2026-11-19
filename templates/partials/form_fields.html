@@ -1,0 +1,14 @@
+{% load i18n %}{% if form.non_field_errors %}<div class="error-box" role="alert">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+{% for field in form.hidden_fields %}{{ field }}{% endfor %}
+{% for field in form.visible_fields %}
+  {% if field.widget_type == "checkbox" %}
+  <label class="check"><input type="checkbox" name="{{ field.html_name }}" id="{{ field.auto_id }}"{% if field.value %} checked{% endif %}> <span>{{ field.label }}</span></label>
+  {% else %}
+  <div class="field{% if field.errors %} has-error{% endif %}">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% if field.help_text %}<p class="caption">{{ field.help_text|safe }}</p>{% endif %}
+    {% for e in field.errors %}<p class="error">{{ e }}</p>{% endfor %}
+  </div>
+  {% endif %}
+{% endfor %}

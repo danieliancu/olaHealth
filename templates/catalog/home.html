@@ -8,10 +8,10 @@
     <h1 id="hero-h" class="display">{% translate "Scan food." %}<br class="desktop-only"> {% translate "Keep track." %}</h1>
     <p class="lead desktop-lead">{% translate "Scan a barcode, check the label against your allergies and log what you eat, with water and activity, in one calm daily view." %}</p>
     <div class="home-actions">
-      <a class="btn btn-primary btn-cta" href="{% url 'start' %}" data-home-primary>{% icon "arrow-right" 20 %}<span>{% translate "Get started" %}</span></a>
+      <a class="btn btn-primary btn-cta" href="{% url 'account_signup' %}" data-home-primary>{% icon "arrow-right" 20 %}<span>{% translate "Get started" %}</span></a>
       <a class="btn btn-outline btn-cta-secondary" href="{% url 'scan' %}">{% icon "scan-barcode" 20 %}<span>{% translate "Scan a barcode" %}</span></a>
     </div>
-    <p class="caption">{% translate "No account needed. Your diary stays in this browser." %}</p>
+    <p class="caption">{% translate "Free account. Scanning works without one." %} <a href="{% url 'account_login' %}">{% translate "Sign in" %}</a></p>
   </div>
   <div class="home-visual" data-showcase aria-roledescription="carousel" aria-label="{% translate 'Example products' %}">
     <div class="showcase-track">
@@ -104,6 +104,6 @@
 <section class="closing" aria-labelledby="closing-h">
   <h2 id="closing-h">{% translate "Private by default." %}</h2>
   <p>{% translate "No account, no sign-up. Your diary, notes and preferences stay in this browser, and you can delete them at any time." %}</p>
-  <a class="btn btn-primary btn-cta" href="{% url 'start' %}">{% icon "arrow-right" 20 %}<span>{% translate "Get started" %}</span></a>
+  <a class="btn btn-primary btn-cta" href="{% url 'account_signup' %}">{% icon "arrow-right" 20 %}<span>{% translate "Get started" %}</span></a>
 </section>
 {% endblock %}

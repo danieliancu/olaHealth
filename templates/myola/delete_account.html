@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n ui %}
+{% block title %}{% translate "Delete account" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{% translate "Delete account" %}</h1>
+  <a class="icon-btn" href="{% url 'my-ola' %}#account" aria-label="{% translate 'Back' %}" title="{% translate 'Back' %}">{% icon "x" 22 %}</a>
+</div>
+<form class="card stack" method="post" novalidate>
+  {% csrf_token %}
+  <p class="notice">{% icon "triangle-alert" 18 %}<span>{% translate "This permanently deletes your account, profile, food diary, water, activity, weight, lists, notes and chats. It cannot be undone." %}</span></p>
+  {% include "partials/form_fields.html" %}
+  <button type="submit" class="btn btn-danger">{% icon "trash-2" 18 %}<span>{% translate "Delete my account" %}</span></button>
+</form>
+{% endblock %}

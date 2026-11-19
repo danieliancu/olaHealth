@@ -49,6 +49,8 @@ def _country(request: HttpRequest) -> str:
 
 @require_GET
 def home(request: HttpRequest) -> HttpResponse:
+    if request.user.is_authenticated:
+        return redirect("today")
     return render(request, "catalog/home.html")
 
 

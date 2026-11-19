@@ -15,10 +15,19 @@ services:
     environment:
       DJANGO_DEBUG: "1"
       POSTGRES_HOST: postgres
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
     volumes:
       - .:/app
       - private_media:/data/private
       - exports:/data/exports
+
+  # Catches every email sent in development; inbox at http://localhost:18025
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "127.0.0.1:18025:8025"
+    restart: unless-stopped
 
   worker:
     build:
@@ -29,6 +38,8 @@ services:
       DJANGO_DEBUG: "1"
       POSTGRES_HOST: postgres
       OMP_THREAD_LIMIT: "1"
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
     volumes:
       - .:/app
       - private_media:/data/private
