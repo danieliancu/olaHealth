@@ -8,7 +8,7 @@
 {% include "partials/diary_banner.html" %}
 {# Filters apply on change through htmx (the Apply button stays for no-JS). #}
 <form method="get" action="{% url 'products' %}" class="filters" role="search" aria-label="{% translate 'Search the catalogue' %}"
-      hx-get="{% url 'products' %}" hx-trigger="change from:.filter-select" hx-target="#catalog" hx-select="#catalog" hx-swap="outerHTML" hx-push-url="true">
+      hx-get="{% url 'products' %}" hx-trigger="change from:.filter-select" hx-target="#catalog" hx-select="#catalog" hx-swap="outerHTML" hx-push-url="true" hx-disinherit="*">
   {% if diary %}<input type="hidden" name="add" value="{{ diary.add }}" id="diary-add"><input type="hidden" name="date" value="{{ diary.date }}" id="diary-date">{% endif %}
   <div class="search-box">
     {% icon "search" 20 %}

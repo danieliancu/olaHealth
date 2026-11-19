@@ -370,3 +370,12 @@ def test_photo_slot_uploads_on_change_with_htmx(client, product):
     assert 'hx-trigger="change"' in html and "data-autoupload" not in html
     r = client.post(reverse("contribution-upload", args=[c.access_token]), {}, **HX)
     assert r.status_code == 204 and "step=photos" in r["HX-Redirect"]
+
+
+@pytest.mark.django_db
+def test_search_box_does_not_inherit_the_filter_form_htmx_settings(client):
+    """The suggestions must not pick up the form's hx-select/hx-push-url (they would be
+    swallowed and the address bar would change on every key)."""
+    html = client.get(reverse("products")).content.decode()
+    form = html.split('class="filters"')[1].split(">")[0]
+    assert 'hx-disinherit="*"' in form
