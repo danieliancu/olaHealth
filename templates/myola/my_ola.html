@@ -54,38 +54,66 @@
 {# ---------- Profile ---------- #}
 {% url 'profile-edit' as profile_edit_url %}{% url 'settings-edit' as settings_edit_url %}
 <section aria-label="{% translate 'Profile' %}">
-  <div class="card stack">
-    <div class="section-head"><h2>{% translate "Your goal" %}</h2>{% if profile_edit_url %}<a class="btn btn-link" href="{{ profile_edit_url }}">{% translate "Edit" %}</a>{% endif %}</div>
-    <p>{{ summary.goal|default:_("No goal chosen yet.") }}</p>
-    <h2>{% translate "About you" %}</h2>
+  <div class="card profile-card">
+    <div class="profile-goal">
+      <span class="profile-goal-icon">{% icon summary.goal_icon 28 %}</span>
+      <div class="grow">
+        <p class="profile-kicker">{% translate "Your goal" %}</p>
+        <p class="profile-goal-text">{{ summary.goal|default:_("No goal chosen yet.") }}</p>
+      </div>
+      {% if profile_edit_url %}<a class="icon-btn" href="{{ profile_edit_url }}#about" aria-label="{% translate 'Edit goal' %}" title="{% translate 'Edit' %}">{% icon "pencil" 18 %}</a>{% endif %}
+    </div>
+
+    <div class="section-head profile-section-head"><h2>{% icon "user-round" 20 %}<span>{% translate "About you" %}</span></h2>{% if profile_edit_url %}<a class="btn btn-link" href="{{ profile_edit_url }}#about">{% translate "Edit" %}</a>{% endif %}</div>
     {% if summary.about %}
-    <dl class="summary mytrack-summary">{% for label, value in summary.about %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>
+    <ul class="profile-tiles">
+      {% for label, value, icon in summary.about %}
+      <li><span class="tile-icon">{% icon icon 20 %}</span><span class="tile-label">{{ label }}</span><strong class="tile-value">{{ value }}</strong></li>
+      {% endfor %}
+    </ul>
     {% else %}<p class="caption">{% translate "Nothing entered." %}</p>{% endif %}
-    <h2>{% translate "Restrictions and allergies" %}</h2>
-    {% if summary.restrictions %}<ul class="chips">{% for r in summary.restrictions %}<li>{{ r }}</li>{% endfor %}</ul>
+
+    <div class="section-head profile-section-head"><h2>{% icon "shield-alert" 20 %}<span>{% translate "Restrictions and allergies" %}</span></h2>{% if profile_edit_url %}<a class="btn btn-link" href="{{ profile_edit_url }}#restrictions">{% translate "Edit" %}</a>{% endif %}</div>
+    {% if summary.restrictions %}
+    <ul class="profile-chips">
+      {% for r in summary.restrictions %}
+      <li class="profile-chip{% if r.subs %} has-subs{% endif %}">
+        <span class="chip-main">{% icon r.icon 18 %}<span>{{ r.label }}</span></span>
+        {% if r.subs %}<span class="chip-subs">{% for label, icon in r.subs %}<span class="chip-sub">{% icon icon 14 %}{{ label }}</span>{% endfor %}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
     {% else %}<p class="caption">{% translate "None chosen." %}</p>{% endif %}
-    {% if summary.religious_note %}<p class="caption">{% translate "Religious restriction:" %} {{ summary.religious_note }}</p>{% endif %}
-    {% if summary.other_note %}<p class="caption">{% translate "Other:" %} {{ summary.other_note }}</p>{% endif %}
+    {% if summary.religious_note %}<p class="profile-note">{% icon "hand-heart" 16 %}<span>{% translate "Religious restriction:" %} {{ summary.religious_note }}</span></p>{% endif %}
+    {% if summary.other_note %}<p class="profile-note">{% icon "ellipsis" 16 %}<span>{% translate "Other:" %} {{ summary.other_note }}</span></p>{% endif %}
+
     {% if summary.consented %}
-    <h2>{% translate "Health conditions" %}</h2>
-    <p class="caption">{% translate "Saved with your consent. Never used for diagnoses, plans or advice." %}</p>
-    {% if summary.conditions %}<ul class="chips chips-outline">{% for c in summary.conditions %}<li>{{ c }}</li>{% endfor %}</ul>{% endif %}
-    {% if summary.conditions_note %}<p class="caption">{{ summary.conditions_note }}</p>{% endif %}
+    <div class="section-head profile-section-head"><h2>{% icon "heart-pulse" 20 %}<span>{% translate "Health conditions" %}</span></h2>{% if profile_edit_url %}<a class="btn btn-link" href="{{ profile_edit_url }}#conditions">{% translate "Edit" %}</a>{% endif %}</div>
+    {% if summary.conditions %}
+    <ul class="profile-chips profile-chips-health">{% for c in summary.conditions %}<li class="profile-chip"><span class="chip-main">{% icon "heart-pulse" 18 %}<span>{{ c }}</span></span></li>{% endfor %}</ul>
     {% endif %}
-    <div class="row">
+    {% if summary.conditions_note %}<p class="profile-note">{% icon "notebook-pen" 16 %}<span>{{ summary.conditions_note }}</span></p>{% endif %}
+    <p class="profile-consent">{% icon "circle-check" 16 %}<span>{% translate "Saved with your consent. Never used for diagnoses, plans or advice." %}</span></p>
+    {% endif %}
+
+    <div class="row profile-actions">
       {% if profile_edit_url %}<a class="btn btn-primary" href="{{ profile_edit_url }}">{% icon "pencil" 18 %}<span>{% translate "Edit profile" %}</span></a>{% endif %}
-      <a class="btn btn-link" href="{% url 'start' %}">{% translate "Go through the questions again" %}</a>
+      <a class="btn btn-link" href="{% url 'start' %}">{% icon "refresh-cw" 16 %} {% translate "Go through the questions again" %}</a>
     </div>
   </div>
-  <div class="card stack">
-    <div class="section-head"><h2>{% translate "Daily targets and display" %}</h2>{% if settings_edit_url %}<a class="btn btn-link" href="{{ settings_edit_url }}">{% translate "Edit" %}</a>{% endif %}</div>
+  <div class="card profile-card">
+    <div class="section-head profile-section-head"><h2>{% icon "chart-line" 20 %}<span>{% translate "Daily targets and display" %}</span></h2>{% if settings_edit_url %}<a class="btn btn-link" href="{{ settings_edit_url }}">{% translate "Edit" %}</a>{% endif %}</div>
     {% if summary.targets %}
-    <dl class="summary mytrack-summary">{% for label, value, unit in summary.targets %}<div><dt>{{ label }}</dt><dd>{{ value }} {{ unit }}</dd></div>{% endfor %}</dl>
+    <ul class="profile-tiles">
+      {% for label, value, unit, icon in summary.targets %}
+      <li><span class="tile-icon">{% icon icon 20 %}</span><span class="tile-label">{{ label }}</span><strong class="tile-value">{{ value }} {{ unit }}</strong></li>
+      {% endfor %}
+    </ul>
     {% else %}<p class="caption">{% translate "No targets set. Without a target, Today shows totals only." %}</p>{% endif %}
-    <ul class="mytrack-flags">
-      <li>{% if profile.show_energy %}{% icon "check" 16 %}{% translate "Calories shown" %}{% else %}{% icon "circle-off" 16 %}{% translate "Calories hidden" %}{% endif %}</li>
-      <li>{% if profile.track_weight %}{% icon "check" 16 %}{% translate "Weight tracked in Progress" %}{% else %}{% icon "circle-off" 16 %}{% translate "Weight not tracked" %}{% endif %}</li>
-      <li>{% if profile.use_notes %}{% icon "check" 16 %}{% translate "Notes used in Foodo’s replies" %}{% else %}{% icon "circle-off" 16 %}{% translate "Notes not used in Foodo’s replies" %}{% endif %}</li>
+    <ul class="mytrack-flags profile-flags">
+      <li class="{% if profile.show_energy %}on{% else %}off{% endif %}">{% if profile.show_energy %}{% icon "flame" 16 %}{% translate "Calories shown" %}{% else %}{% icon "circle-off" 16 %}{% translate "Calories hidden" %}{% endif %}</li>
+      <li class="{% if profile.track_weight %}on{% else %}off{% endif %}">{% if profile.track_weight %}{% icon "scale" 16 %}{% translate "Weight tracked in Progress" %}{% else %}{% icon "circle-off" 16 %}{% translate "Weight not tracked" %}{% endif %}</li>
+      <li class="{% if profile.use_notes %}on{% else %}off{% endif %}">{% if profile.use_notes %}{% icon "notebook-pen" 16 %}{% translate "Notes used in Foodo’s replies" %}{% else %}{% icon "circle-off" 16 %}{% translate "Notes not used in Foodo’s replies" %}{% endif %}</li>
     </ul>
     {% if settings_edit_url %}<a class="btn btn-outline" href="{{ settings_edit_url }}">{% icon "settings" 18 %}<span>{% translate "Settings" %}</span></a>{% endif %}
   </div>

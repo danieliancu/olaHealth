@@ -122,49 +122,60 @@ def _overview(user, profile) -> dict:
     }  # fmt: skip
 
 
+SUB_ICONS = {
+    "en:peanuts": "nut",
+    "en:nuts": "nut",
+    "en:fish": "fish",
+    "en:crustaceans": "shell",
+    "en:molluscs": "shell",
+}
+TARGET_ICONS = {"energy": "flame", "protein": "egg", "carbs": "wheat", "fat": "droplet"}
+
+
 def _profile_summary(profile) -> dict:
-    restrictions = [str(P.RESTRICTIONS[k][0]) for k in profile.restrictions if k in P.RESTRICTIONS]
-    if "nuts" in profile.restrictions and profile.nut_types:
-        restrictions.append(
-            _("Nuts: %(types)s")
-            % {
-                "types": ", ".join(
-                    str(P.NUT_TYPES[t]) for t in profile.nut_types if t in P.NUT_TYPES
-                )
-            }
-        )
-    if "seafood" in profile.restrictions and profile.seafood_types:
-        restrictions.append(
-            _("Seafood: %(types)s")
-            % {
-                "types": ", ".join(
-                    str(P.SEAFOOD_TYPES[t]) for t in profile.seafood_types if t in P.SEAFOOD_TYPES
-                )
-            }
-        )
+    """The profile tab: every item carries its icon (names from core/templatetags/ui.py)."""
+    restrictions = []
+    for k in profile.restrictions:
+        if k not in P.RESTRICTIONS:
+            continue
+        label, icon = str(P.RESTRICTIONS[k][0]), P.RESTRICTIONS[k][1]
+        subs = []
+        if k == "nuts":
+            subs = [
+                (str(P.NUT_TYPES[t]), SUB_ICONS[t]) for t in profile.nut_types if t in P.NUT_TYPES
+            ]
+        elif k == "seafood":
+            subs = [
+                (str(P.SEAFOOD_TYPES[t]), SUB_ICONS[t])
+                for t in profile.seafood_types
+                if t in P.SEAFOOD_TYPES
+            ]
+        restrictions.append({"key": k, "label": label, "icon": icon, "subs": subs})
     about = []
     if profile.gender in P.GENDERS:
-        about.append((_("Gender"), str(P.GENDERS[profile.gender])))
+        about.append((_("Gender"), str(P.GENDERS[profile.gender]), "user-round"))
     if profile.age:
-        about.append((_("Age"), _("%(n)s years") % {"n": profile.age}))
+        about.append((_("Age"), _("%(n)s years") % {"n": profile.age}, "calendar-days"))
     if profile.height:
-        about.append((_("Height"), f"{profile.height:g} cm"))
+        about.append((_("Height"), f"{profile.height:g} cm", "person-standing"))
     # Weight stays hidden when an eating-disorder answer turned weight tracking off.
     if profile.weight and (profile.track_weight or not profile.eating_disorder):
-        about.append((_("Weight"), f"{profile.weight:g} kg"))
+        about.append((_("Weight"), f"{profile.weight:g} kg", "scale"))
     consented = profile.health_consent_at is not None
     targets = [
-        (label, value, unit)
-        for label, value, unit in (
-            (_("Energy"), profile.target_kcal if profile.show_energy else None, "kcal"),
-            (_("Protein"), profile.target_protein, "g"),
-            (_("Carbs"), profile.target_carbs, "g"),
-            (_("Fat"), profile.target_fat, "g"),
+        (label, value, unit, TARGET_ICONS[key])
+        for key, label, value, unit in (
+            ("energy", _("Energy"), profile.target_kcal if profile.show_energy else None, "kcal"),
+            ("protein", _("Protein"), profile.target_protein, "g"),
+            ("carbs", _("Carbs"), profile.target_carbs, "g"),
+            ("fat", _("Fat"), profile.target_fat, "g"),
         )
         if value
     ]
+    goal = P.GOALS.get(profile.goal)
     return {
-        "goal": str(P.GOALS[profile.goal][0]) if profile.goal in P.GOALS else "",
+        "goal": str(goal[0]) if goal else "",
+        "goal_icon": goal[1] if goal else "apple",
         "about": about,
         "restrictions": restrictions,
         "religious_note": profile.religious_note if "religious" in profile.restrictions else "",
