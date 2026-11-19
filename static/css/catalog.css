@@ -173,3 +173,7 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 /* Products: "N products hidden" then "Show them again" on its own line */
 .hidden-note { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; }
 .hidden-note .btn-link { padding-left: 0; }
+
+/* Saved: tab labels on one line (Recently viewed) */
+.saved-nav a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; padding-left: .35rem; padding-right: .35rem; }
+@media (max-width: 400px) { .saved-nav a { font-size: .82rem; } }
