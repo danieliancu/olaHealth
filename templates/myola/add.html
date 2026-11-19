@@ -1,11 +1,9 @@
 {% extends "base.html" %}
-{% load i18n ui static %}
+{% load i18n ui %}
 {% block title %}{% translate "Add to diary" %}{% endblock %}
-{% block head %}<script type="module" src="{% static 'js/ola/add.js' %}"></script>
-{{ ola|json_script:"ola-data" }}{% endblock %}
 {% block content %}
-<div class="add-food" data-add-food data-meal="{{ meal }}" data-date="{{ date }}" data-scanned="{{ scanned }}">
-  <p class="back"><a href="{% url 'today' %}{% if date %}?date={{ date }}{% endif %}" data-add-back>{% icon "chevron-left" 18 %}<span>{% translate "Today" %}</span></a></p>
+<div class="add-food">
+  <p class="back"><a href="{{ back_url }}">{% icon "chevron-left" 18 %}<span>{% translate "Today" %}</span></a></p>
   <section class="card add-card" aria-labelledby="add-h">
     <div class="add-product">
       {% if product.front_image_url %}<img class="thumb" src="{{ product.front_image_url|img }}" alt="" width="56" height="56">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="56" height="56">{% endif %}
@@ -14,17 +12,37 @@
         {% if data.brand or data.quantity %}<p class="meta">{{ data.brand|default:"" }}{% if data.brand and data.quantity %} · {% endif %}{{ data.quantity|default:"" }}</p>{% endif %}
       </div>
     </div>
-    <div class="add-warnings" data-add-warnings></div>
-    <form class="stack add-form" data-no-busy novalidate>
-      <h1 id="add-h" class="add-title">{% translate "Add to diary" %} <span class="add-day" data-diary-day></span></h1>
-      {% include "partials/diary_fields.html" with prefix="add" %}
+    {% if warnings %}<div class="add-warnings">
+      <ul class="restriction-list">{% for b in warnings %}<li class="rs rs-{{ b.status }}"><strong>{{ b.label }}: {{ b.status_text }}. </strong>{{ b.reason }}</li>{% endfor %}</ul>
+      <p class="caption">{% translate "Check the physical label." %}</p>
+    </div>{% endif %}
+    <form class="stack add-form" method="post" action="{% url 'add-food' product.pk %}" novalidate>
+      {% csrf_token %}
+      <h1 id="add-h" class="add-title">{% translate "Add to diary" %} <span class="add-day">{{ day_label }}</span></h1>
+      {% for err in form.non_field_errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
+      <fieldset class="meal-picker">
+        <legend class="sr-only">{% translate "Meal" %}</legend>
+        {% for value, label in form.fields.meal.choices %}<label><input type="radio" name="meal" value="{{ value }}"{% if form.meal.value == value %} checked{% endif %}><span>{{ label }}</span></label>{% endfor %}
+      </fieldset>
+      {% for err in form.meal.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
+      <div id="add-amount">
+        {% if options %}<div class="chip-row">{% for o in options %}<a class="chip-btn" href="{{ o.url }}" hx-get="{{ o.url }}" hx-select="#add-amount" hx-target="#add-amount" hx-swap="outerHTML"{% if o.selected %} aria-current="true"{% endif %}>{{ o.label }}</a>{% endfor %}</div>{% endif %}
+        <label for="{{ form.amount.id_for_label }}">{% translate "How much did you have?" %}</label>
+        <div class="amount-row">{{ form.amount }}{% if unit %}<span class="unit-label">{{ unit }}</span>{% else %}<label class="sr-only" for="{{ form.unit.id_for_label }}">{% translate "Unit" %}</label>{{ form.unit }}{% endif %}</div>
+        {% for err in form.amount.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}{% for err in form.unit.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
+        {{ form.portion }}
+        <div class="diary-preview" id="add-preview" aria-live="polite">{% include "myola/partials/diary_preview.html" %}</div>
+      </div>
+      <label for="{{ form.date.id_for_label }}">{% translate "Day" %}</label>
+      {{ form.date }}
+      {% for err in form.date.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
+      {{ form.scanned }}
       <div class="add-actions">
-        <a class="btn" href="{% url 'today' %}{% if date %}?date={{ date }}{% endif %}">{% translate "Cancel" %}</a>
+        <a class="btn" href="{{ back_url }}">{% translate "Cancel" %}</a>
         <button type="submit" class="btn btn-primary">{% icon "plus" 18 %}<span>{% translate "Add" %}</span></button>
       </div>
     </form>
     <p class="add-details"><a href="{% url 'product' product.pk %}">{% translate "See product details" %}</a></p>
   </section>
-  <p class="notice notice-warn js-hide">{% icon "triangle-alert" 18 %}<span>{% translate "Adding to the diary needs JavaScript." %}</span></p>
 </div>
 {% endblock %}

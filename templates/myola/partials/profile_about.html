@@ -1,0 +1,15 @@
+{% load i18n ui %}{% url 'profile-edit' as profile_url %}
+<form id="about" class="card stack profile-section" method="post" action="{{ profile_url }}" hx-post="{{ profile_url }}" hx-target="this" hx-swap="outerHTML" novalidate>
+  {% csrf_token %}<input type="hidden" name="section" value="about">
+  <h2>{% translate "Your goal" %}</h2>
+  <fieldset class="option-list compact">
+    <legend class="sr-only">{% translate "Your goal" %}</legend>
+    {% for g in goal_form.goal_options %}<label class="option" for="{{ g.id }}"><input type="radio" id="{{ g.id }}" name="goal" value="{{ g.key }}"{% if g.checked %} checked{% endif %}><span class="option-icon">{% icon g.icon 20 %}</span><span>{{ g.label }}</span></label>{% endfor %}
+  </fieldset>
+  {% for e in goal_form.goal.errors %}<p class="field-error" role="alert">{{ e }}</p>{% endfor %}
+  <h2>{% translate "About you" %}</h2>
+  {% include "myola/partials/profile_about_fields.html" with form=about_form prefix="pf" %}
+  {% if about_form.errors %}<p class="field-error" role="alert">{% translate "Check the highlighted value: age 13–120, height 100–250 cm, weight 25–400 kg, or leave it empty." %}</p>{% endif %}
+  {% include "myola/partials/profile_saved.html" %}
+  <div class="row"><button type="submit" class="btn btn-primary">{% translate "Save" %}</button></div>
+</form>

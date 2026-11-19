@@ -1,0 +1,1 @@
+{% with n=saved_count %}<span class="count" id="saved-count"{% if oob %} hx-swap-oob="true"{% endif %}{% if not n %} hidden{% endif %}>{{ n|default:"" }}</span>{% endwith %}

@@ -1,0 +1,1 @@
+{% load i18n %}<input id="chat-input-{{ chat_id }}" name="text" type="text" maxlength="300" autocomplete="off" placeholder="{% if chat_context == 'personal' %}{% translate 'Ask about your lists, scans or preferences' %}{% else %}{% translate 'Ask about this product or your lists' %}{% endif %}"{% if oob %} hx-swap-oob="true"{% endif %}>

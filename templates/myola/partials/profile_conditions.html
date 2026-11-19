@@ -1,0 +1,17 @@
+{% load i18n ui %}{% url 'profile-edit' as profile_url %}
+<section id="conditions" class="card stack profile-section" aria-labelledby="conditions-h">
+  <h2 id="conditions-h">{% translate "Health conditions" %}</h2>
+  <p class="caption">{% translate "Saved only with your consent. Never used for diagnoses, plans or advice." %}</p>
+  <form method="post" action="{{ profile_url }}" hx-post="{{ profile_url }}" hx-target="#conditions" hx-swap="outerHTML" novalidate>
+    {% csrf_token %}<input type="hidden" name="section" value="conditions">
+    {% include "myola/partials/profile_conditions_fields.html" with form=conditions_form %}
+    {% include "myola/partials/profile_saved.html" %}
+    <div class="row"><button type="submit" class="btn btn-primary">{% translate "Save" %}</button></div>
+  </form>
+  {% if profile.conditions or profile.health_consent_at %}
+  <form method="post" action="{% url 'profile-clear-health' %}" hx-post="{% url 'profile-clear-health' %}" hx-target="#conditions" hx-swap="outerHTML">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-link btn-danger-link">{% icon "trash-2" 16 %}<span>{% translate "Delete health information" %}</span></button>
+  </form>
+  {% endif %}
+</section>

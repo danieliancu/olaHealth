@@ -1,0 +1,22 @@
+{% if page.object_list %}
+<div class="table-wrap">
+<table class="staff-table">
+  <caption class="sr-only">Products</caption>
+  <thead><tr><th scope="col">Product</th><th scope="col">Brand</th><th scope="col">Data</th><th scope="col">Updated</th><th scope="col"><span class="sr-only">Open</span></th></tr></thead>
+  <tbody>
+  {% for p in page.object_list %}
+    <tr>
+      <td>{{ p.name|default:"(no name)" }}{% if p.quantity %} <span class="hint">{{ p.quantity }}</span>{% endif %}</td>
+      <td>{{ p.brand|default:"—" }}</td>
+      <td>{{ p.completeness }}%</td>
+      <td>{{ p.updated_at|date:"j M Y" }}</td>
+      <td><a class="btn btn-outline btn-small" href="{% url 'staff:product' p.pk %}">Open</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "staff/partials/pager.html" %}
+{% else %}
+<p class="empty">No products found.</p>
+{% endif %}

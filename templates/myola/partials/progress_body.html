@@ -1,0 +1,15 @@
+{% load i18n ui %}{% url 'progress' as progress_url %}
+<div class="progress-page" id="progress">
+  <div class="page-head">
+    <h1>{% translate "Progress" %}</h1>
+    <nav class="segmented seg-2 range-switch" aria-label="{% translate 'Period' %}">
+      {% for r in ranges %}<a href="{{ progress_url }}?range={{ r }}" hx-get="{{ progress_url }}?range={{ r }}" hx-target="#progress" hx-swap="outerHTML"{% if r == span %} aria-current="page"{% endif %}>{% blocktranslate %}{{ r }} days{% endblocktranslate %}</a>{% endfor %}
+    </nav>
+  </div>
+  <p class="lead-small">{% if data.logged_days %}{% blocktranslate with n=data.logged_days %}You logged food on {{ n }} of the last {{ span }} days.{% endblocktranslate %}{% else %}{% blocktranslate %}No food logged in the last {{ span }} days yet. A scan a day is a good start.{% endblocktranslate %}{% endif %}</p>
+  <div class="progress-grid">
+    {% for chart in charts %}{% include "myola/partials/progress_chart.html" %}{% endfor %}
+  </div>
+  {% if track_weight %}{% include "myola/partials/progress_weight.html" %}{% endif %}
+  <p class="caption">{% translate "A thin grey line marks a day with no entries: it is not counted as zero." %} {% url 'settings-edit' as settings_url %}{% blocktranslate %}Calories and weight tracking can be turned on or off in <a href="{{ settings_url }}">Settings</a>.{% endblocktranslate %}</p>
+</div>

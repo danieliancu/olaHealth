@@ -1,0 +1,23 @@
+{% if page.object_list %}
+<div class="table-wrap">
+<table class="staff-table">
+  <caption class="sr-only">Review flags</caption>
+  <thead><tr><th scope="col">Raised</th><th scope="col">Kind</th><th scope="col">Product</th><th scope="col">Field</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Open</span></th></tr></thead>
+  <tbody>
+  {% for f in page.object_list %}
+    <tr>
+      <td>{{ f.created_at|date:"j M Y H:i" }}</td>
+      <td><span class="staff-kind staff-kind-{{ f.kind }}">{{ f.get_kind_display }}</span></td>
+      <td>{% if f.product %}{{ f.product.name|default:f.product_id }}{% else %}—{% endif %}</td>
+      <td>{{ f.field|default:"—" }}</td>
+      <td>{% if f.status == "open" %}<span class="staff-status staff-status-submitted">Open</span>{% else %}<span class="staff-status">Closed</span>{% if f.resolved_by %} <span class="hint">by {{ f.resolved_by.email|default:f.resolved_by }}</span>{% endif %}{% endif %}</td>
+      <td><a class="btn btn-outline btn-small" href="{% url 'staff:flag' f.pk %}">Open</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "staff/partials/pager.html" %}
+{% else %}
+<p class="empty">No review flags match these filters.</p>
+{% endif %}

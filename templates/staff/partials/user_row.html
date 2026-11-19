@@ -1,0 +1,26 @@
+{% load ui %}<tr id="user-{{ u.pk }}">
+  <td>{{ u.email|default:u.username }}{% if u.is_superuser %} <span class="badge">superuser</span>{% elif u.is_staff %} <span class="badge">staff</span>{% endif %}
+    {% if row_note %}<p class="staff-row-note" role="status">{{ row_note }}</p>{% endif %}
+    {% if row_error %}<p class="field-error" role="alert">{{ row_error }}</p>{% endif %}
+  </td>
+  <td>{{ u.date_joined|date:"j M Y" }}</td>
+  <td>{{ u.last_login|date:"j M Y H:i"|default:"never" }}</td>
+  <td>{% if u.is_active %}<span class="staff-status staff-status-approved">Active</span>{% else %}<span class="staff-status staff-status-rejected">Deactivated</span>{% endif %}<br>{% if u.email_verified %}<span class="hint">email confirmed</span>{% else %}<span class="badge badge-warn">email not confirmed</span>{% endif %}</td>
+  <td>{{ u.diary_count }}</td>
+  <td>{{ u.notes_count }}</td>
+  <td>
+    {% if u.is_superuser %}<span class="hint">Protected</span>{% elif u.pk == request.user.pk %}<span class="hint">You</span>{% else %}
+    <div class="staff-actions">
+      {% if u.is_active %}
+      <form method="post" action="{% url 'staff:user-action' u.pk 'deactivate' %}" hx-post="{% url 'staff:user-action' u.pk 'deactivate' %}" hx-target="#user-{{ u.pk }}" hx-swap="outerHTML">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}"><button class="btn btn-small btn-outline" type="submit">{% icon "ban" 16 %}<span>Deactivate</span></button></form>
+      {% else %}
+      <form method="post" action="{% url 'staff:user-action' u.pk 'activate' %}" hx-post="{% url 'staff:user-action' u.pk 'activate' %}" hx-target="#user-{{ u.pk }}" hx-swap="outerHTML">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}"><button class="btn btn-small btn-outline" type="submit">{% icon "check" 16 %}<span>Activate</span></button></form>
+      {% endif %}
+      {% if not u.email_verified %}
+      <form method="post" action="{% url 'staff:user-action' u.pk 'resend' %}" hx-post="{% url 'staff:user-action' u.pk 'resend' %}" hx-target="#user-{{ u.pk }}" hx-swap="outerHTML">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}"><button class="btn btn-small btn-outline" type="submit">{% icon "mail" 16 %}<span>Resend confirmation</span></button></form>
+      {% endif %}
+      <a class="btn btn-small btn-outline btn-danger-link" href="{% url 'staff:user-delete' u.pk %}">{% icon "trash-2" 16 %}<span>Delete…</span></a>
+    </div>
+    {% endif %}
+  </td>
+</tr>

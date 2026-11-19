@@ -1,0 +1,53 @@
+{% extends "staff/layout.html" %}{% load ui %}
+{% block staff_title %}Flag {{ flag.pk }}{% endblock %}
+{% block staff_content %}
+<p><a class="staff-back" href="{% url 'staff:flags' %}">{% icon "chevron-left" 16 %}<span>Review flags</span></a></p>
+<h1>{{ flag.get_kind_display }}{% if flag.field %}: {{ flag.field }}{% endif %}</h1>
+<dl class="staff-dl">
+  <dt>Status</dt><dd>{% if is_open %}Open{% else %}Closed {{ flag.resolved_at|date:"j M Y H:i" }}{% if flag.resolved_by %} by {{ flag.resolved_by.email|default:flag.resolved_by }}{% endif %}{% endif %}</dd>
+  <dt>Raised</dt><dd>{{ flag.created_at }}</dd>
+  <dt>Product</dt><dd>{% if product %}<a href="{% url 'staff:product' product.pk %}">{{ product }}</a> · <a href="{% url 'product' product.pk %}" target="_blank" rel="noopener">public page</a>{% else %}—{% endif %}</dd>
+  {% if flag.field %}<dt>Field locked locally</dt><dd>{{ locked|yesno:"Yes,No" }}</dd>{% endif %}
+  {% if contribution_id %}<dt>Contribution</dt><dd><a href="{% url 'staff:contribution' contribution_id %}">{{ contribution_id|slice:":8" }}</a></dd>{% endif %}
+  {% if other_product %}<dt>Other product with this code</dt><dd><a href="{% url 'staff:product' other_product %}">{{ other_product|slice:":8" }}</a></dd>{% endif %}
+</dl>
+
+{% if flag.kind == "data_conflict" %}
+<section class="card">
+  <h2>Values</h2>
+  <p class="hint">Open Food Facts changed a field that was corrected locally. The local value stays published until you accept the OFF value.</p>
+  <div class="staff-compare">
+    <div><h3>Published (local)</h3><pre>{{ local_value|default:"—" }}</pre></div>
+    <div><h3>Latest Open Food Facts</h3><pre>{{ off_value|default:"—" }}</pre></div>
+  </div>
+</section>
+{% elif flag.kind == "unusual_value" %}
+<section class="card"><h2>Context</h2><p class="hint">A value outside the usual range was published from a contribution. Check the label photos, then close the flag or correct the data through a new contribution.</p>{% if local_value %}<pre>{{ local_value }}</pre>{% endif %}</section>
+{% else %}
+<section class="card"><h2>Context</h2><p class="hint">The barcode or product identity may be wrong (a code attached to two products, or a user reported “this is not my product”). Fix the catalogue in the admin if needed, then close the flag.</p></section>
+{% endif %}
+
+<section class="card">
+  <h2>Details</h2>
+  <pre class="staff-pre">{{ details }}</pre>
+</section>
+
+{% if is_open %}
+<section class="card">
+  <h2>Action</h2>
+  {% if can_act %}
+  <form method="post" action="{% url 'staff:flag' flag.pk %}">{% csrf_token %}
+    <div class="field"><label for="id_note">Note (optional)</label><input type="text" name="note" id="id_note" maxlength="500"></div>
+    <div class="row">
+      {% if flag.kind == "data_conflict" %}
+        <button class="btn btn-outline" type="submit" name="action" value="keep">{% icon "check" 18 %}<span>Keep local value</span></button>
+        {% if off_value %}<button class="btn btn-primary" type="submit" name="action" value="accept_off">{% icon "refresh-cw" 18 %}<span>Accept OFF value</span></button>{% endif %}
+      {% else %}
+        <button class="btn btn-primary" type="submit" name="action" value="close">{% icon "check" 18 %}<span>Close flag</span></button>
+      {% endif %}
+    </div>
+  </form>
+  {% else %}<p>You can view flags but do not have permission to resolve them.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

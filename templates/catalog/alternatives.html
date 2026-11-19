@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load i18n ui %}
+{% block title %}{% translate "Alternatives" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p><a href="{% url 'product' product.pk %}">{% icon "chevron-left" 18 %} {{ product.name|default:_("Product") }}</a></p>
+</div>
+<section class="card" aria-labelledby="alt-h">{% include "catalog/partials/alternatives.html" %}</section>
+{% endblock %}

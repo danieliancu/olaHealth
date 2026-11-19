@@ -1,13 +1,9 @@
 {% extends "base.html" %}
 {% load i18n ui static %}
 {% block title %}{{ product.name|default:_("Product") }}{% endblock %}
-{% block head %}<script type="module" src="{% static 'js/ola/product.js' %}"></script>
-{{ ola|json_script:"ola-data" }}{% endblock %}
 {% block content %}
 <p class="back"><a href="{% url 'products' %}">{% icon "chevron-left" 18 %}<span>{% translate "Back to products" %}</span></a></p>
-<article class="product" data-product
-         data-id="{{ product.pk }}" data-name="{{ product.name }}" data-brand="{{ product.brand }}"
-         data-image="{{ product.front_image_url|img }}" data-quantity="{{ product.quantity }}" data-url="{{ product_url }}">
+<article class="product" data-product data-id="{{ product.pk }}">
 
   {# 1. Identity + headline indicators + actions #}
   <section class="card hero-card" aria-labelledby="name-h">
@@ -40,22 +36,10 @@
     </ul>
     {% endif %}
     {% if restricted %}<p class="note note-warn">{% icon "triangle-alert" 16 %}<span>{% translate "Store code: may differ between shops." %}</span></p>{% endif %}
-    <button type="button" class="btn btn-primary btn-block add-diary js-only" data-diary-open>{% icon "plus" 20 %}<span>{% translate "Add to diary" %}</span></button>
-    <p class="notice notice-ok diary-done" data-diary-done hidden role="status">{% icon "check" 18 %}<span><span data-diary-done-text></span> <a href="{% url 'today' %}">{% translate "Open Today" %}</a></span></p>
-    <div class="action-bar" role="group" aria-label="{% translate 'Product actions' %}">
-      <button type="button" class="btn btn-outline btn-small" data-fav aria-pressed="false">{% icon "heart" 18 %}<span>{% translate "Favourite" %}</span></button>
-      <button type="button" class="btn btn-outline btn-small" data-compare-toggle aria-pressed="false"
-              data-id="{{ product.pk }}" data-name="{{ product.name }}" data-brand="{{ product.brand }}" data-quantity="{{ product.quantity }}" data-image="{{ product.front_image_url|img }}" data-url="{{ product_url }}">{% icon "git-compare-arrows" 18 %}<span>{% translate "Compare" %}</span></button>
-      <div class="more js-only">
-        <button type="button" class="btn btn-outline btn-small" data-more-toggle aria-expanded="false" aria-controls="more-menu">{% translate "More" %}{% icon "chevron-down" 16 %}</button>
-        <div class="more-menu" id="more-menu" data-more-menu hidden>
-          <button type="button" data-list-toggle="buyOften" aria-pressed="false">{% icon "shopping-basket" 18 %}<span>{% translate "Buy often" %}</span></button>
-          <button type="button" data-list-toggle="avoid" aria-pressed="false">{% icon "ban" 18 %}<span>{% translate "Avoid" %}</span></button>
-          <button type="button" data-note-open>{% icon "notebook-pen" 18 %}<span>{% translate "Add note" %}</span></button>
-        </div>
-      </div>
-    </div>
-    <a class="compare-open" href="{% url 'compare' %}" data-compare-open hidden>{% icon "git-compare-arrows" 18 %}<span>{% translate "Open comparison" %} (<span data-compare-n></span>)</span></a>
+    <a class="btn btn-primary btn-block add-diary" href="{% url 'add-food' product.pk %}{% if scanned %}?scanned={{ scanned|urlencode }}{% endif %}">{% icon "plus" 20 %}<span>{% translate "Add to diary" %}</span></a>
+    {% include "partials/product_actions.html" %}
+    {% include "partials/compare_link.html" %}
+    {% if not user.is_authenticated %}<p class="caption sign-in-save"><a href="{{ login_url }}">{% translate "Sign in to save" %}</a> {% translate "favourites, lists and notes." %}</p>{% endif %}
     {% if scanned %}
       <form method="post" action="{% url 'contribution-start' %}" class="not-mine">
         {% csrf_token %}
@@ -67,18 +51,34 @@
     {% endif %}
   </section>
 
-  {# 2. For you: restriction states for the chosen preferences, and Ask Foodo #}
+  {# 2. For you: restriction states for the signed-in user's diets and allergies, and Ask Foodo #}
   <section class="card ola-card" aria-labelledby="score-h">
     <h2 id="score-h">{% translate "For you" %}</h2>
-    <div class="ola-restrictions" data-ola-restrictions aria-live="polite"></div>
-    <p class="ola-prefs-line js-only"><span data-ola-prefs></span> <button type="button" class="link-btn" data-prefs-edit aria-expanded="false" aria-controls="prefs-panel">{% translate "Change" %}</button></p>
-    <div class="prefs-panel" id="prefs-panel" data-prefs-panel hidden>
-      {% include "partials/restrictions_picker.html" with prefix="pp" %}
-      <div class="row">
-        <button type="button" class="btn btn-primary btn-small" data-onboarding-done>{% translate "Done" %}</button>
-      </div>
-    </div>
-    <button type="button" class="btn btn-outline btn-block js-only ask-ola" data-chat-open="product">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo about this product" %}</span></button>
+    {% if for_you %}
+      {% if for_you.items %}
+      <ul class="restriction-list">
+        {% for r in for_you.items %}<li class="rs rs-{{ r.status }}"><strong>{{ r.label }}: {{ r.status_text }}. </strong>{{ r.reason }}</li>{% endfor %}
+      </ul>
+      <p class="caption">{% translate "Never a guarantee: the physical label is the reference, especially for allergies." %}</p>
+      {% endif %}
+      <p class="ola-prefs-line">{% if for_you.has_prefs %}{% blocktranslate with names=for_you.summary %}Checked for: {{ names }}.{% endblocktranslate %} <a class="link-btn" href="{{ for_you.edit_url }}">{% translate "Change" %}</a>{% else %}{% translate "Add your diet or allergies to check this product." %} <a class="link-btn" href="{{ for_you.edit_url }}">{% translate "Add" %}</a>{% endif %}</p>
+    {% else %}
+      <p class="ola-prefs-line">{% translate "Check this product against your diet and allergies." %} <a class="link-btn" href="{{ login_url }}">{% translate "Sign in" %}</a></p>
+    {% endif %}
+    {% if user.is_authenticated %}
+      {% include "myola/partials/chat.html" with chat_context=chat_context chat_product=product %}
+    {% else %}
+      <a class="btn btn-outline btn-block ask-ola" href="{{ login_url }}">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo about this product" %}</span></a>
+    {% endif %}
+  </section>
+
+  {% if user.is_authenticated %}{% include "partials/product_note.html" %}{% endif %}
+
+  {# 3b. Foodo Score and up to 3 better alternatives sold in the UK (loaded when visible) #}
+  <section class="card" aria-labelledby="alt-h" id="better" hx-get="{% url 'product-alternatives' product.pk %}" hx-trigger="revealed" hx-swap="innerHTML">
+    <h2 id="alt-h">{% translate "Foodo Score and alternatives" %}</h2>
+    <p class="caption htmx-indicator">{% translate "Loading…" %}</p>
+    <p><a href="{% url 'product-alternatives' product.pk %}">{% translate "See the score and better alternatives" %}</a></p>
   </section>
 
   {# 4. Nutrients at a glance: value first, explanation on tap #}
@@ -261,7 +261,4 @@
     </form>
   </section>
 </article>
-{% include "partials/chat.html" %}
-{% include "partials/note_dialog.html" with name=data.name %}
-{% include "partials/diary_dialog.html" with name=data.name %}
 {% endblock %}

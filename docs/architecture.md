@@ -99,7 +99,9 @@ images only from self and the OFF image hosts); `Permissions-Policy` (camera sel
 staff via permission, public only after approval); no arbitrary URL fetching (only the
 configured OFF base URL, redirects not followed, image URLs allow-listed); secrets from the
 environment; secure cookies, HSTS and SSL redirect when `DEBUG=0`; `/healthz` and `/readyz`
-return only a status. No GPS, no medical profiles, no accounts.
+return only a status. No GPS. Accounts (django-allauth, email + password, confirmed email) own
+all personal data, deleted in cascade with the account; health conditions only with explicit
+consent. Rate limits cover lookups, uploads, search, API reads, personal writes and chat.
 
 ## Retention
 

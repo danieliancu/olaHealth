@@ -1,16 +1,27 @@
 {% extends "base.html" %}
 {% load i18n ui static %}
 {% block title %}{% translate "Compare" %}{% endblock %}
-{% block head %}{% if c.charts %}<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}" defer></script>
-<script type="module" src="{% static 'js/compare-charts.js' %}"></script>{% endif %}{% endblock %}
 {% block content %}
 <h1>{% translate "Compare products" %}</h1>
-<div data-compare-shown="{{ shown_ids }}"{% if requested %} data-compare-requested{% endif %} hidden></div>
 {% if missing %}<p class="notice notice-warn" role="status">{% icon "info" 18 %}<span>{% blocktranslate count n=missing %}{{ n }} product is no longer available and was removed from the comparison.{% plural %}{{ n }} products are no longer available and were removed from the comparison.{% endblocktranslate %}</span></p>{% endif %}
 {% if error %}
-  <section class="card" data-compare-empty>
+  <section class="card">
     <p>{{ error }}</p>
-    <div data-compare-tray></div>
+    {% if products %}
+    <ul class="product-list">
+      {% for p in products %}
+      <li class="product-card">
+        {% if p.front_image_url %}<img class="thumb" src="{{ p.front_image_url|img }}" alt="" width="64" height="64" loading="lazy">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="64" height="64">{% endif %}
+        <div class="grow"><a class="product-link" href="{% url 'product' p.pk %}">{{ p.name|default:_("Unnamed product") }}</a><p class="meta">{{ p.brand }}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</p></div>
+        {% if not from_query %}
+        <form method="post" action="{% url 'compare-remove' p.pk %}">{% csrf_token %}
+          <button type="submit" class="icon-btn" aria-label="{% blocktranslate with n=p.name|default:_('this product') %}Remove {{ n }} from comparison{% endblocktranslate %}" title="{% translate 'Remove' %}">{% icon "x" 20 %}</button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
     <a class="btn btn-outline btn-block" href="{% url 'products' %}">{% icon "plus" 18 %}<span>{% translate "Add product" %}</span></a>
   </section>
 {% else %}
@@ -20,8 +31,15 @@
   <caption class="sr-only">{% translate "Indicators" %}</caption>
   <thead><tr><td></td>
     {% for p in c.products %}<th scope="col" class="compare-head">
-      <a class="icon-btn mini compare-remove" href="{{ p.remove_url }}" data-compare-remove="{{ p.pk }}"
+      {% if from_query %}
+      <a class="icon-btn mini compare-remove" href="{{ p.remove_url }}"
          aria-label="{% blocktranslate with n=p.name|default:_('this product') %}Remove {{ n }} from comparison{% endblocktranslate %}" title="{% translate 'Remove' %}">{% icon "x" 18 %}</a>
+      {% else %}
+      <form method="post" action="{% url 'compare-remove' p.pk %}" class="compare-remove-form">{% csrf_token %}
+        <button type="submit" class="icon-btn mini compare-remove"
+                aria-label="{% blocktranslate with n=p.name|default:_('this product') %}Remove {{ n }} from comparison{% endblocktranslate %}" title="{% translate 'Remove' %}">{% icon "x" 18 %}</button>
+      </form>
+      {% endif %}
       {% if p.front_image_url %}<img src="{{ p.front_image_url|img }}" alt="" width="64" height="64" loading="lazy">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="64" height="64">{% endif %}
       <a href="{{ p.url }}">{{ p.name|default:_("Unnamed product") }}</a>
     </th>{% endfor %}</tr></thead>
@@ -62,12 +80,32 @@
 
 <p class="notice">{% icon "info" 18 %}<span>{% translate "No universal winner. Choose what suits you." %}</span></p>
 
-{% if c.charts %}
-{{ c.charts|json_script:"compare-charts-data" }}
+{% if chart_groups %}
 <section class="card charts-card" aria-labelledby="charts-h">
   <h2 id="charts-h">{% translate "Side by side" %}</h2>
   <p class="caption">{% translate "Each nutrient has its own scale, with the difference between the highest and lowest value. Only products on the same basis are compared." %}</p>
-  <div data-compare-charts></div>
+  {% for g in chart_groups %}
+  <section class="chart-group">
+    <h3 class="chart-group-title">{{ g.title }}</h3>
+    <ul class="chart-legend">{% for l in g.legend %}<li><span class="swatch" data-slot="{{ l.slot }}"></span><span>{{ l.name }}</span></li>{% endfor %}</ul>
+    <div class="chart-grid">
+      {% for panel in g.panels %}
+      <figure class="chart-panel">
+        <figcaption class="chart-title"><span class="chart-name">{% icon panel.icon 18 %}<span>{{ panel.label }}</span></span><span class="chart-unit">{{ panel.unit }}</span></figcaption>
+        <svg class="hbars" viewBox="0 0 330 {{ panel.height }}" width="100%" role="img" aria-label="{{ panel.label }}: {{ panel.summary }}">
+          {% for b in panel.bars %}
+          <text class="hbar-label" x="{{ panel.label_x }}" y="{{ b.text_y }}" text-anchor="end">{{ b.name }}</text>
+          {% if b.width %}<rect class="hbar hbar-s{{ b.slot }}" x="{{ panel.bar_x }}" y="{{ b.y }}" width="{{ b.width }}" height="14" rx="3"/>{% endif %}
+          <text class="hbar-value{% if not b.display %} is-missing{% endif %}" x="{{ b.value_x }}" y="{{ b.text_y }}">{{ b.display|default:"—" }}</text>
+          {% endfor %}
+          <line class="hbar-axis" x1="{{ panel.bar_x }}" y1="0" x2="{{ panel.bar_x }}" y2="{{ panel.height }}"/>
+        </svg>
+        <p class="chart-diff">{% if panel.difference %}<span class="chart-diff-label">{% translate "Difference" %}</span><span class="chart-diff-value">{{ panel.difference }}</span>{% else %}<span class="chart-diff-label">{% translate "Same value" %}</span>{% endif %}</p>
+      </figure>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
 </section>
 {% endif %}
 
@@ -79,7 +117,7 @@
 {% endif %}
 <div class="stack">
   {% if c.products|length < 3 %}<a class="btn btn-outline btn-block" href="{% url 'products' %}">{% icon "plus" 18 %}<span>{% translate "Add product" %}</span></a>{% endif %}
-  <button type="button" class="btn btn-link" data-compare-clear>{% translate "Clear comparison" %}</button>
+  <form method="post" action="{% url 'compare-clear' %}">{% csrf_token %}<button type="submit" class="btn btn-link">{% translate "Clear comparison" %}</button></form>
 </div>
 {% endif %}
 {% endblock %}

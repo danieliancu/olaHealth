@@ -1,5 +1,6 @@
-{% load i18n ui %}{# Reusable confirmation dialog, driven by static/js/dialog.js (confirmDialog / data-confirm). #}
-<dialog class="dialog" data-dialog aria-labelledby="dialog-title" aria-describedby="dialog-message">
+{% load i18n ui %}{# Reusable confirmation dialog, driven by static/js/dialog.js (hx-confirm / data-confirm). #}
+<dialog class="dialog" data-dialog aria-labelledby="dialog-title" aria-describedby="dialog-message"
+        data-default-title="{% translate 'Are you sure?' %}" data-default-confirm="{% translate 'Confirm' %}">
   <form method="dialog" class="dialog-body">
     <span class="dialog-icon" data-dialog-icon hidden>{% icon "trash-2" 24 %}</span>
     <h2 id="dialog-title" data-dialog-title>{% translate "Are you sure?" %}</h2>

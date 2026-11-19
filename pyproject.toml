@@ -18,6 +18,11 @@ dependencies = [
     "gunicorn>=23,<28",
     "whitenoise>=6.9,<7",
     "django-allauth>=65,<67",
+    "anthropic>=0.80",
+    "openai>=1.60",
+    "drf-spectacular>=0.28",
+    "drf-spectacular-sidecar>=2025.1",
+    "sentry-sdk[django]>=2.20",
 ]
 
 [dependency-groups]

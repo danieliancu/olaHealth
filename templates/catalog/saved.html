@@ -4,33 +4,67 @@
 {% block content %}
 <h1>{% translate "Saved products" %}</h1>
 
-<div class="segmented" role="tablist" aria-label="{% translate 'Saved lists' %}" data-tabs>
-  <button type="button" role="tab" id="tab-fav" aria-controls="panel-fav" aria-selected="true">{% translate "Favourites" %}</button>
-  <button type="button" role="tab" id="tab-hist" aria-controls="panel-hist" aria-selected="false" tabindex="-1">{% translate "Recent scans" %}</button>
-</div>
-
-<p class="notice notice-ok">{% icon "bookmark" 18 %}<span>{% translate "Saved on this device only – no account, no sync." %}</span></p>
-<p class="notice notice-warn" data-storage-error hidden>{% icon "triangle-alert" 18 %}<span>{% translate "Your browser does not allow local storage, so favourites and history cannot be kept." %}</span></p>
-
-<section id="panel-fav" role="tabpanel" aria-labelledby="tab-fav">
-  <ul class="product-list" data-favorites></ul>
-  <p class="empty" data-favorites-empty hidden>{% translate "No favourites yet. Use the bookmark on a product page." %}</p>
+{% if not user.is_authenticated %}
+<section class="card">
+  <p>{% translate "Favourites, recently viewed products and your hidden list are kept in your account." %}</p>
+  <a class="btn btn-primary btn-block" href="{{ login_url }}">{% icon "log-in" 18 %}<span>{% translate "Sign in to save" %}</span></a>
 </section>
-<section id="panel-hist" role="tabpanel" aria-labelledby="tab-hist" hidden>
-  <ul class="product-list" data-history></ul>
-  <p class="empty" data-history-empty hidden>{% translate "No products viewed yet." %}</p>
+{% else %}
+<nav class="segmented seg-3 saved-nav" aria-label="{% translate 'Saved lists' %}">
+  <a href="#fav-h">{% translate "Favourites" %}</a>
+  <a href="#hist-h">{% translate "Recently viewed" %}</a>
+  <a href="#hidden-h">{% translate "Hidden" %}</a>
+</nav>
+
+<section aria-labelledby="fav-h" class="saved-section">
+  <h2 id="fav-h">{% translate "Favourites" %}</h2>
+  {% if favourites %}
+  <ul class="product-list">
+    {% for p in favourites %}
+    {% translate "Remove from favourites" as remove_label %}
+    {% include "partials/product_row.html" with kind="favorite" remove_label=remove_label %}
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">{% translate "No favourites yet. Use the heart on a product page." %}</p>
+  {% endif %}
 </section>
+
+<section aria-labelledby="hist-h" class="saved-section">
+  <h2 id="hist-h">{% translate "Recently viewed" %}</h2>
+  {% if recent %}
+  <ul class="product-list">
+    {% for p in recent %}{% include "partials/product_row.html" with kind="" %}{% endfor %}
+  </ul>
+  <form method="post" action="{% url 'saved-clear' 'history' %}" data-confirm="{% translate 'This removes your recently viewed products and scans.' %}"
+        data-confirm-title="{% translate 'Clear history?' %}" data-confirm-label="{% translate 'Clear' %}" data-confirm-tone="danger">
+    {% csrf_token %}<button type="submit" class="btn btn-link">{% translate "Clear history" %}</button>
+  </form>
+  {% else %}
+  <p class="empty">{% translate "No products viewed yet." %}</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="hidden-h" class="saved-section">
+  <h2 id="hidden-h">{% translate "Hidden" %}</h2>
+  {% if hidden %}
+  <p class="caption">{% translate "Hidden products are left out of your searches. They stay in the catalogue for everyone else." %}</p>
+  <ul class="product-list">
+    {% for p in hidden %}
+    {% translate "Show again" as remove_label %}
+    {% include "partials/product_row.html" with kind="hidden" remove_label=remove_label %}
+    {% endfor %}
+  </ul>
+  <form method="post" action="{% url 'saved-clear' 'hidden' %}">
+    {% csrf_token %}<button type="submit" class="btn btn-outline btn-block">{% translate "Show hidden again" %}</button>
+  </form>
+  {% else %}
+  <p class="empty">{% translate "No hidden products." %}</p>
+  {% endif %}
+</section>
+{% endif %}
 
 <div class="stack">
   <a class="btn btn-outline btn-block" href="{% url 'scan' %}">{% icon "scan-barcode" 18 %}<span>{% translate "Scan another product" %}</span></a>
-  <button type="button" class="btn btn-link" data-clear="all">{% translate "Clear saved products" %}</button>
 </div>
-
-<template data-row-template>
-  <li class="product-card">
-    <img class="thumb" alt="" width="64" height="64" loading="lazy" data-img>
-    <div class="grow"><a class="product-link" data-link></a><p class="meta" data-meta></p></div>
-    <button type="button" class="icon-btn filled" data-remove>{% icon "bookmark" 22 %}</button>
-  </li>
-</template>
 {% endblock %}

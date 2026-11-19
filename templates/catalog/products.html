@@ -1,20 +1,23 @@
 {% extends "base.html" %}
 {% load i18n ui static %}
 {% block title %}{% translate "Products" %}{% endblock %}
-{% block head %}<script type="module" src="{% static 'js/search.js' %}"></script>{% endblock %}
 {% block content %}
+<div id="catalog">
 <h1>{% translate "Products" %}</h1>
 
 {% include "partials/diary_banner.html" %}
-<form method="get" class="filters" role="search" aria-label="{% translate 'Search the catalogue' %}" data-autosubmit>
-  {% if diary %}<input type="hidden" name="add" value="{{ diary.add }}"><input type="hidden" name="date" value="{{ diary.date }}">{% endif %}
-  <div class="search-box" data-suggest data-suggest-url="{% url 'api-suggest' %}"{% if diary_query %} data-diary-query="{{ diary_query }}"{% endif %}>
+{# Filters apply on change through htmx (the Apply button stays for no-JS). #}
+<form method="get" action="{% url 'products' %}" class="filters" role="search" aria-label="{% translate 'Search the catalogue' %}"
+      hx-get="{% url 'products' %}" hx-trigger="change from:.filter-select" hx-target="#catalog" hx-select="#catalog" hx-swap="outerHTML" hx-push-url="true">
+  {% if diary %}<input type="hidden" name="add" value="{{ diary.add }}" id="diary-add"><input type="hidden" name="date" value="{{ diary.date }}" id="diary-date">{% endif %}
+  <div class="search-box">
     {% icon "search" 20 %}
     <label for="{{ form.q.id_for_label }}" class="sr-only">{% translate "Search name or brand" %}</label>
-    <input type="search" name="q" id="{{ form.q.id_for_label }}" value="{{ form.q.value|default:'' }}" placeholder="{% translate 'Search name or brand' %}" maxlength="100"
-           role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest-list" autocomplete="off">
-    <ul id="suggest-list" class="suggest" role="listbox" aria-label="{% translate 'Suggestions' %}" hidden></ul>
-    <p class="sr-only" aria-live="polite" data-suggest-status></p>
+    <input type="search" name="q" id="{{ form.q.id_for_label }}" value="{{ form.q.value|default:'' }}" placeholder="{% translate 'Search name or brand' %}" maxlength="100" autocomplete="off"
+           aria-controls="suggest-list"
+           hx-get="{% url 'suggest-html' %}" hx-trigger="input changed delay:180ms, search" hx-target="#suggest-list" hx-swap="outerHTML" hx-sync="this:replace"
+           hx-indicator="closest .search-box"{% if diary %} hx-include="#diary-add, #diary-date"{% endif %}>
+    {% include "partials/suggest.html" with show=False %}
   </div>
   <p class="caption">{% translate "Products in the FoodoTrack catalogue" %}<span class="sr-only"> – {% translate "only products already scanned or added here" %}</span></p>
   <div class="pills">
@@ -26,10 +29,11 @@
   </div>
   <div class="sort-row">
     <label for="sort">{% translate "Sort:" %}</label>
-    <select id="sort" name="sort" class="bare">
+    <select id="sort" name="sort" class="bare filter-select">
       {% for v, l in form.fields.sort.choices %}<option value="{{ v }}" {% if form.sort.value == v or not form.sort.value and v == "relevance" %}selected{% endif %}>{{ l }}</option>{% endfor %}
     </select>
-    <button class="btn btn-small btn-outline js-hide" type="submit">{% translate "Apply" %}</button>
+    <button class="btn btn-small btn-outline" type="submit">{% translate "Apply" %}</button>
+    <span class="spinner htmx-indicator" aria-hidden="true"></span>
   </div>
 </form>
 
@@ -37,8 +41,8 @@
   <p class="notice notice-warn">{% icon "triangle-alert" 18 %}<span>{% translate "Nutri-Score grades here come from different algorithm versions (2021 and 2023). They are listed by letter but are not directly comparable." %}</span></p>
 {% endif %}
 
-<a class="compare-open" href="{% url 'compare' %}" data-compare-open hidden>{% icon "git-compare-arrows" 18 %}<span>{% translate "Open comparison" %} (<span data-compare-n></span>)</span></a>
-<p class="caption" role="status" data-product-count data-total="{{ page.paginator.count }}">{% blocktranslate count counter=page.paginator.count %}{{ counter }} product{% plural %}{{ counter }} products{% endblocktranslate %}</p>
+{% include "partials/compare_link.html" %}
+<p class="caption" role="status">{% blocktranslate count counter=page.paginator.count %}{{ counter }} product{% plural %}{{ counter }} products{% endblocktranslate %}</p>
 <ul class="product-list">
   {% for p in page.object_list %}
   <li class="product-card">
@@ -50,21 +54,7 @@
         {% if p.nutriscore_grade %}<span class="grade grade-sm grade-{{ p.nutriscore_grade }}" title="Nutri-Score {{ p.nutriscore_grade|upper }}{% if p.nutriscore_version %} ({{ p.nutriscore_version }}){% endif %}"><span class="sr-only">Nutri-Score </span>{{ p.nutriscore_grade|upper }}</span>{% endif %}
         {% if p.nova_group %}<span class="processing processing-{{ p.nova_group }}"><span class="dot" aria-hidden="true"></span>{{ p.nova_group|processing }}</span>{% endif %}
       </p>
-      <div class="card-actions">
-        <div class="card-actions-panel" id="actions-{{ p.pk }}">
-        <button type="button" class="btn btn-outline btn-icon" data-fav title="{% translate 'Save' %}"
-                data-id="{{ p.pk }}" data-name="{{ p.name }}" data-brand="{{ p.brand }}" data-quantity="{{ p.quantity }}" data-image="{{ p.front_image_url|img }}"
-                aria-pressed="false" aria-label="{% blocktranslate with n=p.name|default:_('product') %}Save {{ n }}{% endblocktranslate %}">{% icon "bookmark" 20 %}</button>
-        <button type="button" class="btn btn-outline btn-icon" data-compare-toggle title="{% translate 'Compare' %}"
-                data-id="{{ p.pk }}" data-name="{{ p.name }}" data-brand="{{ p.brand }}" data-quantity="{{ p.quantity }}" data-image="{{ p.front_image_url|img }}"
-                aria-pressed="false" aria-label="{% blocktranslate with n=p.name|default:_('product') %}Add {{ n }} to compare{% endblocktranslate %}">{% icon "git-compare-arrows" 20 %}</button>
-        <button type="button" class="btn btn-icon btn-icon-danger" data-hide-product
-                data-id="{{ p.pk }}" data-name="{{ p.name }}" title="{% translate 'Remove from my list' %}"
-                aria-label="{% blocktranslate with n=p.name|default:_('product') %}Remove {{ n }} from my list{% endblocktranslate %}">{% icon "trash-2" 20 %}</button>
-        </div>
-        <button type="button" class="btn btn-icon actions-toggle js-only" aria-expanded="false" aria-controls="actions-{{ p.pk }}"
-                aria-label="{% blocktranslate with n=p.name|default:_('product') %}Actions for {{ n }}{% endblocktranslate %}" title="{% translate 'Actions' %}">{% icon "chevron-left" 20 %}</button>
-      </div>
+      {% include "partials/card_actions.html" %}
     </div>
   </li>
   {% empty %}
@@ -72,10 +62,12 @@
   {% endfor %}
 </ul>
 
-<p class="hidden-note" data-hidden-note hidden>
-  <span data-hidden-text></span>
-  <button type="button" class="btn-link" data-unhide-all>{% translate "Show them again" %}</button>
+{% if hidden_count %}
+<p class="hidden-note">
+  <span>{% blocktranslate count n=hidden_count %}{{ n }} product hidden from your lists.{% plural %}{{ n }} products hidden from your lists.{% endblocktranslate %}</span>
+  <a class="btn-link" href="{% url 'saved' %}#hidden-h">{% translate "Show them again" %}</a>
 </p>
+{% endif %}
 
 {% if page.has_other_pages %}
 <nav class="pager" aria-label="{% translate 'Pages' %}">
@@ -84,4 +76,5 @@
   {% if page.has_next %}<a class="btn btn-outline btn-small" href="?{{ query }}&amp;page={{ page.next_page_number }}" rel="next"><span>{% translate "Next" %}</span>{% icon "arrow-right" 16 %}</a>{% endif %}
 </nav>
 {% endif %}
+</div>
 {% endblock %}

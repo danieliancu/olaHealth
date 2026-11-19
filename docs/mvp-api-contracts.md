@@ -2,9 +2,15 @@
 
 Structures the MVP interface consumes. Product data is real: Open Food Facts plus approved local
 corrections, read through the existing contracts (`ProductDetailSerializer`, `revision.data`,
-`/api/v1/compare/`). The personal layer is computed by deterministic Python rules (`myola/`) and
-stored in the browser (`static/js/ola/store.js`). No production endpoints or migrations exist yet
-for anything below.
+`/api/v1/compare/`). The personal layer is computed by deterministic Python rules (`myola/`).
+
+> **Update (November 2026):** the browser store described in §4 has been replaced by
+> per-account PostgreSQL models (`myola/models.py`: Profile, DiaryEntry, WaterEntry,
+> ActivityEntry, WeightEntry, ProductMark, ProductVisit, Note, Memory, ChatMessage) with the
+> same fields and limits, rendered server-side with htmx. Health conditions are stored only
+> with explicit consent and deleted with the account. The Foodo Score (§3) is implemented as
+> `score.v1` and alternatives in `catalog/services/alternatives.py`; Ask Foodo (§5) can use an
+> AI provider that only rephrases Python-computed facts.
 
 Conventions:
 
@@ -125,7 +131,7 @@ Goals (`lower_sugar`, `more_protein`) only bring the matching value (sugars, pro
 * **Restrictions → checks**: diets and allergens for the product page are derived from
   `restrictions` (`derivePrefs` in `store.js`). If no nut or seafood type is chosen, all of
   them are checked. Religious restriction and Other are notes only and never create a rule.
-* **Health conditions** stay on the device. They are never used for diagnoses, plans or advice.
+* **Health conditions** are stored only with explicit consent (see the update note above). They are never used for diagnoses, plans or advice.
   An eating-disorder answer starts with calories and weight hidden (`showEnergy`,
   `trackWeight`), and this can be changed later.
 * **Diary**: an entry is saved only after the user confirms the amount. It keeps the per-100
@@ -169,4 +175,4 @@ available as `assessments.services.compare.build_comparison` (no database access
 
 ## 7. What stays out of the catalogue
 
-Data from My Track stays on the device and never reaches the catalogue or the export.
+Data from My Track stays in the user's account and never reaches the catalogue or the export.

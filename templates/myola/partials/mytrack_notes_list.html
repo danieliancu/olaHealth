@@ -1,0 +1,9 @@
+{% load i18n %}<div id="notes-list">
+  <ul class="note-list">
+    {% for note in notes %}
+      {% if editing and editing.pk == note.pk %}{% include "myola/partials/mytrack_note_edit.html" with form=edit_form %}
+      {% else %}{% include "myola/partials/mytrack_note_item.html" %}{% endif %}
+    {% endfor %}
+  </ul>
+  {% if not notes %}<p class="empty">{% if q %}{% translate "No note matches your search." %}{% else %}{% translate "No notes yet. Add one here or from a product page." %}{% endif %}</p>{% endif %}
+</div>

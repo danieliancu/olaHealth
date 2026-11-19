@@ -1,0 +1,11 @@
+{% load i18n %}{# Health conditions with the consent box. Context: form (ConditionsForm). #}
+{# "None" and "Prefer not to answer" are exclusive (checked on the server). #}
+<fieldset class="option-list compact"{% if form.conditions.errors %} aria-describedby="hc-conditions-err"{% endif %}>
+  <legend class="sr-only">{% translate "Health conditions" %}</legend>
+  {% for c in form.condition_options %}<label class="option" for="{{ c.id }}"><input type="checkbox" id="{{ c.id }}" name="conditions" value="{{ c.key }}"{% if c.checked %} checked{% endif %}><span>{{ c.label }}</span></label>{% endfor %}
+</fieldset>
+{% for e in form.conditions.errors %}<p class="field-error" id="hc-conditions-err" role="alert">{{ e }}</p>{% endfor %}
+<div class="consent-box">
+  <label class="check consent" for="hc-consent"><input type="checkbox" id="hc-consent" name="consent" value="1"{% if form.consent.value %} checked{% endif %}> <span>{{ form.consent.label }}</span></label>
+  <p class="caption">{% translate "Health information is sensitive. Without this consent, your answers here are not saved." %}</p>
+</div>

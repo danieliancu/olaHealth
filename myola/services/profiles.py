@@ -19,6 +19,27 @@ def get_profile(user) -> Profile:
     return profile
 
 
+def clear_health(profile: Profile) -> None:
+    """Delete health answers and withdraw the consent to store them."""
+    profile.conditions = []
+    profile.conditions_note = ""
+    profile.health_consent_at = None
+    profile.save(update_fields=["conditions", "conditions_note", "health_consent_at", "updated_at"])
+
+
+def finish_onboarding(profile: Profile, selected_conditions: list[str]) -> None:
+    """Mark onboarding done. A history of eating disorders starts with calorie figures and
+    weight tracking hidden (changeable later in Settings), whether or not the answer itself was
+    stored."""
+    profile.onboarded = True
+    fields = ["onboarded", "updated_at"]
+    if "eating_disorder" in selected_conditions:
+        profile.show_energy = False
+        profile.track_weight = False
+        fields += ["show_energy", "track_weight"]
+    profile.save(update_fields=fields)
+
+
 def derive_prefs(profile: Profile | None) -> dict[str, list[str]]:
     """Diets and allergens used on product pages, from the onboarding restrictions.
 

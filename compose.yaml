@@ -59,7 +59,26 @@ services:
       OMP_THREAD_LIMIT: "1"
     mem_limit: ${WORKER_MEM_LIMIT:-768m}
 
+  # Daily pg_dump + private media archive into the `backups` volume (see README, Backups).
+  backup:
+    image: postgres:17-alpine
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      BACKUP_HOUR: ${BACKUP_HOUR:-3}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    command: ["sh", "/scripts/backup-loop.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/scripts:ro
+      - private_media:/data/private
+      - backups:/backups
+    restart: unless-stopped
+
 volumes:
   pgdata:
   private_media:
   exports:
+  backups:

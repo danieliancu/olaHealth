@@ -1,0 +1,43 @@
+{% load i18n ui %}{# Card actions behind a discreet arrow (<details>): Save, Compare, Remove from my list. #}
+{% with name=p.name|default:_("product") next=next_url|default:request.get_full_path %}
+<details class="card-actions" id="actions-{{ p.pk }}"{% if open %} open{% endif %}>
+  <summary class="btn btn-icon actions-toggle" title="{% translate 'Actions' %}"><span class="sr-only">{% blocktranslate with n=name %}Actions for {{ n }}{% endblocktranslate %}</span>{% icon "chevron-left" 20 %}</summary>
+  <div class="card-actions-panel">
+    {% if user.is_authenticated %}
+    <form method="post" action="{% url 'product-mark' p.pk 'favorite' %}" hx-post="{% url 'product-mark' p.pk 'favorite' %}" hx-target="#actions-{{ p.pk }}" hx-swap="outerHTML" hx-disabled-elt="find button">
+      {% csrf_token %}<input type="hidden" name="ui" value="card"><input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="btn btn-outline btn-icon" data-fav aria-pressed="{% if p.is_fav %}true{% else %}false{% endif %}" title="{% if p.is_fav %}{% translate 'In favourites' %}{% else %}{% translate 'Save' %}{% endif %}"
+              aria-label="{% blocktranslate with n=name %}Save {{ n }}{% endblocktranslate %}">{% icon "bookmark" 20 %}</button>
+    </form>
+    {% else %}
+    <a class="btn btn-outline btn-icon" href="{% url 'account_login' %}?next={{ next|urlencode }}" title="{% translate 'Sign in to save' %}"
+       aria-label="{% blocktranslate with n=name %}Sign in to save {{ n }}{% endblocktranslate %}">{% icon "bookmark" 20 %}</a>
+    {% endif %}
+    {% if p.in_compare %}
+    <form method="post" action="{% url 'compare-remove' p.pk %}" hx-post="{% url 'compare-remove' p.pk %}" hx-target="#actions-{{ p.pk }}" hx-swap="outerHTML" hx-disabled-elt="find button">
+      {% csrf_token %}<input type="hidden" name="ui" value="card"><input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="btn btn-outline btn-icon" data-compare-toggle aria-pressed="true" title="{% translate 'Added to compare' %}"
+              aria-label="{% blocktranslate with n=name %}Add {{ n }} to compare{% endblocktranslate %}">{% icon "git-compare-arrows" 20 %}</button>
+    </form>
+    {% else %}
+    <form method="post" action="{% url 'compare-add' p.pk %}" hx-post="{% url 'compare-add' p.pk %}" hx-target="#actions-{{ p.pk }}" hx-swap="outerHTML" hx-disabled-elt="find button">
+      {% csrf_token %}<input type="hidden" name="ui" value="card"><input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="btn btn-outline btn-icon" data-compare-toggle aria-pressed="false" title="{% translate 'Compare' %}"
+              aria-label="{% blocktranslate with n=name %}Add {{ n }} to compare{% endblocktranslate %}">{% icon "git-compare-arrows" 20 %}</button>
+    </form>
+    {% endif %}
+    {% if user.is_authenticated %}
+    <form method="post" action="{% url 'product-mark' p.pk 'hidden' %}" hx-post="{% url 'product-mark' p.pk 'hidden' %}" hx-target="closest li" hx-swap="delete"
+          hx-confirm="{% blocktranslate with n=name %}“{{ n }}” will be hidden from your lists. It stays in the catalogue for everyone else.{% endblocktranslate %}"
+          data-confirm-title="{% translate 'Remove from your list?' %}" data-confirm-label="{% translate 'Remove' %}" data-confirm-tone="danger">
+      {% csrf_token %}<input type="hidden" name="ui" value="hide"><input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="btn btn-icon btn-icon-danger" data-hide-product title="{% translate 'Remove from my list' %}"
+              aria-label="{% blocktranslate with n=name %}Remove {{ n }} from my list{% endblocktranslate %}">{% icon "trash-2" 20 %}</button>
+    </form>
+    {% else %}
+    <a class="btn btn-icon btn-icon-danger" data-hide-product href="{% url 'account_login' %}?next={{ next|urlencode }}" title="{% translate 'Sign in to hide products' %}"
+       aria-label="{% blocktranslate with n=name %}Sign in to remove {{ n }} from your list{% endblocktranslate %}">{% icon "trash-2" 20 %}</a>
+    {% endif %}
+  </div>
+</details>
+{% endwith %}

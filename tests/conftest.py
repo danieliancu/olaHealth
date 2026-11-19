@@ -69,3 +69,13 @@ def off_json(off_payload):
         "code": off_payload()["code"],
         "product": off_payload(**changes),
     }
+
+
+@pytest.fixture(autouse=True)
+def _fresh_maintenance_banner():
+    """The banner text is cached per process; tests must not see another test's banner."""
+    from core.context_processors import _MAINTENANCE
+
+    _MAINTENANCE.update(at=0.0, text="")
+    yield
+    _MAINTENANCE.update(at=0.0, text="")

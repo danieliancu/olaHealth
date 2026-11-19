@@ -1,0 +1,48 @@
+{% extends "staff/layout.html" %}{% load ui %}
+{% block staff_title %}Dashboard{% endblock %}
+{% block staff_content %}
+<h1>Staff dashboard</h1>
+{% with s=stats %}
+<div class="staff-tiles">
+  <div class="staff-stat"><span class="staff-stat-label">Users</span><span class="staff-stat-value">{{ s.users_total }}</span><span class="hint">{{ s.users_new_7d }} new in the last 7 days</span></div>
+  <a class="staff-stat{% if s.contributions_waiting %} is-attention{% endif %}" href="{% url 'staff:contributions' %}"><span class="staff-stat-label">Waiting for moderation</span><span class="staff-stat-value">{{ s.contributions_waiting }}</span><span class="hint">{{ s.contributions_conflict }} in conflict</span></a>
+  <a class="staff-stat{% if s.flags_open %} is-attention{% endif %}" href="{% url 'staff:flags' %}"><span class="staff-stat-label">Open review flags</span><span class="staff-stat-value">{{ s.flags_open }}</span><span class="hint">{% for label, n in s.flags_by_kind %}{{ label }} {{ n }}{% if not forloop.last %} · {% endif %}{% endfor %}</span></a>
+  <div class="staff-stat"><span class="staff-stat-label">AI messages this month</span><span class="staff-stat-value">{% if s.ai %}{{ s.ai.messages }}{% else %}—{% endif %}</span><span class="hint">{% if s.ai %}Estimated cost ${{ s.ai.cost|floatformat:2 }} of ${{ s.site.ai_monthly_budget_usd }}{% else %}Usage not available yet{% endif %} · AI {{ s.site.ai_enabled|yesno:"on,off" }}</span></div>
+</div>
+
+<div class="staff-grid-2">
+  <section class="card">
+    <h2>Scans per day</h2>
+    <p class="hint">{{ s.scans_total }} barcode scans in the last 7 days</p>
+    <table class="staff-days"><caption class="sr-only">Scans per day</caption>
+      <thead><tr><th scope="col">Day</th><th scope="col">Scans</th><th scope="col"><span class="sr-only">Relative</span></th></tr></thead>
+      <tbody>{% for r in s.scans %}<tr><th scope="row">{{ r.day|date:"D j M" }}</th><td>{{ r.count }}</td><td><meter min="0" max="100" value="{{ r.share }}">{{ r.share }}%</meter></td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+  <section class="card">
+    <h2>Diary entries per day</h2>
+    <p class="hint">{{ s.diary_total }} foods logged in the last 7 days (counts only)</p>
+    <table class="staff-days"><caption class="sr-only">Diary entries per day</caption>
+      <thead><tr><th scope="col">Day</th><th scope="col">Entries</th><th scope="col"><span class="sr-only">Relative</span></th></tr></thead>
+      <tbody>{% for r in s.diary %}<tr><th scope="row">{{ r.day|date:"D j M" }}</th><td>{{ r.count }}</td><td><meter min="0" max="100" value="{{ r.share }}">{{ r.share }}%</meter></td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+</div>
+
+<section class="card{% if s.off.circuit_open %} card-warn{% endif %}">
+  <h2>Open Food Facts</h2>
+  {% if s.off.circuit_open %}
+    <p class="notice-warn notice">{% icon "triangle-alert" 18 %}<span>Circuit breaker open: lookups are paused after a timeout or outage.</span></p>
+  {% else %}
+    <p>{% icon "circle-check" 18 %} Reachable (circuit breaker closed).</p>
+  {% endif %}
+  <ul class="staff-facts">
+    <li>Lookup errors in the last 24 h: <strong>{{ s.off.errors_24h }}</strong>{% if s.off.errors_by_kind %} ({% for kind, n in s.off.errors_by_kind %}{{ kind }} {{ n }}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}</li>
+    <li>Last lookup error: {{ s.off.last_error_at|default:"—" }}</li>
+    <li>Products whose last refresh failed: <strong>{{ s.off.refresh_failed }}</strong></li>
+    <li>Last successful sync: {{ s.off.last_sync|default:"—" }}</li>
+  </ul>
+</section>
+{% if s.site.maintenance_message %}<p class="notice notice-warn">{% icon "info" 18 %}<span>Maintenance message is on: “{{ s.site.maintenance_message }}”</span></p>{% endif %}
+{% endwith %}
+{% endblock %}

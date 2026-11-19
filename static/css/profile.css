@@ -1,1 +1,80 @@
-/* profile — see base.html; htmx-era styles for this area. */
+/* profile — onboarding, profile, settings and progress (server-rendered, no inline styles). */
+
+/* Onboarding progress: an ordered list of four steps. */
+.ob-progress { list-style: none; padding: 0; margin: 0; }
+.ob-progress li { height: 6px; border-radius: 3px; background: var(--line); }
+.ob-progress li.is-done { background: var(--accent); }
+.ob-progress .sr-only { height: 1px; background: none; }
+.ob-step > .btn-link { padding-left: 0; }
+
+/* Restrictions picker: checkbox cards and chips, sub-panels opened with :has(), no JS. */
+.choice { margin: 0; }
+.choice input, .chip-check input { position: absolute; opacity: 0; pointer-events: none; }
+.choice:has(input:checked) { background: var(--accent); border-color: var(--accent); color: #fff; padding-right: 2.1rem; }
+.choice:has(input:checked)::after {
+  content: "✓"; position: absolute; right: .55rem; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; color: var(--accent-strong); font-size: .72rem; font-weight: 700; line-height: 1;
+}
+.choice:has(input:focus-visible) { outline: 3px solid #f59e0b; outline-offset: 2px; }
+.restr-picker fieldset.choice-grid { margin: 0; }
+.chip-check { position: relative; margin: 0; font-weight: 500; }
+.chip-check span {
+  display: inline-flex; align-items: center; min-height: 44px; padding: .35rem .8rem; border-radius: 999px;
+  border: 1.5px solid #a9bdb7; background: var(--surface); font-size: .88rem; cursor: pointer;
+}
+.chip-check:hover span { border-color: var(--accent); }
+.chip-check input:checked + span { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip-check input:focus-visible + span { outline: 3px solid #f59e0b; outline-offset: 2px; }
+.sub-choices legend.hint { font-weight: 500; font-size: .85rem; margin: 0 0 .4rem; float: left; width: 100%; }
+.sub-choices legend.hint + .chip-row { clear: both; }
+.restr-picker .sub-choices { display: none; }
+.restr-picker:has(input[name="restrictions"][value="nuts"]:checked) .sub-choices[data-sub="nuts"],
+.restr-picker:has(input[name="restrictions"][value="seafood"]:checked) .sub-choices[data-sub="seafood"],
+.restr-picker:has(input[name="restrictions"][value="religious"]:checked) .sub-choices[data-sub="religious"],
+.restr-picker:has(input[name="restrictions"][value="other"]:checked) .sub-choices[data-sub="other"] { display: block; }
+/* A sub-panel with a validation error stays visible. */
+.restr-picker .sub-choices:has(.field-error) { display: block; }
+
+/* Health conditions and consent */
+.consent-box { margin: .2rem 0 .4rem; padding: .7rem .8rem; border-radius: 12px; background: #f4f8f6; }
+.consent-box .caption { margin: .35rem 0 0; }
+
+/* Profile and settings pages */
+.profile-page { max-width: 640px; margin: 0 auto; }
+.profile-page .page-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.profile-jump { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 1rem; }
+.profile-jump a {
+  display: inline-flex; align-items: center; gap: .3rem; min-height: 40px; padding: .3rem .8rem; border-radius: 999px;
+  background: #f4f8f6; color: #2f423c; font-size: .88rem; font-weight: 500; text-decoration: none;
+}
+.profile-jump a:hover { background: var(--accent-soft); color: var(--accent-strong); }
+.profile-section { scroll-margin-top: 1rem; }
+.profile-section h2 { margin-top: .2rem; }
+.profile-section .btn-danger-link { display: inline-flex; gap: .3rem; align-items: center; padding-left: 0; }
+.profile-saved { margin: .4rem 0; }
+.settings-legend { float: left; width: 100%; font-size: 1.15rem; margin-bottom: .2rem; }
+.settings-legend + * { clear: both; }
+
+/* Progress: period switch as links */
+.range-switch a {
+  display: grid; place-items: center; min-height: 42px; border-radius: 9px; font-weight: 500;
+  color: var(--muted); text-decoration: none;
+}
+.range-switch a[aria-current="page"] { background: var(--surface); color: var(--accent-strong); box-shadow: var(--shadow); }
+
+/* Progress: SVG bar charts (geometry in attributes, colours here). */
+.bar-chart { display: block; width: 100%; height: 120px; }
+.bar-rect { fill: var(--accent); }
+.bar-rect.is-partial { fill: #f59e0b; }
+.bar-rect.is-empty { fill: #c9d8d3; }
+.partial-key { display: inline-block; width: .75rem; height: .75rem; border-radius: 2px; background: #f59e0b; vertical-align: -1px; }
+.bar-labels { list-style: none; padding: 0; margin: .2rem 0 0; display: grid; gap: 0; }
+.bar-labels.r-7 { grid-template-columns: repeat(7, 1fr); }
+.bar-labels.r-30 { grid-template-columns: repeat(30, 1fr); }
+.bar-labels li { font-size: .68rem; color: var(--muted); text-align: center; height: 1.1rem; line-height: 1.1rem; white-space: nowrap; overflow: visible; }
+
+/* Weight log */
+.weight-log li { gap: .6rem; }
+.weight-log strong { margin-left: auto; font-variant-numeric: tabular-nums; }
+.weight-delete { margin: 0; }

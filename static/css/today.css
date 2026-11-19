@@ -1,1 +1,63 @@
-/* today — see base.html; htmx-era styles for this area. */
+/* Today and the "how much?" step: server-rendered (Django + htmx). Base rules live in app.css. */
+
+/* Day picker: days are links; future days and "next week" are inert spans. */
+a.day { text-decoration: none; }
+.day.is-future { color: #a9bdb7; cursor: default; }
+.day-band .day.is-future, .day-band .day.is-future .day-name { color: rgba(255, 255, 255, .45); }
+.day-strip .icon-btn.is-disabled { opacity: .4; cursor: default; }
+.day-strip a.icon-btn { text-decoration: none; }
+
+/* Summary meter: an SVG bar (no inline style under the CSP). */
+svg.meter { width: 100%; height: 6px; }
+svg.meter .meter-fill { fill: var(--accent); }
+svg.meter.is-over .meter-fill { fill: #c2410c; }
+.targets-edit { font-size: .9rem; }
+
+/* Diary rows */
+a.entry { text-decoration: none; }
+.entry-amount { flex: none; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.entry-amount + .icon { margin-left: 0; }
+
+/* Inline edit form (replaces the row) */
+.entry-edit { display: flex; flex-direction: column; gap: .35rem; padding: .7rem .75rem; border-radius: 12px; border: 1.5px solid var(--accent); background: var(--surface); }
+.entry-edit label { margin: 0; }
+.entry-edit-name { margin: 0; overflow-wrap: anywhere; }
+.entry-edit .entry-meta { margin: 0; }
+.entry-edit-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.entry-edit-row select, .entry-edit-row input { width: 100%; }
+.entry-edit .dialog-actions { margin-top: .4rem; }
+
+/* Quick add (a food typed in by hand), one per meal */
+.quick-add { margin: .2rem 0 0; }
+.quick-add > summary {
+  display: inline-flex; align-items: center; gap: .3rem; min-height: 40px; padding: 0 .4rem;
+  cursor: pointer; color: var(--accent-strong); font-weight: 700; font-size: .9rem; list-style: none; border-radius: 10px;
+}
+.quick-add > summary::-webkit-details-marker { display: none; }
+.quick-add > summary:hover { background: var(--accent-soft); }
+.quick-add[open] > summary .icon { transform: rotate(45deg); }
+.quick-form { display: flex; flex-direction: column; gap: .35rem; padding: .7rem .75rem; margin-top: .3rem; border-radius: 12px; background: #f7faf9; }
+.quick-form label { margin: 0; }
+.quick-form .btn { margin-top: .4rem; align-self: flex-start; }
+.quick-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem .5rem; border: 0; padding: 0; margin: .3rem 0 0; }
+.quick-values legend { font-size: .85rem; color: var(--muted); font-weight: 700; padding: 0; margin-bottom: .2rem; }
+.quick-values input { width: 100%; }
+.quick-values label { font-size: .85rem; }
+@media (min-width: 1024px) { .quick-values { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Water quick-add buttons are a form now */
+form.water-actions { margin-bottom: .5rem; }
+.log-list li form { margin: 0; }
+
+/* Toast after a change: fades out by itself (CSS only). */
+.today-toast { animation: today-toast-out .4s ease 8s forwards; }
+.today-toast form { margin: 0; }
+@keyframes today-toast-out { to { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .today .today-toast { animation: today-toast-out 0s linear 8s forwards !important; }
+}
+
+/* "How much?" step */
+a.chip-btn { display: inline-flex; align-items: center; text-decoration: none; color: inherit; }
+.chip-btn[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.add-form input[type="date"] { width: 100%; }

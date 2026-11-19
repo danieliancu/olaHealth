@@ -15,7 +15,9 @@ EXCLUSIVE = {
 def marks_for(user, product) -> set[str]:
     if not user.is_authenticated:
         return set()
-    return set(ProductMark.objects.filter(user=user, product=product).values_list("kind", flat=True))
+    return set(
+        ProductMark.objects.filter(user=user, product=product).values_list("kind", flat=True)
+    )
 
 
 @transaction.atomic

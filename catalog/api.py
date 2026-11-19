@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import uuid
 
-from rest_framework import status
+from django.utils.decorators import method_decorator
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.request import Request
@@ -16,7 +19,7 @@ from catalog.serializers import ProductDetailSerializer, ProductSummarySerialize
 from catalog.services.lookup import lookup
 from catalog.services.search import SearchParams, search_products
 from catalog.views import ERROR_MESSAGES, _country
-from core.coordination import check_request_limit
+from core.coordination import check_request_limit, rate_limited
 
 HTTP_FOR_ERROR = {
     "invalid_code": status.HTTP_400_BAD_REQUEST,
@@ -26,7 +29,57 @@ HTTP_FOR_ERROR = {
     "invalid_response": status.HTTP_502_BAD_GATEWAY,
 }
 
+_CODE = inline_serializer(
+    "LookupCode",
+    {
+        "original": serializers.CharField(),
+        "format": serializers.CharField(),
+        "kind": serializers.CharField(),
+        "gtin14": serializers.CharField(allow_null=True),
+        "off_code": serializers.CharField(allow_null=True),
+    },
+)
+_LOOKUP = inline_serializer(
+    "LookupResult",
+    {
+        "status": serializers.ChoiceField(["found", "not_found", "pending", "error"]),
+        "error": serializers.CharField(allow_null=True),
+        "message": serializers.CharField(),
+        "code": _CODE,
+        "product": ProductSummarySerializer(allow_null=True),
+        "source": serializers.CharField(required=False),
+        "synced_at": serializers.DateTimeField(required=False),
+        "stale": serializers.BooleanField(),
+        "refresh_scheduled": serializers.BooleanField(),
+    },
+)
+_ERROR = inline_serializer(
+    "Error",
+    {
+        "status": serializers.CharField(),
+        "error": serializers.CharField(),
+        "message": serializers.CharField(),
+    },
+)
 
+
+@extend_schema(
+    summary="Look up a barcode",
+    description=(
+        "Local catalogue first, then Open Food Facts. 202 means the product is being fetched: "
+        "retry after `Retry-After` seconds."
+    ),
+    parameters=[
+        OpenApiParameter("code", OpenApiTypes.STR, required=True, description="Barcode digits"),
+        OpenApiParameter(
+            "format",
+            OpenApiTypes.STR,
+            description="Barcode symbology as read by the scanner (EAN_13, UPC_A, ...) or "
+            "`manual`. Not a response format.",
+        ),
+    ],
+    responses={200: _LOOKUP, 202: _LOOKUP, 404: _LOOKUP, 400: _LOOKUP, 429: _ERROR, 503: _LOOKUP},
+)
 @api_view(["GET"])
 def lookup_api(request: Request) -> Response:
     code = str(request.query_params.get("code", ""))[:32]
@@ -72,6 +125,7 @@ def lookup_api(request: Request) -> Response:
     return Response(body, status=HTTP_FOR_ERROR[result.error], headers=headers)
 
 
+@method_decorator(rate_limited("api_read"), name="get")
 class ProductListAPI(ListAPIView):
     serializer_class = ProductSummarySerializer
 
@@ -81,6 +135,7 @@ class ProductListAPI(ListAPIView):
         return search_products(params)
 
 
+@method_decorator(rate_limited("api_read"), name="get")
 class ProductDetailAPI(RetrieveAPIView):
     serializer_class = ProductDetailSerializer
     queryset = (
@@ -90,7 +145,32 @@ class ProductDetailAPI(RetrieveAPIView):
     )
 
 
+@extend_schema(
+    summary="Compare up to 3 products",
+    parameters=[
+        OpenApiParameter(
+            "ids", OpenApiTypes.STR, required=True, description="Comma-separated product ids"
+        )
+    ],
+    responses={
+        200: inline_serializer(
+            "Comparison",
+            {
+                "products": ProductSummarySerializer(many=True),
+                "warnings": serializers.ListField(child=serializers.CharField()),
+                "nutriscore": serializers.JSONField(),
+                "nutriscore_note": serializers.CharField(allow_blank=True),
+                "nova": serializers.JSONField(),
+                "groups": serializers.JSONField(),
+                "differences": serializers.JSONField(),
+            },
+        ),
+        400: inline_serializer("CompareError", {"error": serializers.CharField()}),
+        429: _ERROR,
+    },
+)
 @api_view(["GET"])
+@rate_limited("compare")
 def compare_api(request: Request) -> Response:
     from assessments.services.compare import ComparisonError, compare
 
@@ -146,7 +226,16 @@ def compare_api(request: Request) -> Response:
     )
 
 
+@extend_schema(
+    summary="Search-as-you-type suggestions",
+    parameters=[OpenApiParameter("q", OpenApiTypes.STR, description="At least 2 characters")],
+    responses={
+        200: inline_serializer("Suggestions", {"results": ProductSummarySerializer(many=True)}),
+        429: _ERROR,
+    },
+)
 @api_view(["GET"])
+@rate_limited("suggest")
 def suggest_api(request: Request) -> Response:
     """Search-as-you-type over the local catalogue (never calls Open Food Facts)."""
     q = str(request.query_params.get("q", "")).strip()[:100]

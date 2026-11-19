@@ -1,0 +1,14 @@
+{% if page.object_list %}
+<div class="table-wrap">
+<table class="staff-table staff-users">
+  <caption class="sr-only">Accounts</caption>
+  <thead><tr><th scope="col">Email</th><th scope="col">Joined</th><th scope="col">Last login</th><th scope="col">Status</th><th scope="col">Diary entries</th><th scope="col">Notes</th><th scope="col">Actions</th></tr></thead>
+  <tbody>
+  {% for u in page.object_list %}{% include "staff/partials/user_row.html" with next=request.get_full_path %}{% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "staff/partials/pager.html" %}
+{% else %}
+<p class="empty">No accounts match.</p>
+{% endif %}

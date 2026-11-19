@@ -1,0 +1,7 @@
+{% load ui %}{% if page.paginator.num_pages > 1 %}
+<nav class="pager staff-pager" aria-label="Pages">
+  {% if page.has_previous %}<a class="btn btn-outline btn-small" href="?{% if query %}{{ query }}&amp;{% endif %}page={{ page.previous_page_number }}" hx-get="?{% if query %}{{ query }}&amp;{% endif %}page={{ page.previous_page_number }}" hx-target="#staff-results" hx-push-url="true" rel="prev">{% icon "chevron-left" 16 %}<span>Previous</span></a>{% else %}<span></span>{% endif %}
+  <span>Page {{ page.number }} of {{ page.paginator.num_pages }} · {{ page.paginator.count }} total</span>
+  {% if page.has_next %}<a class="btn btn-outline btn-small" href="?{% if query %}{{ query }}&amp;{% endif %}page={{ page.next_page_number }}" hx-get="?{% if query %}{{ query }}&amp;{% endif %}page={{ page.next_page_number }}" hx-target="#staff-results" hx-push-url="true" rel="next"><span>Next</span>{% icon "chevron-right" 16 %}</a>{% else %}<span></span>{% endif %}
+</nav>
+{% endif %}

@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.postgres",
     "rest_framework",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
     "django_q",
     "allauth",
     "allauth.account",
@@ -53,9 +55,12 @@ INSTALLED_APPS = [
     "assessments",
     "contributions",
     "myola",
+    "staff",
+    "ai",
 ]
 
 MIDDLEWARE = [
+    "core.observability.RequestIdMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -216,6 +221,8 @@ OFF_CIRCUIT_SECONDS = env_int("OFF_CIRCUIT_SECONDS", 60)
 OFF_RETRY_AFTER_CAP = env_int("OFF_RETRY_AFTER_CAP", 5)
 # OFF documents 15 product reads/min/IP. Shared by every web and worker process.
 OFF_RATE_LIMIT_PER_MINUTE = env_int("OFF_RATE_LIMIT_PER_MINUTE", 12)
+# Search (alternatives) has a much stricter OFF budget than product reads.
+OFF_SEARCH_RATE_LIMIT_PER_MINUTE = env_int("OFF_SEARCH_RATE_LIMIT_PER_MINUTE", 5)
 OFF_IMAGE_HOSTS = env_list("OFF_IMAGE_HOSTS", "images.openfoodfacts.org,static.openfoodfacts.org")
 OFF_FRESH_TTL_HOURS = env_int("OFF_FRESH_TTL_HOURS", 24 * 7)
 OFF_NEGATIVE_TTL_MINUTES = env_int("OFF_NEGATIVE_TTL_MINUTES", 30)
@@ -229,8 +236,20 @@ RATE_LIMITS = {
     "scan_photo": (env_int("RL_SCAN_PHOTO_PER_HOUR", 30), 3600),
     "contribution": (env_int("RL_CONTRIBUTION_PER_HOUR", 10), 3600),
     "ocr_retry": (env_int("RL_OCR_RETRY_PER_HOUR", 10), 3600),
+    # Reading the catalogue (pages and API) and personal actions.
+    "search": (env_int("RL_SEARCH_PER_MIN", 60), 60),
+    "suggest": (env_int("RL_SUGGEST_PER_MIN", 120), 60),
+    "compare": (env_int("RL_COMPARE_PER_MIN", 30), 60),
+    "product_view": (env_int("RL_PRODUCT_VIEW_PER_MIN", 120), 60),
+    "api_read": (env_int("RL_API_READ_PER_MIN", 120), 60),
+    "personal_write": (env_int("RL_PERSONAL_WRITE_PER_MIN", 120), 60),
+    "chat": (env_int("RL_CHAT_PER_MIN", 20), 60),
 }
 TRUST_X_FORWARDED_FOR = env_bool("TRUST_X_FORWARDED_FOR", False)
+
+# Alerts: the daily moderation report logs an ERROR (sent to Sentry) above this many
+# contributions waiting more than a week.
+MODERATION_ALERT_THRESHOLD = env_int("MODERATION_ALERT_THRESHOLD", 20)
 
 # Retention ---------------------------------------------------------------------
 DRAFT_RETENTION_DAYS = env_int("DRAFT_RETENTION_DAYS", 30)
@@ -265,6 +284,22 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
     # "format" is our barcode-symbology parameter, not a renderer override.
     "URL_FORMAT_OVERRIDE": None,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# OpenAPI schema at /api/v1/schema/, Swagger UI at /api/v1/docs/ (assets served locally) ---
+SPECTACULAR_SETTINGS = {
+    "TITLE": "FoodoTrack API",
+    "DESCRIPTION": (
+        "Read-only catalogue API: barcode lookup, product search and details, comparison and "
+        "suggestions. Product data from Open Food Facts (ODbL) plus moderated corrections."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
+    "SCHEMA_PATH_PREFIX": "/api/v1",
 }
 
 # Security ----------------------------------------------------------------------
@@ -281,13 +316,39 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_REDIRECT_EXEMPT = [r"^healthz$", r"^readyz$"]
 
+LOG_FORMAT = env("LOG_FORMAT", "plain")
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "formatters": {"plain": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"}},
-    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
+    "filters": {"request_id": {"()": "core.observability.RequestIdFilter"}},
+    "formatters": {
+        "plain": {"format": "%(asctime)s %(levelname)s %(name)s [%(request_id)s] %(message)s"},
+        "json": {"()": "core.observability.JsonFormatter"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json" if LOG_FORMAT == "json" else "plain",
+            "filters": ["request_id"],
+        }
+    },
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
     "loggers": {"httpx": {"level": "WARNING"}, "httpcore": {"level": "WARNING"}},
 }
 
+# Error reporting (optional) ------------------------------------------------------
+SENTRY_DSN = env("SENTRY_DSN", "")
+if SENTRY_DSN and not env_bool("TESTING", False):
+    from core.observability import init_sentry
+
+    init_sentry(
+        SENTRY_DSN,
+        env("SENTRY_ENVIRONMENT", "production"),
+        float(env("SENTRY_TRACES_SAMPLE_RATE", "0")),
+        env("SENTRY_RELEASE", ""),
+    )
+
 SITE_NAME = "FoodoTrack"
+# Shown on /privacy/ and /terms/: set before launch.
+LEGAL_CONTROLLER = env("LEGAL_CONTROLLER", "the FoodoTrack operator (name to be completed)")
+LEGAL_CONTACT = env("LEGAL_CONTACT", "privacy@example.com")

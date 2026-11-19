@@ -1,0 +1,12 @@
+{% load i18n ui %}<details class="card chat-panel" id="ask-foodo"{% if chat_open %} open{% endif %}>
+  <summary><span class="chat-panel-title">{% icon "sparkles" 20 %}<span>{% translate "Ask Foodo" %}</span></span>{% icon "chevron-down" 18 %}</summary>
+  {% if user.is_authenticated %}
+  <div hx-get="{% url 'chat' %}?context={{ chat_context|urlencode }}" hx-trigger="{% if chat_open %}load{% else %}toggle once from:closest details{% endif %}" hx-swap="outerHTML">
+    <p class="caption">{% translate "Questions about this product or your lists, answered from the facts in the app." %}</p>
+    <a class="btn btn-outline" href="{% url 'chat' %}?context={{ chat_context|urlencode }}">{% icon "message-circle" 18 %}<span>{% translate "Open the conversation" %}</span></a>
+  </div>
+  {% else %}
+  <p class="caption">{% translate "Sign in to ask Foodo about this product and your lists." %}</p>
+  <a class="btn btn-outline" href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}">{% icon "log-in" 18 %}<span>{% translate "Sign in" %}</span></a>
+  {% endif %}
+</details>

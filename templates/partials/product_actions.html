@@ -1,0 +1,38 @@
+{% load i18n ui %}{# Product page actions: Favourite, Compare, More (Buy often / Avoid / Add note). Re-rendered by htmx after each toggle. #}
+{% with next=next_url|default:product_url %}
+<div class="action-bar" id="product-actions" role="group" aria-label="{% translate 'Product actions' %}">
+  {% if user.is_authenticated %}
+  <form method="post" action="{% url 'product-mark' product.pk 'favorite' %}" hx-post="{% url 'product-mark' product.pk 'favorite' %}" hx-target="#product-actions" hx-swap="outerHTML" hx-disabled-elt="find button">
+    {% csrf_token %}<input type="hidden" name="ui" value="page"><input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="btn btn-outline btn-small" data-fav aria-pressed="{% if 'favorite' in marks %}true{% else %}false{% endif %}">{% icon "heart" 18 %}<span>{% translate "Favourite" %}</span></button>
+  </form>
+  {% else %}
+  <a class="btn btn-outline btn-small" href="{% url 'account_login' %}?next={{ product_url|urlencode }}" title="{% translate 'Sign in to save' %}">{% icon "heart" 18 %}<span>{% translate "Favourite" %}</span></a>
+  {% endif %}
+  <form method="post" action="{% if in_compare %}{% url 'compare-remove' product.pk %}{% else %}{% url 'compare-add' product.pk %}{% endif %}"
+        hx-post="{% if in_compare %}{% url 'compare-remove' product.pk %}{% else %}{% url 'compare-add' product.pk %}{% endif %}" hx-target="#product-actions" hx-swap="outerHTML" hx-disabled-elt="find button">
+    {% csrf_token %}<input type="hidden" name="ui" value="page"><input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="btn btn-outline btn-small" data-compare-toggle aria-pressed="{% if in_compare %}true{% else %}false{% endif %}">{% icon "git-compare-arrows" 18 %}<span>{% if in_compare %}{% translate "Added" %}{% else %}{% translate "Compare" %}{% endif %}</span></button>
+  </form>
+  <details class="more"{% if more_open %} open{% endif %}>
+    <summary class="btn btn-outline btn-small">{% translate "More" %}{% icon "chevron-down" 16 %}</summary>
+    <div class="more-menu">
+      {% if user.is_authenticated %}
+      <form method="post" action="{% url 'product-mark' product.pk 'buy_often' %}" hx-post="{% url 'product-mark' product.pk 'buy_often' %}" hx-target="#product-actions" hx-swap="outerHTML" hx-disabled-elt="find button">
+        {% csrf_token %}<input type="hidden" name="ui" value="page"><input type="hidden" name="more" value="1"><input type="hidden" name="next" value="{{ next }}">
+        <button type="submit" data-list-toggle="buyOften" aria-pressed="{% if 'buy_often' in marks %}true{% else %}false{% endif %}">{% icon "shopping-basket" 18 %}<span>{% if 'buy_often' in marks %}{% translate "Buy often ✓" %}{% else %}{% translate "Buy often" %}{% endif %}</span></button>
+      </form>
+      <form method="post" action="{% url 'product-mark' product.pk 'avoid' %}" hx-post="{% url 'product-mark' product.pk 'avoid' %}" hx-target="#product-actions" hx-swap="outerHTML" hx-disabled-elt="find button">
+        {% csrf_token %}<input type="hidden" name="ui" value="page"><input type="hidden" name="more" value="1"><input type="hidden" name="next" value="{{ next }}">
+        <button type="submit" data-list-toggle="avoid" aria-pressed="{% if 'avoid' in marks %}true{% else %}false{% endif %}">{% icon "ban" 18 %}<span>{% if 'avoid' in marks %}{% translate "Avoid ✓" %}{% else %}{% translate "Avoid" %}{% endif %}</span></button>
+      </form>
+      <a href="{{ product_url }}?note=1#note">{% icon "notebook-pen" 18 %}<span>{% translate "Add note" %}</span></a>
+      {% else %}
+      <a href="{% url 'account_login' %}?next={{ product_url|urlencode }}">{% icon "shopping-basket" 18 %}<span>{% translate "Buy often" %}</span></a>
+      <a href="{% url 'account_login' %}?next={{ product_url|urlencode }}">{% icon "ban" 18 %}<span>{% translate "Avoid" %}</span></a>
+      <a href="{% url 'account_login' %}?next={{ product_url|urlencode }}">{% icon "notebook-pen" 18 %}<span>{% translate "Add note" %}</span></a>
+      {% endif %}
+    </div>
+  </details>
+</div>
+{% endwith %}

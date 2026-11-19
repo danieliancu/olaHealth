@@ -1,0 +1,5 @@
+{% load i18n %}{% if not pv.amount %}<p class="caption">{% translate "Enter how much you had to see the values." %}</p>
+{% elif not pv.basis_known %}<p class="macro-note">{% translate "The source does not say if the values are per 100 g or per 100 ml, so they are not calculated. The entry is saved with unknown values." %}</p>
+{% elif not pv.any_known %}<p class="macro-note">{% translate "No nutrition values are known for this product." %}</p>
+{% else %}<div class="macro-row">{% for r in pv.rows %}<div class="macro"><span class="macro-label">{% translate r.label %}</span><strong>{{ r.display }}</strong>{% if r.value is None %}<span class="sr-only">{% translate "unknown" %}</span>{% endif %}</div>{% endfor %}</div>
+<p class="caption">{% blocktranslate with amount=pv.amount_display %}For {{ amount }} {{ unit }}, from the values per 100 {{ unit }}.{% endblocktranslate %}{% if pv.missing %} {% translate "– means unknown." %}{% endif %}</p>{% endif %}

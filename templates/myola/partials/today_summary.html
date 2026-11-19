@@ -1,0 +1,14 @@
+{% load i18n %}
+<section class="card t-card" aria-labelledby="sum-h">
+  <div class="t-card-head"><h2 id="sum-h">{% translate "Daily summary" %}</h2>{% url 'settings-edit' as targets_url %}{% if targets_url %}<a class="link-btn targets-edit" href="{{ targets_url }}">{% if has_targets %}{% translate "Edit targets" %}{% else %}{% translate "Set targets" %}{% endif %}</a>{% endif %}</div>
+  <div class="sum-grid">
+    {% for r in rows %}<div class="sum-cell">
+      <span class="sum-label">{% translate r.label %}</span>
+      <strong class="sum-value">{% if entry_count %}{{ r.display }}{% else %}–{% endif %}<small> {{ r.unit }}</small></strong>
+      {% if entry_count and r.partial %}<span class="partial" title="{% translate 'Some foods have unknown values' %}">{% translate "partial" %}</span>{% endif %}
+      {% if r.target and entry_count %}<svg class="meter{% if r.over %} is-over{% endif %}" viewBox="0 0 100 6" preserveAspectRatio="none" width="100" height="6" role="img" aria-label="{% blocktranslate with value=r.display target=r.target unit=r.unit %}{{ value }} of {{ target }} {{ unit }}{% endblocktranslate %}"><rect class="meter-fill" x="0" y="0" width="{{ r.pct }}" height="6"/></svg>
+      <span class="sum-target">{% blocktranslate with target=r.target unit=r.unit %}of {{ target }} {{ unit }}{% endblocktranslate %}</span>{% elif r.target %}<span class="sum-target">{% blocktranslate with target=r.target unit=r.unit %}target {{ target }} {{ unit }}{% endblocktranslate %}</span>{% endif %}
+    </div>{% endfor %}
+  </div>
+  {% if not entry_count %}<p class="caption">{% translate "No entries yet for this day." %}</p>{% elif any_partial %}<p class="caption">{% translate "Some foods have unknown values, which are not counted." %}</p>{% endif %}
+</section>

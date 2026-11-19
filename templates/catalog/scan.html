@@ -10,7 +10,7 @@
 
 {% include "partials/diary_banner.html" %}
 <section aria-label="{% translate 'Camera scanner' %}" data-scanner{% if diary_query %} data-diary-query="{{ diary_query }}"{% endif %}
-         data-lookup-url="{% url 'api-lookup' %}"
+         data-lookup-url="{% url 'lookup' %}"
          data-zxing-url="{% static 'vendor/zxing-wasm/es/reader/index.js' %}"
          data-zxing-wasm="{% static 'vendor/zxing-wasm/reader/zxing_reader.wasm' %}">
   <div class="viewfinder">
@@ -28,15 +28,6 @@
   </div>
   <p class="center hint">{% translate "Hold the phone 15–20 cm away with the barcode inside the frame; tap the picture to refocus. The camera image stays on your device; only the number is sent." %}</p>
   <p class="status" data-scan-status role="status"></p>
-  <div data-result></div>
-  <form method="post" action="{% url 'contribution-start' %}" data-contribute-template hidden>
-    {% csrf_token %}
-    <input type="hidden" name="problem_type">
-    <input type="hidden" name="product">
-    <input type="hidden" name="code">
-    <input type="hidden" name="format">
-    <button class="btn btn-outline btn-small" type="submit"></button>
-  </form>
 </section>
 
 <section class="card" id="manual" aria-labelledby="manual-h">

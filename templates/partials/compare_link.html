@@ -1,0 +1,1 @@
+{% load i18n ui %}{% with n=compare_count %}<a class="compare-open" id="compare-open" href="{% url 'compare' %}"{% if oob %} hx-swap-oob="true"{% endif %}{% if n < 2 %} hidden{% endif %}>{% icon "git-compare-arrows" 18 %}<span>{% translate "Open comparison" %} ({{ n }})</span></a>{% endwith %}

@@ -1,0 +1,5 @@
+<div class="field{% if field.errors %} has-error{% endif %}">
+  <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+  <div class="unit-input"><input id="{{ field.id_for_label }}" name="{{ field.html_name }}" type="number" inputmode="numeric" min="1" max="{{ field.field.max_value }}" step="1" value="{{ field.value|default_if_none:'' }}"{% if field.errors %} aria-invalid="true" aria-describedby="{{ field.id_for_label }}-err"{% endif %}><span>{{ unit }}</span></div>
+  {% for e in field.errors %}<p class="field-error" id="{{ field.id_for_label }}-err">{{ e }}</p>{% endfor %}
+</div>

@@ -1,0 +1,19 @@
+{% load i18n ui %}<div class="chat chat-inline" id="chat-{{ chat_id }}">
+  <p class="caption">{% if chat_product %}{% blocktranslate with name=chat_product.name|default:_("this product") %}About: {{ name }}{% endblocktranslate %}{% else %}{% translate "About your preferences, lists, scans, notes and memories" %}{% endif %}</p>
+  <p class="chat-note">{% translate "Answers use only the facts in the app and what you saved in your account. No medical advice; no guarantee about allergens." %}</p>
+  <ol class="chat-log" id="chat-log-{{ chat_id }}" role="log" aria-live="polite" aria-label="{% translate 'Conversation with Foodo' %}">{% include "myola/partials/chat_messages.html" with oob=False %}</ol>
+  <p class="caption" id="chat-empty-{{ chat_id }}"{% if chat_messages %} hidden{% endif %}>{% translate "Pick a question or type your own." %}</p>
+  <form class="chat-send" method="post" action="{% url 'chat-send' %}" hx-post="{% url 'chat-send' %}" hx-target="#chat-log-{{ chat_id }}" hx-swap="beforeend scroll:bottom">
+    {% csrf_token %}
+    <input type="hidden" name="context" value="{{ chat_context }}">
+    {# The send button comes first so that Enter sends the typed question, not a suggestion. #}
+    <div class="chat-form">
+      <label for="chat-input-{{ chat_id }}" class="sr-only">{% translate "Your question" %}</label>
+      {% include "myola/partials/chat_input.html" %}
+      <button type="submit" class="btn btn-primary btn-send" aria-label="{% translate 'Send' %}">{% icon "send" 20 %}</button>
+    </div>
+    <div class="chat-suggest" role="group" aria-label="{% translate 'Suggested questions' %}">
+      {% for key, label in chat_suggestions %}<button type="submit" class="chip-btn" name="intent" value="{{ key }}">{% translate label %}</button>{% endfor %}
+    </div>
+  </form>
+</div>

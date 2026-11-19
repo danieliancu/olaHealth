@@ -1,0 +1,20 @@
+{% load i18n ui %}{# Text recognition status; while runs are pending htmx polls this fragment every 3 s (contributions.views.ocr_status). #}
+<section class="card" aria-labelledby="ocr-h" id="ocr-status"
+         {% if ocr_polling %}hx-get="{% url 'contribution-ocr-status' c.access_token %}?started={{ ocr_started }}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  <h2 id="ocr-h">{% translate "Text recognition" %}</h2>
+  <p class="hint">{% translate "We try to read the ingredient list and nutrition table (English and Romanian). Always check the values. If it fails, just type them." %}</p>
+  <ul class="plain-list" role="status">
+    {% for r in runs %}
+    <li>{{ r.image.get_kind_display }}:
+      <span>{% if r.status == "queued" or r.status == "running" %}<span class="spinner" aria-hidden="true"></span> {% endif %}{% if r.status == "done" %}{% translate "done" %}{% elif r.status == "failed" %}{% translate "failed" %}{% else %}{% translate "in progress…" %}{% endif %}</span>
+      {% if r.status == "failed" %}
+        <form method="post" action="{% url 'contribution-ocr-retry' c.access_token r.pk %}" class="inline">{% csrf_token %}<button class="btn btn-small btn-outline" type="submit">{% icon "refresh-cw" 16 %}<span>{% translate "Try again" %}</span></button></form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% if ocr_ready %}<p><a class="btn btn-outline" href="?step=check&amp;prefill=ocr">{% translate "Fill the form with recognised values" %}</a></p>{% endif %}
+  {% for r in runs %}{% if r.status == "done" and r.parsed.unmapped %}
+    <details><summary>{% translate "Lines we could not map (not used)" %}</summary><ul>{% for line in r.parsed.unmapped %}<li class="mono">{{ line }}</li>{% endfor %}</ul></details>
+  {% endif %}{% endfor %}
+</section>

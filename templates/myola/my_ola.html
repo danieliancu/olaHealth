@@ -1,185 +1,131 @@
 {% extends "base.html" %}
-{% load i18n ui static %}
+{% load i18n ui %}
 {% block title %}{% translate "My Track" %}{% endblock %}
-{% block head %}<script type="module" src="{% static 'js/ola/myola.js' %}"></script>{% endblock %}
 {% block content %}
+<div id="mytrack">
 <div class="page-head">
   <h1>{% translate "My Track" %}</h1>
-  <button type="button" class="btn btn-primary btn-small js-only" data-chat-open="personal">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo" %}</span></button>
+  <a class="btn btn-primary btn-small" href="{% url 'chat' %}?context=personal">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo" %}</span></a>
 </div>
-<p class="notice notice-ok">{% icon "info" 18 %}<span>{% translate "Stored on this device: no account and no sync between devices. Clearing your browser data removes it." %}</span></p>
-<p class="notice notice-warn" data-storage-error hidden>{% icon "triangle-alert" 18 %}<span>{% translate "Your browser does not allow local storage, so nothing here can be kept after you leave the page." %}</span></p>
-<p class="notice notice-warn js-hide">{% icon "triangle-alert" 18 %}<span>{% translate "My Track needs JavaScript: everything is stored in this browser." %}</span></p>
+{% include "myola/partials/mytrack_messages.html" %}
 
-<div class="segmented seg-5" role="tablist" aria-label="{% translate 'My Track sections' %}" data-myola-tabs>
-  <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true" data-tab="overview">{% translate "Overview" %}</button>
-  <button type="button" role="tab" id="tab-profile" aria-controls="panel-profile" aria-selected="false" tabindex="-1" data-tab="profile">{% translate "Profile" %}</button>
-  <button type="button" role="tab" id="tab-notes" aria-controls="panel-notes" aria-selected="false" tabindex="-1" data-tab="notes">{% translate "Notes" %}</button>
-  <button type="button" role="tab" id="tab-saved" aria-controls="panel-saved" aria-selected="false" tabindex="-1" data-tab="saved">{% translate "Saved" %}</button>
-  <button type="button" role="tab" id="tab-account" aria-controls="panel-account" aria-selected="false" tabindex="-1" data-tab="account">{% translate "Account" %}</button>
-</div>
+<nav class="segmented seg-5 mytrack-tabs" aria-label="{% translate 'My Track sections' %}">
+  {% for key, label in tabs %}
+  <a href="{% url 'my-ola' %}?tab={{ key }}" hx-get="{% url 'my-ola' %}?tab={{ key }}" hx-target="#mytrack" hx-select="#mytrack" hx-swap="outerHTML" hx-push-url="true"{% if key == tab %} aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
 
+{% if tab == "overview" %}
 {# ---------- Overview ---------- #}
-<section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="myola-grid">
+<section class="myola-grid" aria-label="{% translate 'Overview' %}">
   <div class="card">
-    <div class="section-head"><h2>{% translate "Your profile" %}</h2><button type="button" class="btn btn-link" data-goto="profile">{% translate "Edit" %}</button></div>
-    <div data-ov-prefs></div>
+    <div class="section-head"><h2>{% translate "Your profile" %}</h2><a class="btn btn-link" href="{% url 'my-ola' %}?tab=profile">{% translate "Edit" %}</a></div>
+    <div class="mytrack-chips">
+      {% if chips %}<ul class="chips">{% for c in chips %}<li>{{ c }}</li>{% endfor %}</ul>
+      {% else %}<p class="caption">{% translate "Nothing set yet. Add your goal, diet and allergies in Profile." %}</p>{% endif %}
+    </div>
   </div>
   <div class="card">
-    <div class="section-head"><h2>{% translate "Recent scans" %}</h2><button type="button" class="btn btn-link" data-goto="saved">{% translate "All" %}</button></div>
-    <p class="caption" data-ov-observation></p>
-    <ul class="product-list compact" data-ov-scans></ul>
+    <div class="section-head"><h2>{% translate "Recent scans" %}</h2><a class="btn btn-link" href="{% url 'my-ola' %}?tab=saved">{% translate "All" %}</a></div>
+    <p class="caption">{% if scans_total %}{% blocktranslate count n=scans_week with total=scans_total %}You scanned {{ n }} product in the last 7 days ({{ total }} recorded in total).{% plural %}You scanned {{ n }} products in the last 7 days ({{ total }} recorded in total).{% endblocktranslate %}{% else %}{% translate "No scans recorded yet." %}{% endif %}</p>
+    <ul class="product-list compact">
+      {% for row in recent_scans %}{% include "myola/partials/mytrack_product_row.html" with row=row meta_scanned=True %}{% endfor %}
+    </ul>
   </div>
   <div class="card">
     <h2>{% translate "Your lists" %}</h2>
-    <ul class="list-counts" data-ov-lists></ul>
+    <ul class="list-counts">
+      {% for label, n, url in counts %}<li><a class="list-count" href="{{ url }}"><span>{{ label }}</span><strong>{{ n }}</strong></a></li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <h2>{% translate "Quick links" %}</h2>
+    <ul class="mytrack-links">
+      <li><a href="{% url 'today' %}">{% icon "calendar-days" 18 %}<span>{% translate "Food diary" %}</span>{% icon "chevron-right" 16 %}</a></li>
+      <li><a href="{% url 'progress' %}">{% icon "chart-line" 18 %}<span>{% translate "Progress" %}</span>{% icon "chevron-right" 16 %}</a></li>
+      <li><a href="{% url 'scan' %}">{% icon "scan-barcode" 18 %}<span>{% translate "Scan a product" %}</span>{% icon "chevron-right" 16 %}</a></li>
+      <li><a href="{% url 'saved' %}">{% icon "heart" 18 %}<span>{% translate "Favourites and recently viewed" %}</span>{% icon "chevron-right" 16 %}</a></li>
+    </ul>
   </div>
 </section>
+{% include "myola/partials/chat.html" with chat_context="personal" %}
 
-{# ---------- Notes ---------- #}
-<section id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" hidden>
-  <form class="card stack" data-note-form data-no-busy>
-    <h2 data-note-form-title>{% translate "New note" %}</h2>
-    <input type="hidden" name="id">
-    <label for="mo-note-text">{% translate "Note" %}</label>
-    <textarea id="mo-note-text" name="text" maxlength="2000" required></textarea>
-    <div class="grid-2">
-      <div>
-        <label for="mo-note-kind">{% translate "Type" %}</label>
-        <select id="mo-note-kind" name="kind">
-          <option value="general">{% translate "Other" %}</option>
-          <option value="taste">{% translate "Taste" %}</option>
-          <option value="prefer">{% translate "Why I prefer it" %}</option>
-          <option value="avoid">{% translate "Why I avoid it" %}</option>
-        </select>
-      </div>
-      <div>
-        <label for="mo-note-product">{% translate "Product (optional)" %}</label>
-        <select id="mo-note-product" name="product" data-note-products><option value="">{% translate "No product" %}</option></select>
-      </div>
-    </div>
-    <p class="hint">{% translate "Please don't write diagnoses, symptoms or medication here." %}</p>
-    <div class="row">
-      <button type="submit" class="btn btn-primary">{% translate "Save note" %}</button>
-      <button type="button" class="btn btn-link" data-note-reset hidden>{% translate "Cancel editing" %}</button>
-    </div>
-  </form>
-  <div class="search-box">
-    {% icon "search" 18 %}
-    <label for="mo-note-search" class="sr-only">{% translate "Search notes" %}</label>
-    <input id="mo-note-search" type="search" placeholder="{% translate 'Search notes' %}" data-note-search>
-  </div>
-  <ul class="note-list" data-notes-list></ul>
-  <p class="empty" data-notes-empty hidden></p>
-</section>
-
-{# ---------- Saved: scans and lists ---------- #}
-<section id="panel-saved" role="tabpanel" aria-labelledby="tab-saved" hidden>
-  <p class="caption">{% translate "Scans come from the scanner or the code entry; opening a product page is not a scan." %}</p>
-  <div class="card">
-    <div class="section-head"><h2>{% icon "history" 20 %} {% translate "Scan history" %}</h2><button type="button" class="btn btn-link" data-clear-scans>{% translate "Clear" %}</button></div>
-    <ul class="product-list compact" data-activity="scans"></ul>
-    <p class="empty" data-activity-empty="scans" hidden>{% translate "No scans yet." %}</p>
-  </div>
-  <div class="card">
-    <h2>{% icon "heart" 20 %} {% translate "Favourites" %}</h2>
-    <ul class="product-list compact" data-activity="favorites"></ul>
-    <p class="empty" data-activity-empty="favorites" hidden>{% translate "No favourites yet." %}</p>
-  </div>
-  <div class="card">
-    <h2>{% icon "shopping-basket" 20 %} {% translate "Buy often" %}</h2>
-    <ul class="product-list compact" data-activity="buyOften"></ul>
-    <p class="empty" data-activity-empty="buyOften" hidden>{% translate "Nothing marked “Buy often”." %}</p>
-  </div>
-  <div class="card">
-    <h2>{% icon "ban" 20 %} {% translate "Avoid" %}</h2>
-    <ul class="product-list compact" data-activity="avoid"></ul>
-    <p class="empty" data-activity-empty="avoid" hidden>{% translate "Nothing marked “Avoid”." %}</p>
-  </div>
-  <p class="caption"><a href="{% url 'saved' %}">{% translate "Recently viewed products and the previous Saved page" %}</a></p>
-</section>
-
+{% elif tab == "profile" %}
 {# ---------- Profile ---------- #}
-<section id="panel-profile" role="tabpanel" aria-labelledby="tab-profile" class="profile-panel" hidden>
-  <form class="card stack" data-profile-form data-no-busy novalidate>
-    <h2>{% translate "Your goal" %}</h2>
-    <fieldset class="option-list compact">
-      <legend class="sr-only">{% translate "Your goal" %}</legend>
-      {% for g in picker.goals %}<label class="option"><input type="radio" name="goal" value="{{ g.key }}"><span class="option-icon">{% icon g.icon 20 %}</span><span>{{ g.label }}</span></label>{% endfor %}
-    </fieldset>
+{% url 'profile-edit' as profile_edit_url %}{% url 'settings-edit' as settings_edit_url %}
+<section aria-label="{% translate 'Profile' %}">
+  <div class="card stack">
+    <div class="section-head"><h2>{% translate "Your goal" %}</h2>{% if profile_edit_url %}<a class="btn btn-link" href="{{ profile_edit_url }}">{% translate "Edit" %}</a>{% endif %}</div>
+    <p>{{ summary.goal|default:_("No goal chosen yet.") }}</p>
     <h2>{% translate "About you" %}</h2>
-    <fieldset class="ob-field">
-      <legend>{% translate "Gender" %}</legend>
-      <div class="chip-row">{% for g in picker.genders %}<label class="chip-radio"><input type="radio" name="gender" value="{{ g.key }}"><span>{{ g.label }}</span></label>{% endfor %}</div>
-    </fieldset>
-    <div class="grid-3">
-      <div><label for="mo-age">{% translate "Age" %}</label><div class="unit-input"><input id="mo-age" name="age" type="number" inputmode="numeric" min="13" max="120" placeholder="48"><span>{% translate "years" %}</span></div></div>
-      <div><label for="mo-height">{% translate "Height" %}</label><div class="unit-input"><input id="mo-height" name="height" type="number" inputmode="decimal" min="100" max="250" step="any" placeholder="180"><span>cm</span></div></div>
-      <div><label for="mo-weight">{% translate "Weight" %}</label><div class="unit-input"><input id="mo-weight" name="weight" type="number" inputmode="decimal" min="25" max="400" step="any" placeholder="100"><span>kg</span></div></div>
-    </div>
-    <p class="field-error" data-profile-error hidden>{% translate "Check the highlighted value: age 13–120, height 100–250 cm, weight 25–400 kg, or leave it empty." %}</p>
-    <div class="row"><button type="submit" class="btn btn-primary">{% translate "Save" %}</button><a class="btn btn-link" href="{% url 'start' %}">{% translate "Go through the questions again" %}</a></div>
-  </form>
-  <div class="card">
+    {% if summary.about %}
+    <dl class="summary mytrack-summary">{% for label, value in summary.about %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>
+    {% else %}<p class="caption">{% translate "Nothing entered." %}</p>{% endif %}
     <h2>{% translate "Restrictions and allergies" %}</h2>
-    {% include "partials/restrictions_picker.html" with prefix="mo" %}
-  </div>
-  <div class="card">
+    {% if summary.restrictions %}<ul class="chips">{% for r in summary.restrictions %}<li>{{ r }}</li>{% endfor %}</ul>
+    {% else %}<p class="caption">{% translate "None chosen." %}</p>{% endif %}
+    {% if summary.religious_note %}<p class="caption">{% translate "Religious restriction:" %} {{ summary.religious_note }}</p>{% endif %}
+    {% if summary.other_note %}<p class="caption">{% translate "Other:" %} {{ summary.other_note }}</p>{% endif %}
+    {% if summary.consented %}
     <h2>{% translate "Health conditions" %}</h2>
-    <p class="caption">{% translate "Kept on this device only. Never used for diagnoses, plans or advice." %}</p>
-    <div class="chip-row" role="group" aria-label="{% translate 'Health conditions' %}">{% for c in picker.conditions %}<button type="button" class="chip-btn" aria-pressed="false" data-condition="{{ c.key }}">{{ c.label }}</button>{% endfor %}</div>
-    <button type="button" class="btn btn-link btn-danger-link" data-clear-health>{% icon "trash-2" 16 %}<span>{% translate "Delete health information" %}</span></button>
-  </div>
-  <form class="card stack" data-targets-form data-no-busy novalidate>
-    <h2>{% translate "Daily targets" %}</h2>
-    <p class="caption">{% translate "Optional and set by you. Without a target, Today shows totals only." %}</p>
-    <div class="grid-2">
-      <div data-target-energy><label for="t-kcal">{% translate "Energy" %}</label><div class="unit-input"><input id="t-kcal" name="energy-kcal" type="number" inputmode="numeric" min="1" max="10000"><span>kcal</span></div></div>
-      <div><label for="t-protein">{% translate "Protein" %}</label><div class="unit-input"><input id="t-protein" name="proteins" type="number" inputmode="numeric" min="1" max="1000"><span>g</span></div></div>
-      <div><label for="t-carbs">{% translate "Carbs" %}</label><div class="unit-input"><input id="t-carbs" name="carbohydrates" type="number" inputmode="numeric" min="1" max="2000"><span>g</span></div></div>
-      <div><label for="t-fat">{% translate "Fat" %}</label><div class="unit-input"><input id="t-fat" name="fat" type="number" inputmode="numeric" min="1" max="1000"><span>g</span></div></div>
-    </div>
-    <div class="row"><button type="submit" class="btn btn-outline">{% translate "Save targets" %}</button><button type="button" class="btn btn-link" data-targets-clear>{% translate "Clear targets" %}</button></div>
-  </form>
-  <div class="card">
-    <h2>{% translate "Display" %}</h2>
-    <label class="check"><input type="checkbox" data-show-energy> <span>{% translate "Show calories" %}</span></label>
-    <label class="check"><input type="checkbox" data-track-weight> <span>{% translate "Track my weight in Progress" %}</span></label>
-  </div>
-  <div class="card">
-    <h2>{% icon "sparkles" 20 %} {% translate "Foodo remembers" %}</h2>
-    <p class="caption">{% translate "Only confirmed, active memories are used in Foodo's replies. Suggestions do nothing until you confirm them." %}</p>
-    <ul class="memory-list" data-memories></ul>
-    <p class="empty" data-memories-empty hidden>{% translate "Nothing remembered yet." %}</p>
-    <form class="row memory-add" data-memory-form data-no-busy>
-      <label for="mo-memory" class="sr-only">{% translate "Something Foodo should remember" %}</label>
-      <input id="mo-memory" name="text" maxlength="300" placeholder="{% translate 'e.g. I prefer plain yogurts' %}" required>
-      <button type="submit" class="btn btn-outline btn-small">{% icon "plus" 18 %}<span>{% translate "Add" %}</span></button>
-    </form>
-    <div data-suggestions-wrap hidden>
-      <h3>{% translate "Suggestions from your activity" %}</h3>
-      <ul class="memory-list" data-suggestions></ul>
+    <p class="caption">{% translate "Saved with your consent. Never used for diagnoses, plans or advice." %}</p>
+    {% if summary.conditions %}<ul class="chips chips-outline">{% for c in summary.conditions %}<li>{{ c }}</li>{% endfor %}</ul>{% endif %}
+    {% if summary.conditions_note %}<p class="caption">{{ summary.conditions_note }}</p>{% endif %}
+    {% endif %}
+    <div class="row">
+      {% if profile_edit_url %}<a class="btn btn-primary" href="{{ profile_edit_url }}">{% icon "pencil" 18 %}<span>{% translate "Edit profile" %}</span></a>{% endif %}
+      <a class="btn btn-link" href="{% url 'start' %}">{% translate "Go through the questions again" %}</a>
     </div>
   </div>
-  <div class="card">
-    <h2>{% translate "Notes in replies" %}</h2>
-    <label class="check"><input type="checkbox" data-use-notes> <span>{% translate "Use my Notes to personalise Foodo’s replies" %}</span></label>
-    <p class="caption">{% translate "Off by default. When on, Foodo uses only the notes relevant to the current conversation (the same product, or matching words)." %}</p>
+  <div class="card stack">
+    <div class="section-head"><h2>{% translate "Daily targets and display" %}</h2>{% if settings_edit_url %}<a class="btn btn-link" href="{{ settings_edit_url }}">{% translate "Edit" %}</a>{% endif %}</div>
+    {% if summary.targets %}
+    <dl class="summary mytrack-summary">{% for label, value, unit in summary.targets %}<div><dt>{{ label }}</dt><dd>{{ value }} {{ unit }}</dd></div>{% endfor %}</dl>
+    {% else %}<p class="caption">{% translate "No targets set. Without a target, Today shows totals only." %}</p>{% endif %}
+    <ul class="mytrack-flags">
+      <li>{% if profile.show_energy %}{% icon "check" 16 %}{% translate "Calories shown" %}{% else %}{% icon "circle-off" 16 %}{% translate "Calories hidden" %}{% endif %}</li>
+      <li>{% if profile.track_weight %}{% icon "check" 16 %}{% translate "Weight tracked in Progress" %}{% else %}{% icon "circle-off" 16 %}{% translate "Weight not tracked" %}{% endif %}</li>
+      <li>{% if profile.use_notes %}{% icon "check" 16 %}{% translate "Notes used in Foodo’s replies" %}{% else %}{% icon "circle-off" 16 %}{% translate "Notes not used in Foodo’s replies" %}{% endif %}</li>
+    </ul>
+    {% if settings_edit_url %}<a class="btn btn-outline" href="{{ settings_edit_url }}">{% icon "settings" 18 %}<span>{% translate "Settings" %}</span></a>{% endif %}
   </div>
-  <div class="card">
+  <div class="card stack">
     <h2>{% translate "Conversation history" %}</h2>
     <p class="caption">{% translate "Past conversations can contain text that was already shown, including what came from notes or memories you later deleted. Deleting a memory does not change old messages; delete the history to remove them." %}</p>
-    <button type="button" class="btn btn-outline" data-clear-chats>{% icon "trash-2" 18 %}<span>{% translate "Delete chat history" %}</span></button>
+    <form method="post" action="{% url 'chat-clear' %}" hx-post="{% url 'chat-clear' %}" hx-confirm="{% translate 'Delete chat history? All your conversations with Foodo are deleted.' %}">
+      {% csrf_token %}<input type="hidden" name="tab" value="profile">
+      <button type="submit" class="btn btn-outline">{% icon "trash-2" 18 %}<span>{% translate "Delete chat history" %}</span></button>
+    </form>
   </div>
-  <div class="card">
+  <div class="card stack">
     <h2>{% translate "Your data" %}</h2>
-    <p class="caption">{% translate "Everything here – profile, diary, water, activity, weight, lists, notes and chats – is stored in this browser only." %}</p>
-    <button type="button" class="btn btn-danger" data-clear-all>{% icon "trash-2" 18 %}<span>{% translate "Delete all my data on this device" %}</span></button>
+    <p class="caption">{% translate "Everything here – profile, diary, water, activity, weight, lists, notes, memories and chats – is stored in your account, so you see it on every device where you sign in." %}</p>
+    <form method="post" action="{% url 'scans-clear' %}" hx-post="{% url 'scans-clear' %}" hx-confirm="{% translate 'Clear scan history? Your scans are removed from your account.' %}">
+      {% csrf_token %}<input type="hidden" name="tab" value="profile">
+      <button type="submit" class="btn btn-outline">{% icon "history" 18 %}<span>{% translate "Clear scans" %}</span></button>
+    </form>
+    <a class="btn btn-danger" href="{% url 'delete-account' %}">{% icon "trash-2" 18 %}<span>{% translate "Delete my account and all its data" %}</span></a>
   </div>
 </section>
 
+{% elif tab == "notes" %}
+{# ---------- Notes and memories ---------- #}
+<section aria-label="{% translate 'Notes' %}">
+  {% include "myola/partials/mytrack_notes.html" %}
+  {% include "myola/partials/mytrack_memories.html" %}
+</section>
+
+{% elif tab == "saved" %}
+{# ---------- Saved: lists and scans ---------- #}
+<section aria-label="{% translate 'Saved' %}">
+  <p class="caption">{% translate "Scans come from the scanner or the code entry; opening a product page is not a scan." %}</p>
+  {% for list in saved %}{% include "myola/partials/mytrack_saved_list.html" %}{% endfor %}
+  <p class="caption"><a href="{% url 'saved' %}">{% translate "Favourites and recently viewed products" %}</a></p>
+</section>
+
+{% else %}
 {# ---------- Account ---------- #}
-<section id="panel-account" role="tabpanel" aria-labelledby="tab-account" hidden>
+<section aria-label="{% translate 'Account' %}">
   <div class="card stack">
     <h2>{% translate "Your account" %}</h2>
     <p class="meta">{% icon "mail" 18 %} <span>{{ user.email }}</span></p>
@@ -195,6 +141,11 @@
     <button type="submit" class="btn btn-outline">{% icon "log-out" 18 %}<span>{% translate "Sign out" %}</span></button>
   </form>
   <div class="card stack">
+    <h2>{% translate "Your data" %}</h2>
+    <p class="caption">{% translate "Download a copy of everything stored with your account (JSON). See the" %} <a href="{% url 'privacy' %}">{% translate "privacy notice" %}</a>.</p>
+    <a class="btn btn-outline" href="{% url 'download-my-data' %}">{% icon "arrow-right" 18 %}<span>{% translate "Download my data" %}</span></a>
+  </div>
+  <div class="card stack">
     <h2>{% translate "Delete account" %}</h2>
     <p class="caption">{% translate "Deletes your account and everything stored with it. This cannot be undone." %}</p>
     <a class="btn btn-danger" href="{% url 'delete-account' %}">{% icon "trash-2" 18 %}<span>{% translate "Delete my account" %}</span></a>
@@ -205,13 +156,6 @@
     <button type="button" class="btn btn-outline" disabled>{% translate "Manage subscription" %}</button>
   </div>
 </section>
-
-<template data-item-template>
-  <li class="product-card">
-    <img class="thumb" alt="" width="48" height="48" loading="lazy" data-img>
-    <div class="grow"><a class="product-link" data-link></a><p class="meta" data-meta></p></div>
-    <button type="button" class="btn btn-icon btn-icon-danger" data-remove>{% icon "x" 20 %}</button>
-  </li>
-</template>
-{% include "partials/chat.html" %}
+{% endif %}
+</div>
 {% endblock %}

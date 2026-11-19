@@ -1,0 +1,19 @@
+{% load i18n ui %}{% url 'today-entry-add' as add_url %}
+<details class="quick-add"{% if g.quick_open %} open{% endif %}>
+  <summary>{% icon "plus" 16 %}<span>{% translate "Quick add" %}</span></summary>
+  <form class="quick-form" method="post" action="{{ add_url }}" hx-post="{{ add_url }}" hx-target="#today" hx-swap="outerHTML" data-no-busy novalidate>
+    {% csrf_token %}<input type="hidden" name="quick" value="{{ g.key }}">{{ f.date }}{{ f.meal }}
+    {% for err in f.non_field_errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
+    <label for="{{ f.name.id_for_label }}">{% translate "Food" %}</label>
+    {{ f.name }}{% for err in f.name.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
+    <label for="{{ f.amount.id_for_label }}">{% translate "Amount" %}</label>
+    <div class="amount-row">{{ f.amount }}<label class="sr-only" for="{{ f.unit.id_for_label }}">{% translate "Unit" %}</label>{{ f.unit }}</div>
+    {% for err in f.amount.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
+    <fieldset class="quick-values">
+      <legend>{% translate "Per 100 g or 100 ml (optional)" %}</legend>
+      {% for field in f.visible_fields %}{% if field.name in nutrient_fields %}<div><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for err in field.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}</div>{% endif %}{% endfor %}
+    </fieldset>
+    <label class="check">{{ f.basis_known }} <span>{{ f.basis_known.label }}</span></label>
+    <button type="submit" class="btn btn-outline">{% icon "plus" 18 %}<span>{% blocktranslate with meal=g.label %}Add to {{ meal }}{% endblocktranslate %}</span></button>
+  </form>
+</details>

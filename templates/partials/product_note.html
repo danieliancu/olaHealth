@@ -1,0 +1,14 @@
+{% load i18n ui %}{# Quick note on the product page (catalog.views.product_note). #}
+<details class="card note-card" id="note"{% if note_open %} open{% endif %}>
+  <summary><h2>{% icon "notebook-pen" 18 %}<span>{% translate "Quick note" %}</span></h2>{% icon "chevron-down" 20 %}</summary>
+  <form method="post" action="{% url 'product-note' product.pk %}" class="stack"
+        hx-post="{% url 'product-note' product.pk %}" hx-target="#note" hx-swap="outerHTML" hx-disabled-elt="find button">
+    {% csrf_token %}
+    <label for="note-text">{% translate "Note" %}</label>
+    <textarea id="note-text" name="text" rows="3" maxlength="2000" required placeholder="{% translate 'Taste, where you buy it, why you avoid it…' %}">{{ note_text }}</textarea>
+    <label for="note-kind">{% translate "Kind" %}</label>
+    <select id="note-kind" name="kind">{% for v, l in note_kinds %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+    <button class="btn btn-primary" type="submit">{% icon "check" 18 %}<span>{% translate "Save note" %}</span></button>
+    <p class="caption">{% translate "Notes are kept in My Track → Notes." %}</p>
+  </form>
+</details>

@@ -1,1 +1,62 @@
-/* mytrack — see base.html; htmx-era styles for this area. */
+/* My Track (server-rendered with htmx): tabs as links, overview links, profile summary,
+   notes and memories, and Ask Foodo as an inline panel. */
+
+/* Tabs are links (?tab=…); the current one carries aria-current. */
+.mytrack-tabs a {
+  display: flex; align-items: center; justify-content: center; min-height: 42px; min-width: 0;
+  padding: 0 .1rem; border-radius: 9px; color: var(--muted); font-weight: 500; font-size: .8rem;
+  text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mytrack-tabs a:hover { color: var(--accent-strong); }
+.mytrack-tabs a[aria-current="page"] { background: var(--surface); color: var(--accent-strong); box-shadow: var(--shadow); }
+@media (min-width: 768px) { .mytrack-tabs a { font-size: .9rem; } }
+@media (max-width: 359px) { .mytrack-tabs a { font-size: .72rem; } }
+
+.mytrack-status:empty { display: none; }
+.mytrack-chips .chips li { background: var(--accent); color: #fff; font-weight: 500; font-size: .82rem; }
+a.list-count { text-decoration: none; }
+
+.mytrack-links { list-style: none; padding: 0; margin: 0; display: grid; gap: .35rem; }
+.mytrack-links a {
+  display: flex; align-items: center; gap: .55rem; min-height: 44px; padding: .4rem .7rem;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: #f7faf9;
+  color: var(--text); text-decoration: none; font-weight: 500;
+}
+.mytrack-links a span { flex: 1; }
+.mytrack-links a:hover { border-color: var(--accent); }
+
+/* Profile summary */
+.mytrack-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .25rem .75rem; margin: 0; }
+.mytrack-summary dt { margin-top: 0; color: var(--muted); font-weight: 500; font-size: .85rem; }
+.mytrack-flags { list-style: none; padding: 0; margin: 0; display: grid; gap: .3rem; font-size: .92rem; }
+.mytrack-flags li { display: flex; align-items: center; gap: .45rem; }
+.mytrack-flags .icon { color: var(--accent-strong); }
+
+/* Notes and memories */
+.mytrack-search { margin-bottom: .25rem; }
+.note-actions form, form.mytrack-remove { margin: 0; display: contents; }
+a.note-action { text-decoration: none; }
+.mytrack-note-edit h3 { margin: 0; font-size: 1rem; }
+.mytrack-note-edit textarea { min-height: 6rem; }
+.memory form.memory-add { margin-top: 0; }
+.memory h3, #memories h3 { margin-top: 1rem; }
+
+/* Ask Foodo: an inline panel (details) that htmx fills when opened. */
+.chat-panel > summary { display: flex; align-items: center; justify-content: space-between; list-style: none; }
+.chat-panel > summary::-webkit-details-marker { display: none; }
+.chat-panel > summary > .icon { color: var(--muted); transition: transform .2s; }
+.chat-panel[open] > summary { margin-bottom: .5rem; }
+.chat-panel[open] > summary > .icon { transform: rotate(180deg); }
+.chat-panel-title { display: inline-flex; align-items: center; gap: .45rem; font-weight: 700; font-size: 1.1rem; }
+.mytrack-note-add > summary { display: flex; align-items: center; justify-content: space-between; list-style: none; }
+.mytrack-note-add > summary::-webkit-details-marker { display: none; }
+.chat-inline { padding: 0; max-height: none; }
+.chat-inline .caption { margin: 0; }
+.chat-inline .chat-log { max-height: 50vh; }
+/* The send button comes first in the form (Enter sends the typed text); suggestions show above it. */
+.chat-send { display: flex; flex-direction: column; gap: .45rem; margin: 0; }
+.chat-send .chat-suggest { order: -1; }
+@media (max-width: 767px) {
+  .chat-inline .chat-log { max-height: 55vh; }
+  .chat-inline .chat-suggest { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
+}

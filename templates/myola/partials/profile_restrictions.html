@@ -1,0 +1,9 @@
+{% load i18n %}{% url 'profile-edit' as profile_url %}
+<form id="restrictions" class="card stack profile-section" method="post" action="{{ profile_url }}" hx-post="{{ profile_url }}" hx-target="this" hx-swap="outerHTML" novalidate>
+  {% csrf_token %}<input type="hidden" name="section" value="restrictions">
+  <h2>{% translate "Restrictions and allergies" %}</h2>
+  <p class="caption">{% translate "Product pages check these for you. Free notes never create a rule." %}</p>
+  {% include "partials/restrictions_picker.html" with form=restrictions_form %}
+  {% include "myola/partials/profile_saved.html" %}
+  <div class="row"><button type="submit" class="btn btn-primary">{% translate "Save" %}</button></div>
+</form>

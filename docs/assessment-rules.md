@@ -1,8 +1,9 @@
 # Assessment rules
 
-olaHealth does **not** compute a score. It shows indicators published by Open Food Facts
-and explains their state. No 0–100 score, no penalty for the number of additives, no
-"safe for allergies" statements, no disease claims, no LLM-generated text.
+FoodoTrack shows indicators published by Open Food Facts and explains their state, plus one
+transparent summary, the **Foodo Score** (`score.v1`, section at the end): every deducted point
+is listed with its reason. No "safe for allergies" statements, no disease claims; Ask Foodo may
+use an AI model only to phrase facts computed here.
 
 ## Indicators
 
@@ -66,3 +67,32 @@ not current while the locked local values still differ from OFF's.
 Share (0–100 %) of: name, brand, quantity, categories, ingredient list, front photo and the
 seven core nutrients (energy kcal, fat, saturates, carbohydrate, sugars, protein, salt;
 "no nutrition facts on the package" counts as complete). It measures data, not health.
+
+## Foodo Score (score.v1)
+
+A V2 summary (see docs/mvp-api-contracts.md §3), computed in Python by
+`assessments/score.py` from the OFF indicators above. It is separate from the indicators:
+they are still shown as published, and the score never replaces them.
+
+Start at 100, then add the points below (result clamped to 0–100):
+
+| Component | Points |
+|---|---|
+| Nutri-Score | A 0, B −10, C −25, D −40, E −55 |
+| NOVA | 1–2 0, 3 −10, 4 −20 |
+| Nutrient levels | −5 for each of sugars, salt, saturated fat at OFF level "high" |
+| High-risk additives | −5 each, at most −15 |
+
+* **Not enough data:** when both the Nutri-Score grade and the NOVA group are unknown, the
+  result is `not_enough_data` and no number is shown. Otherwise each unknown component is
+  listed in `missing` and scores 0 (unknown is never treated as good or bad on its own).
+* **High-risk additives:** the codebase does not rate additives and OFF product data has no
+  risk level, so the high-risk list is **empty in score.v1**: this component never costs
+  points. A reviewed list will come with a new version.
+* Only current, OFF-computed indicators are used: a snapshot invalidated by a local
+  correction is ignored, a Nutri-Score printed on the package is not used.
+* **No personal data:** diets, allergies, goals and health conditions never change the score.
+* Result: `{"status": "ok", "score": 0–100, "version": "score.v1", "points": [{"reason",
+  "points"}], "missing": [...]}`. The points list makes the score reconstructible.
+* The score is computed on demand (`score_for_product`) and not stored in
+  `AssessmentSnapshot`. Any change to the rule or weights gets a new version string.

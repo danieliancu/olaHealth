@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load i18n ui %}
+{% block title %}{% translate "Ask Foodo" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{% icon "sparkles" 24 %} {% translate "Ask Foodo" %}</h1>
+</div>
+<p>{% if chat_product %}<a class="btn btn-link" href="{% url 'product' chat_product.pk %}">{% icon "chevron-left" 18 %}<span>{% translate "Back to the product" %}</span></a>{% else %}<a class="btn btn-link" href="{% url 'my-ola' %}">{% icon "chevron-left" 18 %}<span>{% translate "Back to My Track" %}</span></a>{% endif %}</p>
+<div class="card">{% include "myola/partials/chat_body.html" %}</div>
+{% endblock %}

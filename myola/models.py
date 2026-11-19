@@ -168,6 +168,9 @@ class WaterEntry(models.Model):
         indexes = [models.Index(fields=["user", "date"])]
         verbose_name_plural = "water entries"
 
+    def __str__(self) -> str:
+        return f"{self.date}: {self.ml} ml"
+
 
 class ActivityEntry(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="activity_entries")
@@ -183,6 +186,9 @@ class ActivityEntry(models.Model):
         indexes = [models.Index(fields=["user", "date"])]
         verbose_name_plural = "activity entries"
 
+    def __str__(self) -> str:
+        return f"{self.date}: {self.kind} {self.minutes} min"
+
 
 class WeightEntry(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="weight_entries")
@@ -195,10 +201,11 @@ class WeightEntry(models.Model):
 
     class Meta:
         ordering = ["date"]
-        constraints = [
-            models.UniqueConstraint(fields=["user", "date"], name="one_weight_per_day")
-        ]
+        constraints = [models.UniqueConstraint(fields=["user", "date"], name="one_weight_per_day")]
         verbose_name_plural = "weight entries"
+
+    def __str__(self) -> str:
+        return f"{self.date}: {self.kg} kg"
 
 
 class ProductMark(models.Model):
@@ -223,6 +230,9 @@ class ProductMark(models.Model):
         ]
         indexes = [models.Index(fields=["user", "kind", "-created_at"])]
 
+    def __str__(self) -> str:
+        return f"{self.kind}: {self.product_id}"
+
 
 class ProductVisit(models.Model):
     """Recently viewed products; a visit with a barcode is a scan."""
@@ -235,6 +245,9 @@ class ProductVisit(models.Model):
     class Meta:
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["user", "-created_at"])]
+
+    def __str__(self) -> str:
+        return f"visit {self.product_id} at {self.created_at:%Y-%m-%d %H:%M}"
 
     @property
     def is_scan(self) -> bool:
@@ -260,6 +273,9 @@ class Note(models.Model):
     class Meta:
         ordering = ["-updated_at"]
 
+    def __str__(self) -> str:
+        return self.text[:60]
+
 
 class Memory(models.Model):
     """Something Ask Foodo may use, only while active and confirmed by the user."""
@@ -280,6 +296,9 @@ class Memory(models.Model):
         ordering = ["-created_at"]
         verbose_name_plural = "memories"
 
+    def __str__(self) -> str:
+        return self.text[:60]
+
 
 class ChatMessage(models.Model):
     class Role(models.TextChoices):
@@ -296,6 +315,9 @@ class ChatMessage(models.Model):
     class Meta:
         ordering = ["created_at"]
         indexes = [models.Index(fields=["user", "context", "created_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.role}: {self.text[:60]}"
 
 
 # Per-user limits (as in the former browser store).

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import uuid
 
 from django.contrib import messages
@@ -30,6 +31,7 @@ from core.coordination import check_request_limit
 from core.images import ImageRejected
 
 STEPS = ("photos", "check", "submit")
+OCR_POLL_SECONDS = 120  # the status fragment stops polling after two minutes
 PHOTO_SLOTS = (
     (ContributionImage.Kind.FRONT, "Front of pack"),
     (ContributionImage.Kind.INGREDIENTS, "Ingredients"),
@@ -129,7 +131,7 @@ def edit(request: HttpRequest, token: str) -> HttpResponse:
                 initial.update(initial_from_proposal(c.proposed))
             initial["note"] = c.note
             form = ContributionForm(initial=initial, current=current)
-        context.update(form=form, ocr_ready=any(r.status == "done" for r in runs))
+        context.update(form=form, **_ocr_context(runs, int(time.time())))
     else:
         if request.method == "POST":
             errors = drafts.submit(c, consent=request.POST.get("consent") == "on")
@@ -147,6 +149,16 @@ def edit(request: HttpRequest, token: str) -> HttpResponse:
 @require_POST
 def upload(request: HttpRequest, token: str) -> HttpResponse:
     c = _draft(token)
+    response = _upload(request, c)
+    if request.headers.get("HX-Request") == "true":
+        # Photo slots upload on change (htmx); the page then reloads with the message.
+        hx = HttpResponse(status=204)
+        hx["HX-Redirect"] = response["Location"]
+        return hx
+    return response
+
+
+def _upload(request: HttpRequest, c: Contribution) -> HttpResponse:
     form = PhotoForm(request.POST, request.FILES)
     if not form.is_valid():
         messages.error(request, _("Choose a photo and what it shows."))
@@ -189,11 +201,32 @@ def draft_image(request: HttpRequest, token: str, image_id: uuid.UUID) -> FileRe
     return _private_headers(FileResponse(img.file.open("rb"), content_type="image/jpeg"))
 
 
+def _ocr_context(runs, started: int) -> dict:
+    pending = any(r.status in (OCRRun.Status.QUEUED, OCRRun.Status.RUNNING) for r in runs)
+    return {
+        "ocr_ready": any(r.status == OCRRun.Status.DONE for r in runs),
+        "ocr_polling": pending and time.time() - started < OCR_POLL_SECONDS,
+        "ocr_started": started,
+    }
+
+
 @never_cache
 @require_GET
-def ocr_status(request: HttpRequest, token: str) -> JsonResponse:
+def ocr_status(request: HttpRequest, token: str) -> HttpResponse:
     c = _draft(token)
     runs = OCRRun.objects.filter(image__contribution=c).select_related("image")
+    if request.headers.get("HX-Request") == "true":
+        # htmx polling: the fragment re-renders; HTTP 286 tells htmx to stop polling.
+        try:
+            started = int(request.GET.get("started", ""))
+        except ValueError:
+            started = int(time.time())
+        runs = list(runs.order_by("created_at"))
+        context = {"c": c, "runs": runs, **_ocr_context(runs, started)}
+        response = render(request, "contributions/_ocr_status.html", context)
+        if not context["ocr_polling"]:
+            response.status_code = 286
+        return response
     return JsonResponse(
         {
             "runs": [

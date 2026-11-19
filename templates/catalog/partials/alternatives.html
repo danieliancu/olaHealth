@@ -1,0 +1,36 @@
+{% load i18n ui %}
+<h2 id="alt-h">{% translate "Foodo Score and alternatives" %}</h2>
+{% if score.status == "ok" %}
+  <div class="foodo-score">
+    <p class="score-value"><strong>{{ score.score }}</strong><span>/100</span></p>
+    <details class="score-points">
+      <summary>{% translate "How this score is calculated" %}</summary>
+      <ul>
+        {% for p in score.points %}<li>{{ p.reason }}: {{ p.points }}</li>{% empty %}<li>{% translate "No points deducted." %}</li>{% endfor %}
+      </ul>
+      {% if score.missing %}<p class="caption">{% translate "Unknown, not counted:" %} {{ score.missing|join:", " }}</p>{% endif %}
+      <p class="caption">{% translate "Starts at 100 and deducts points from Nutri-Score, NOVA processing, high sugar, salt and saturated fat. Your own restrictions are shown separately and never change the score." %} <a href="{% url 'sources' %}">{% translate "Method" %}</a></p>
+    </details>
+  </div>
+  {% if alternatives %}
+    <h3>{% translate "Better alternatives sold in the UK" %}</h3>
+    <ul class="alt-list">
+      {% for a in alternatives %}
+      <li class="product-card">
+        {% if a.image %}<img class="thumb" src="{{ a.image }}" alt="" width="48" height="48" loading="lazy">{% endif %}
+        <div class="grow">
+          <a class="product-link" href="{{ a.url }}">{{ a.name|default:_("Unnamed product") }}</a>
+          <p class="meta">{% if a.brand %}{{ a.brand }} · {% endif %}{% translate "Score" %} {{ a.score }} {% translate "vs" %} {{ a.reference_score }}</p>
+          {% if a.advantages %}<p class="alt-plus">{{ a.advantages|join:" · " }}</p>{% endif %}
+          {% if a.trade_offs %}<p class="caption">{% translate "Trade-offs:" %} {{ a.trade_offs|join:" · " }}</p>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if not user.is_authenticated %}<p class="caption"><a href="{% url 'account_login' %}?next={{ request.path|urlencode }}">{% translate "Sign in" %}</a> {% translate "to filter alternatives by your diets, allergies and Avoid list." %}</p>{% endif %}
+  {% else %}
+    <p class="caption">{% translate "No better-scoring alternative found in this category yet." %}</p>
+  {% endif %}
+{% else %}
+  <p class="caption">{% translate "Not enough data for a Foodo Score: this product has no Nutri-Score and no NOVA group yet." %}</p>
+{% endif %}

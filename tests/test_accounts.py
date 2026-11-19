@@ -83,7 +83,7 @@ def test_auth_pages_use_the_app_shell_without_inline_scripts(client):
 
 @pytest.mark.django_db
 def test_account_tab_shows_the_email_and_real_actions(member_client):
-    html = member_client.get(reverse("my-ola")).content.decode()
+    html = member_client.get(reverse("my-ola") + "?tab=account").content.decode()
     assert "member@example.com" in html
     assert reverse("account_change_password") in html and reverse("delete-account") in html
     assert "coming soon" not in html.lower()

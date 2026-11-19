@@ -15,7 +15,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from email.utils import parsedate_to_datetime
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 from urllib.parse import urlsplit
 
 import httpx
@@ -42,6 +42,34 @@ PRODUCT_FIELDS = (
     "image_nutrition_url,last_modified_t"
 )
 
+# Fields for alternatives: enough to map to revision data, check restrictions and score.
+SEARCH_FIELDS = (
+    "code",
+    "product_name",
+    "product_name_en",
+    "brands",
+    "quantity",
+    "product_quantity_unit",
+    "categories_tags",
+    "countries_tags",
+    "lang",
+    "ingredients_text",
+    "allergens_tags",
+    "traces_tags",
+    "labels_tags",
+    "additives_tags",
+    "nutriments",
+    "nutrition_data_per",
+    "no_nutrition_data",
+    "nutriscore_grade",
+    "nova_group",
+    "nutrient_levels",
+    "ingredients_analysis_tags",
+    "image_front_url",
+)
+
+T = TypeVar("T")
+
 
 class OFFError(Exception):
     def __init__(self, kind: ErrorKind, detail: str = "", retry_after: int | None = None):
@@ -60,6 +88,7 @@ class OFFClient:
     max_retries: int = 2
     retry_after_cap: int = 5
     rate_gate: Callable[[], None] | None = None  # raises OFFError("rate_limited") if denied
+    search_gate: Callable[[], None] | None = None  # same, for the (costlier) search API
     transport: httpx.BaseTransport | None = None
     sleep: Callable[[float], None] = time.sleep
     requests_made: int = field(default=0, init=False)
@@ -80,12 +109,44 @@ class OFFClient:
         if not off_code.isdigit():
             raise OFFError("invalid_code", "non-numeric code")
         path = f"/api/v2/product/{off_code}.json"
+        return self._with_retries(lambda client: self._attempt(client, path, off_code))
+
+    def search(
+        self,
+        categories_tag: str,
+        country_tag: str = "en:united-kingdom",
+        page_size: int = 24,
+        fields: list[str] | tuple[str, ...] = SEARCH_FIELDS,
+    ) -> list[dict[str, Any]]:
+        """Products in one category sold in one country (OFF search API v2).
+
+        Only taxonomy tags are sent: never anything about the user.
+        """
+        params = {
+            "categories_tags": categories_tag,
+            "countries_tags": country_tag,
+            "page_size": str(max(1, min(int(page_size), 100))),
+            "fields": ",".join(fields),
+        }
+
+        def attempt(client: httpx.Client) -> list[dict[str, Any]]:
+            status, payload = self._get_json(client, "/api/v2/search", params, self.search_gate)
+            if status != 200:
+                raise OFFError("invalid_response", f"HTTP {status}")
+            products = payload.get("products")
+            if not isinstance(products, list):
+                raise OFFError("invalid_response", "missing products list")
+            return [p for p in products if isinstance(p, dict)]
+
+        return self._with_retries(attempt)
+
+    def _with_retries(self, attempt_fn: Callable[[httpx.Client], T]) -> T:
         attempt = 0
         with self._client() as client:
             while True:
                 attempt += 1
                 try:
-                    return self._attempt(client, path, off_code)
+                    return attempt_fn(client)
                 except OFFError as exc:
                     delay = self._retry_delay(exc, attempt)
                     if delay is None:
@@ -107,12 +168,19 @@ class OFFClient:
             return float(exc.retry_after) if exc.retry_after <= self.retry_after_cap else None
         return None
 
-    def _attempt(self, client: httpx.Client, path: str, off_code: str) -> dict[str, Any]:
-        if self.rate_gate is not None:
-            self.rate_gate()
+    def _get_json(
+        self,
+        client: httpx.Client,
+        path: str,
+        params: dict[str, str],
+        gate: Callable[[], None] | None,
+    ) -> tuple[int, dict[str, Any]]:
+        """One GET with the shared error mapping. Returns (HTTP status, JSON object)."""
+        if gate is not None:
+            gate()
         self.requests_made += 1
         try:
-            response = client.get(path, params={"fields": PRODUCT_FIELDS})
+            response = client.get(path, params=params)
         except httpx.TimeoutException as exc:
             raise OFFError("timeout", type(exc).__name__) from exc
         except httpx.TransportError as exc:
@@ -136,6 +204,10 @@ class OFFClient:
             raise OFFError("invalid_response", f"HTTP {status}, body is not JSON") from exc
         if not isinstance(payload, dict):
             raise OFFError("invalid_response", "JSON root is not an object")
+        return status, payload
+
+    def _attempt(self, client: httpx.Client, path: str, off_code: str) -> dict[str, Any]:
+        status, payload = self._get_json(client, path, {"fields": PRODUCT_FIELDS}, self.rate_gate)
 
         # OFF answers "not found" with status 0 (HTTP 404 on current servers, 200 on older).
         if payload.get("status") == 0 and status in (200, 404):
@@ -174,6 +246,12 @@ def default_client() -> OFFClient:
         if not decision.allowed:
             raise OFFError("rate_limited", "local shared limit", decision.retry_after)
 
+    def search_gate() -> None:
+        limit = getattr(settings, "OFF_SEARCH_RATE_LIMIT_PER_MINUTE", 5)
+        decision = hit("off:search", limit, 60)
+        if not decision.allowed:
+            raise OFFError("rate_limited", "local shared search limit", decision.retry_after)
+
     return OFFClient(
         base_url=settings.OFF_BASE_URL,
         user_agent=settings.OFF_USER_AGENT,
@@ -182,4 +260,5 @@ def default_client() -> OFFClient:
         max_retries=settings.OFF_MAX_RETRIES,
         retry_after_cap=settings.OFF_RETRY_AFTER_CAP,
         rate_gate=gate,
+        search_gate=search_gate,
     )

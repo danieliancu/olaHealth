@@ -1,0 +1,12 @@
+{% extends "staff/layout.html" %}{% load ui %}
+{% block staff_title %}Settings{% endblock %}
+{% block staff_content %}
+<h1>Site settings</h1>
+<form method="post" action="{% url 'staff:settings' %}" class="card staff-form" novalidate>{% csrf_token %}
+  {% include "partials/form_fields.html" %}
+  <div class="row">
+    <button class="btn btn-primary" type="submit">{% icon "check" 18 %}<span>Save settings</span></button>
+  </div>
+  <p class="hint">Last changed {{ obj.updated_at|default:"never" }}{% if obj.updated_by %} by {{ obj.updated_by.email|default:obj.updated_by }}{% endif %}. Every change is recorded in the audit log.</p>
+</form>
+{% endblock %}

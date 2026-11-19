@@ -1,0 +1,24 @@
+{% if page.object_list %}
+<div class="table-wrap">
+<table class="staff-table">
+  <caption class="sr-only">Contributions</caption>
+  <thead><tr><th scope="col">Submitted</th><th scope="col">Problem</th><th scope="col">Product</th><th scope="col">Fields</th><th scope="col">Photos</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Open</span></th></tr></thead>
+  <tbody>
+  {% for c in page.object_list %}
+    <tr>
+      <td>{{ c.submitted_at|date:"j M Y H:i"|default:"—" }}{% if c.submitted_at %}<br><span class="hint">{{ c.submitted_at|timesince }} ago</span>{% endif %}</td>
+      <td>{{ c.get_problem_type_display }}</td>
+      <td>{% if c.product %}{{ c.product.name|default:c.product_id }}{% else %}New product{% endif %}{% if c.code %}<br><span class="mono hint">{{ c.code }}</span>{% endif %}</td>
+      <td>{% for f in c.proposed %}<span class="badge">{{ f }}</span> {% empty %}—{% endfor %}{% if c.validation_warnings %} <span class="badge badge-warn">{{ c.validation_warnings|length }} warning{{ c.validation_warnings|length|pluralize }}</span>{% endif %}</td>
+      <td>{{ c.photos }}</td>
+      <td><span class="staff-status staff-status-{{ c.status }}">{{ c.get_status_display }}</span></td>
+      <td><a class="btn btn-outline btn-small" href="{% url 'staff:contribution' c.pk %}">Review</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "staff/partials/pager.html" %}
+{% else %}
+<p class="empty">No contributions match these filters.</p>
+{% endif %}

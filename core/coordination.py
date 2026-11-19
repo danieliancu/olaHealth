@@ -5,6 +5,7 @@ Both use single autocommit statements so no row lock outlives the statement.
 
 from __future__ import annotations
 
+import functools
 import secrets
 import time
 from collections.abc import Iterator
@@ -13,7 +14,8 @@ from dataclasses import dataclass
 
 from django.conf import settings
 from django.db import connection
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import render
 
 from .models import Lease, RateCounter
 
@@ -68,6 +70,41 @@ def check_request_limit(request: HttpRequest, action: str) -> RateDecision:
     by_session = hit(f"{action}:s:{request.session.session_key}", limit, window)
     worst = by_session if not by_session.allowed else by_ip
     return worst if not worst.allowed else by_session
+
+
+def rate_limited(action: str):
+    """Decorator: apply ``RATE_LIMITS[action]`` to a view (Django or DRF function/method).
+
+    Over the limit the view is not called: JSON clients and ``/api/`` paths get a JSON 429,
+    pages get the friendly 429 page; both carry ``Retry-After``.
+    """
+
+    def decorator(view):
+        @functools.wraps(view)
+        def wrapper(*args, **kwargs):
+            request = next(a for a in args if hasattr(a, "META") or hasattr(a, "_request"))
+            raw = getattr(request, "_request", request)
+            decision = check_request_limit(raw, action)
+            if decision.allowed:
+                return view(*args, **kwargs)
+            return too_many_requests(raw, decision)
+
+        return wrapper
+
+    return decorator
+
+
+def too_many_requests(request: HttpRequest, decision: RateDecision) -> HttpResponse:
+    message = "Too many requests. Please wait a moment and try again."
+    if request.path.startswith("/api/") or "application/json" in request.headers.get("Accept", ""):
+        response: HttpResponse = JsonResponse(
+            {"status": "error", "error": "rate_limited", "message": message}, status=429
+        )
+    else:
+        context = {"retry_after": decision.retry_after, "message": message}
+        response = render(request, "429.html", context, status=429)
+    response["Retry-After"] = str(decision.retry_after)
+    return response
 
 
 def acquire_lease(key: str, seconds: int) -> str | None:

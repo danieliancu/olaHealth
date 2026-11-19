@@ -1,30 +1,6 @@
 {% extends "base.html" %}
-{% load i18n ui static %}
+{% load i18n %}
 {% block title %}{% translate "Progress" %}{% endblock %}
-{% block head %}<script type="module" src="{% static 'js/ola/progress.js' %}"></script>{% endblock %}
 {% block content %}
-<div class="progress-page" data-progress>
-  <div class="page-head">
-    <h1>{% translate "Progress" %}</h1>
-    <div class="segmented seg-2" role="group" aria-label="{% translate 'Period' %}">
-      <button type="button" aria-pressed="true" data-range="7">{% translate "7 days" %}</button>
-      <button type="button" aria-pressed="false" data-range="30">{% translate "30 days" %}</button>
-    </div>
-  </div>
-  <p class="lead-small" data-consistency></p>
-  <p class="notice notice-warn js-hide">{% icon "triangle-alert" 18 %}<span>{% translate "Progress needs JavaScript: your data is kept in this browser." %}</span></p>
-  <div class="progress-grid" data-charts></div>
-
-  <section class="card" data-weight-card aria-labelledby="weight-h" hidden>
-    <div class="t-card-head"><h2 id="weight-h">{% icon "scale" 20 %} {% translate "Weight" %}</h2></div>
-    <form class="inline-form" data-weight-form data-no-busy>
-      <label for="w-kg" class="sr-only">{% translate "Weight in kg" %}</label>
-      <div class="unit-input"><input id="w-kg" name="kg" type="number" inputmode="decimal" min="25" max="400" step="any" placeholder="{% translate 'Today' %}"><span>kg</span></div>
-      <button type="submit" class="btn btn-outline">{% translate "Log" %}</button>
-    </form>
-    <p class="field-error" data-weight-error hidden>{% translate "Enter a weight between 25 and 400 kg." %}</p>
-    <div data-weight-chart></div>
-  </section>
-  <p class="caption">{% translate "A thin grey line marks a day with no entries: it is not counted as zero. Weight tracking can be turned on or off in My Track." %}</p>
-</div>
+{% include "myola/partials/progress_body.html" %}
 {% endblock %}

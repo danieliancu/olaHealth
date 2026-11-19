@@ -194,13 +194,14 @@ def test_products_page_hides_empty_filters(client, catalogue):
 def test_main_pages_render_with_bounded_queries(client, catalogue, django_assert_max_num_queries):
     real = catalogue["Plain yogurt"]
     ids = ",".join(str(p.pk) for p in list(catalogue.values())[:3])
+    # Rate-limited pages pay two counter upserts (per session and per IP).
     pages = [
         (reverse("home"), 8),
         (reverse("scan"), 8),
-        (reverse("products"), 16),
-        (reverse("products") + "?q=biscuit&sort=nutriscore&country=en:france", 16),
-        (reverse("product", args=[real.pk]), 16),
-        (reverse("compare") + f"?ids={ids}", 12),
+        (reverse("products"), 18),
+        (reverse("products") + "?q=biscuit&sort=nutriscore&country=en:france", 18),
+        (reverse("product", args=[real.pk]), 18),
+        (reverse("compare") + f"?ids={ids}", 14),
         (reverse("saved"), 5),
         (reverse("sources"), 5),
     ]

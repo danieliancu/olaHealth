@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load i18n ui %}
+{% block title %}{% translate "Settings" %}{% endblock %}
+{% block content %}
+<div class="profile-page">
+  <div class="page-head">
+    <h1>{% translate "Settings" %}</h1>
+    <a class="btn btn-link" href="{% url 'my-ola' %}">{% icon "chevron-left" 18 %}<span>{% translate "My Track" %}</span></a>
+  </div>
+  {% include "myola/partials/profile_settings_form.html" %}
+  <p class="caption"><a href="{% url 'profile-edit' %}">{% translate "Your profile: goal, restrictions and health" %}</a></p>
+</div>
+{% endblock %}

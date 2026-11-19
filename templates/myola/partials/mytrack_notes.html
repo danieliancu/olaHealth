@@ -1,0 +1,36 @@
+{% load i18n ui %}<div id="notes-section">
+  <form class="card stack" method="post" action="{% url 'notes-create' %}" hx-post="{% url 'notes-create' %}" hx-target="#notes-section" hx-swap="outerHTML" hx-include="#mo-note-search">
+    {% csrf_token %}
+    <h2>{% translate "New note" %}</h2>
+    {% if note_form.non_field_errors %}<p class="field-error">{{ note_form.non_field_errors|join:" " }}</p>{% endif %}
+    <label for="mo-note-text">{% translate "Note" %}</label>
+    <textarea id="mo-note-text" name="text" maxlength="2000" required{% if note_form.text.errors %} aria-invalid="true" aria-describedby="mo-note-text-error"{% endif %}>{{ note_form.text.value|default_if_none:"" }}</textarea>
+    {% if note_form.text.errors %}<p class="field-error" id="mo-note-text-error">{{ note_form.text.errors|join:" " }}</p>{% endif %}
+    <div class="grid-2">
+      <div>
+        <label for="mo-note-kind">{% translate "Type" %}</label>
+        <select id="mo-note-kind" name="kind">
+          {% for value, label in kind_labels.items %}<option value="{{ value }}"{% if note_form.kind.value == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="mo-note-product">{% translate "Product (optional)" %}</label>
+        <select id="mo-note-product" name="product">
+          <option value="">{% translate "No product" %}</option>
+          {% for p in known_products %}<option value="{{ p.id }}"{% if note_form.product.value|stringformat:"s" == p.id|stringformat:"s" %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+        </select>
+        {% if note_form.product.errors %}<p class="field-error">{{ note_form.product.errors|join:" " }}</p>{% endif %}
+      </div>
+    </div>
+    <p class="hint">{% translate "Please don't write diagnoses, symptoms or medication here." %}</p>
+    <div class="row"><button type="submit" class="btn btn-primary">{% translate "Save note" %}</button></div>
+  </form>
+  <form class="search-box mytrack-search" method="get" action="{% url 'my-ola' %}" role="search">
+    <input type="hidden" name="tab" value="notes">
+    {% icon "search" 18 %}
+    <label for="mo-note-search" class="sr-only">{% translate "Search notes" %}</label>
+    <input id="mo-note-search" type="search" name="q" value="{{ q }}" placeholder="{% translate 'Search notes' %}" autocomplete="off"
+           hx-get="{% url 'notes-search' %}" hx-trigger="input changed delay:300ms, search" hx-target="#notes-list" hx-swap="outerHTML">
+  </form>
+  {% include "myola/partials/mytrack_notes_list.html" %}
+</div>

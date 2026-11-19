@@ -1,51 +1,33 @@
 {% extends "base.html" %}
 {% load static i18n ui %}
 {% block title %}{% translate "Scan food. Keep track." %}{% endblock %}
-{% block head %}<script type="module" src="{% static 'js/home.js' %}"></script>{% endblock %}
 {% block content %}
 <section class="home" aria-labelledby="hero-h" data-home>
   <div class="home-copy">
     <h1 id="hero-h" class="display">{% translate "Scan food." %}<br class="desktop-only"> {% translate "Keep track." %}</h1>
     <p class="lead desktop-lead">{% translate "Scan a barcode, check the label against your allergies and log what you eat, with water and activity, in one calm daily view." %}</p>
     <div class="home-actions">
-      <a class="btn btn-primary btn-cta" href="{% url 'account_signup' %}" data-home-primary>{% icon "arrow-right" 20 %}<span>{% translate "Get started" %}</span></a>
+      <a class="btn btn-primary btn-cta" href="{% url 'account_signup' %}">{% icon "arrow-right" 20 %}<span>{% translate "Get started" %}</span></a>
       <a class="btn btn-outline btn-cta-secondary" href="{% url 'scan' %}">{% icon "scan-barcode" 20 %}<span>{% translate "Scan a barcode" %}</span></a>
     </div>
     <p class="caption">{% translate "Free account. Scanning works without one." %} <a href="{% url 'account_login' %}">{% translate "Sign in" %}</a></p>
   </div>
-  <div class="home-visual" data-showcase aria-roledescription="carousel" aria-label="{% translate 'Example products' %}">
-    <div class="showcase-track">
-      <img class="showcase-img is-active" src="{% asset 'img/home/chickpea' %}" alt="{% translate 'A pouch of roasted chickpea snacks with a bowl of chickpeas' %}" width="1000" height="1000"
-           data-name="{% translate 'Roasted Chickpea Snacks' %}" data-meta="{% translate 'Snacks · 30 g · scanned' %}" data-meal="snacks"
-           data-kcal="125" data-protein="6.2" data-carbs="15.1" data-fat="3.9" data-water="1.25" data-activity="35">
-      <img class="showcase-img" src="{% asset 'img/home/apple-drink' %}" alt="{% translate 'A can of sparkling apple drink with a slice of green apple' %}" width="1000" height="1000" loading="lazy"
-           data-name="{% translate 'Sparkling Apple Drink' %}" data-meta="{% translate 'Lunch · 330 ml · scanned' %}" data-meal="lunch"
-           data-kcal="139" data-protein="0" data-carbs="34.3" data-fat="0" data-water="1.5" data-activity="42">
-      <img class="showcase-img" src="{% asset 'img/home/greek-yoghurt' %}" alt="{% translate 'A tub of Greek yoghurt with blueberries' %}" width="1000" height="1000" loading="lazy"
-           data-name="{% translate 'Greek Yoghurt' %}" data-meta="{% translate 'Breakfast · 150 g · scanned' %}" data-meal="breakfast"
-           data-kcal="146" data-protein="8.6" data-carbs="6" data-fat="9.8" data-water="0.75" data-activity="20">
+  <div class="home-visual" aria-roledescription="carousel" aria-label="{% translate 'Example products' %}">
+    {# CSS scroll-snap carousel: swipe or use the dots (links to each slide). #}
+    <div class="showcase-track" tabindex="0">
+      {% translate "Roasted Chickpea Snacks" as n1 %}{% translate "Sparkling Apple Drink" as n2 %}{% translate "Greek Yoghurt" as n3 %}
+      {% translate "Snacks · 30 g · scanned" as m1 %}{% translate "Lunch · 330 ml · scanned" as m2 %}{% translate "Breakfast · 150 g · scanned" as m3 %}
+      {% translate "A pouch of roasted chickpea snacks with a bowl of chickpeas" as a1 %}{% translate "A can of sparkling apple drink with a slice of green apple" as a2 %}{% translate "A tub of Greek yoghurt with blueberries" as a3 %}
+      {% asset 'img/home/chickpea' as img1 %}{% asset 'img/home/apple-drink' as img2 %}{% asset 'img/home/greek-yoghurt' as img3 %}
+      {% include "partials/showcase_slide.html" with n=1 img=img1 alt=a1 name=n1 meta=m1 meal="snacks" kcal="125" protein="6.2" carbs="15.1" fat="3.9" water="1.25" activity="35" %}
+      {% include "partials/showcase_slide.html" with n=2 img=img2 alt=a2 name=n2 meta=m2 meal="lunch" kcal="139" protein="0" carbs="34.3" fat="0" water="1.5" activity="42" lazy=True %}
+      {% include "partials/showcase_slide.html" with n=3 img=img3 alt=a3 name=n3 meta=m3 meal="breakfast" kcal="146" protein="8.6" carbs="6" fat="9.8" water="0.75" activity="20" lazy=True %}
     </div>
-    <figure class="diary-preview-card" aria-label="{% translate 'Example of a day in the diary' %}">
-      <div class="dp-row">
-        <span class="dp-icon"><span data-meal-icon="snacks">{% icon "cookie" 18 %}</span><span data-meal-icon="lunch" hidden>{% icon "sandwich" 18 %}</span><span data-meal-icon="breakfast" hidden>{% icon "coffee" 18 %}</span></span>
-        <span class="dp-text"><strong data-sc="name">{% translate "Roasted Chickpea Snacks" %}</strong><small data-sc="meta">{% translate "Snacks · 30 g · scanned" %}</small></span>
-        <span class="dp-kcal"><span class="roll" data-sc="kcal">125</span> kcal</span>
-      </div>
-      <dl class="dp-macros">
-        <div><dt>{% translate "Protein" %}</dt><dd><span class="roll" data-sc="protein">6.2</span> g</dd></div>
-        <div><dt>{% translate "Carbs" %}</dt><dd><span class="roll" data-sc="carbs">15.1</span> g</dd></div>
-        <div><dt>{% translate "Fat" %}</dt><dd><span class="roll" data-sc="fat">3.9</span> g</dd></div>
-      </dl>
-      <div class="dp-row dp-split">
-        <span>{% icon "glass-water" 18 %} {% translate "Water" %} <strong><span class="roll" data-sc="water">1.25</span> l</strong></span>
-        <span>{% icon "activity" 18 %} {% translate "Activity" %} <strong><span class="roll" data-sc="activity">35</span> min</strong></span>
-      </div>
-    </figure>
-    <div class="showcase-dots" role="group" aria-label="{% translate 'Choose an example' %}" data-showcase-dots>
-      <button type="button" aria-label="{% translate 'Example 1: Roasted Chickpea Snacks' %}" aria-pressed="true"></button>
-      <button type="button" aria-label="{% translate 'Example 2: Sparkling Apple Drink' %}" aria-pressed="false"></button>
-      <button type="button" aria-label="{% translate 'Example 3: Greek Yoghurt' %}" aria-pressed="false"></button>
-    </div>
+    <nav class="showcase-dots" aria-label="{% translate 'Choose an example' %}">
+      <a href="#example-1" aria-label="{% translate 'Example 1: Roasted Chickpea Snacks' %}"></a>
+      <a href="#example-2" aria-label="{% translate 'Example 2: Sparkling Apple Drink' %}"></a>
+      <a href="#example-3" aria-label="{% translate 'Example 3: Greek Yoghurt' %}"></a>
+    </nav>
   </div>
 </section>
 
@@ -103,7 +85,7 @@
 
 <section class="closing" aria-labelledby="closing-h">
   <h2 id="closing-h">{% translate "Private by default." %}</h2>
-  <p>{% translate "No account, no sign-up. Your diary, notes and preferences stay in this browser, and you can delete them at any time." %}</p>
+  <p>{% translate "Your diary, notes and preferences belong to your account only: never shared, never in the public catalogue, and you can delete them at any time." %}</p>
   <a class="btn btn-primary btn-cta" href="{% url 'account_signup' %}">{% icon "arrow-right" 20 %}<span>{% translate "Get started" %}</span></a>
 </section>
 {% endblock %}

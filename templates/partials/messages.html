@@ -1,0 +1,1 @@
+{% load ui %}<div id="messages" class="messages" role="status"{% if oob %} hx-swap-oob="true"{% endif %}>{% for message in messages %}<p class="msg msg-{{ message.tags }}">{% if message.tags == "error" %}{% icon "triangle-alert" 18 %}{% else %}{% icon "info" 18 %}{% endif %}<span>{{ message }}</span></p>{% endfor %}</div>

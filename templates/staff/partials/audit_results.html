@@ -1,0 +1,16 @@
+{% if page.object_list %}
+<div class="table-wrap">
+<table class="staff-table">
+  <caption class="sr-only">Staff actions, newest first</caption>
+  <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Action</th><th scope="col">Target</th><th scope="col">Details</th></tr></thead>
+  <tbody>
+  {% for a in page.object_list %}
+    <tr><td>{{ a.created_at|date:"j M Y H:i" }}</td><td>{{ a.actor.email|default:a.actor|default:"—" }}</td><td>{{ a.action }}</td><td>{{ a.target|default:"—" }}</td><td>{% if a.details %}<span class="mono staff-details">{{ a.details }}</span>{% else %}—{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "staff/partials/pager.html" %}
+{% else %}
+<p class="empty">No staff actions recorded.</p>
+{% endif %}

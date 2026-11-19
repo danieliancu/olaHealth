@@ -1,0 +1,20 @@
+{% load i18n ui %}{# One slide of the home carousel: an example product and its diary entry. #}
+<figure class="showcase-slide" id="example-{{ n }}" aria-roledescription="slide" aria-label="{% blocktranslate with n=n %}Example {{ n }} of 3{% endblocktranslate %}">
+  <img class="showcase-img" src="{{ img }}" alt="{{ alt }}" width="1000" height="1000"{% if lazy %} loading="lazy"{% endif %}>
+  <div class="diary-preview-card" role="group" aria-label="{% translate 'Example of a day in the diary' %}">
+    <div class="dp-row">
+      <span class="dp-icon">{% if meal == "snacks" %}{% icon "cookie" 18 %}{% elif meal == "lunch" %}{% icon "sandwich" 18 %}{% else %}{% icon "coffee" 18 %}{% endif %}</span>
+      <span class="dp-text"><strong>{{ name }}</strong><small>{{ meta }}</small></span>
+      <span class="dp-kcal">{{ kcal }} kcal</span>
+    </div>
+    <dl class="dp-macros">
+      <div><dt>{% translate "Protein" %}</dt><dd>{{ protein }} g</dd></div>
+      <div><dt>{% translate "Carbs" %}</dt><dd>{{ carbs }} g</dd></div>
+      <div><dt>{% translate "Fat" %}</dt><dd>{{ fat }} g</dd></div>
+    </dl>
+    <div class="dp-row dp-split">
+      <span>{% icon "glass-water" 18 %} {% translate "Water" %} <strong>{{ water }} l</strong></span>
+      <span>{% icon "activity" 18 %} {% translate "Activity" %} <strong>{{ activity }} min</strong></span>
+    </div>
+  </div>
+</figure>

@@ -82,6 +82,14 @@ def stale_open_contributions() -> int:
         Q(status=Contribution.Status.SUBMITTED) | Q(status=Contribution.Status.CONFLICT),
         submitted_at__lt=timezone.now() - timedelta(days=7),
     ).count()
-    if count:
+    # Above the alert threshold the line is an ERROR, which Sentry (when enabled) reports.
+    threshold = getattr(settings, "MODERATION_ALERT_THRESHOLD", 20)
+    if count >= threshold:
+        logger.error(
+            "%d contributions waiting for moderation for more than 7 days (alert at %d)",
+            count,
+            threshold,
+        )
+    elif count:
         logger.info("%d contributions waiting for moderation for more than 7 days", count)
     return count

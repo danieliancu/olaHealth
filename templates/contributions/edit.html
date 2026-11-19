@@ -30,11 +30,13 @@
           </form>
         </div>
       {% else %}
-        <form method="post" action="{% url 'contribution-upload' c.access_token %}" enctype="multipart/form-data" data-autoupload>
+        <form method="post" action="{% url 'contribution-upload' c.access_token %}" enctype="multipart/form-data"
+              hx-post="{% url 'contribution-upload' c.access_token %}" hx-encoding="multipart/form-data" hx-trigger="change"
+              hx-indicator="find .slot-add" hx-disabled-elt="find input[type=file]" hx-swap="none">
           {% csrf_token %}
           <input type="hidden" name="kind" value="{{ kind }}">
           <label class="slot-add">
-            {% icon "camera" 28 %}
+            {% icon "camera" 28 %}<span class="spinner slot-spinner" aria-hidden="true"></span>
             <span class="sr-only">{% blocktranslate %}Add photo: {{ label }}{% endblocktranslate %}</span>
             <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" class="visually-hidden-input">
           </label>
@@ -68,26 +70,7 @@
   </form>
 
 {% elif step == "check" %}
-  {% if runs %}
-  <section class="card" aria-labelledby="ocr-h" data-ocr-status data-url="{% url 'contribution-ocr-status' c.access_token %}">
-    <h2 id="ocr-h">{% translate "Text recognition" %}</h2>
-    <p class="hint">{% translate "We try to read the ingredient list and nutrition table (English and Romanian). Always check the values. If it fails, just type them." %}</p>
-    <ul class="plain-list">
-      {% for r in runs %}
-      <li data-run="{{ r.pk }}">{{ r.image.get_kind_display }}:
-        <span data-run-status data-state="{{ r.status }}">{% if r.status == "queued" or r.status == "running" %}<span class="spinner" aria-hidden="true"></span> {% endif %}{% if r.status == "done" %}{% translate "done" %}{% elif r.status == "failed" %}{% translate "failed" %}{% else %}{% translate "in progress…" %}{% endif %}</span>
-        {% if r.status == "failed" %}
-          <form method="post" action="{% url 'contribution-ocr-retry' c.access_token r.pk %}" class="inline">{% csrf_token %}<button class="btn btn-small btn-outline" type="submit">{% icon "refresh-cw" 16 %}<span>{% translate "Try again" %}</span></button></form>
-        {% endif %}
-      </li>
-      {% endfor %}
-    </ul>
-    <p><a class="btn btn-outline" href="?step=check&amp;prefill=ocr" data-ocr-apply {% if not ocr_ready %}hidden{% endif %}>{% translate "Fill the form with recognised values" %}</a></p>
-    {% for r in runs %}{% if r.status == "done" and r.parsed.unmapped %}
-      <details><summary>{% translate "Lines we could not map (not used)" %}</summary><ul>{% for line in r.parsed.unmapped %}<li class="mono">{{ line }}</li>{% endfor %}</ul></details>
-    {% endif %}{% endfor %}
-  </section>
-  {% endif %}
+  {% if runs %}{% include "contributions/_ocr_status.html" %}{% endif %}
 
   <form method="post" action="?step=check" class="stack" novalidate>
     {% csrf_token %}

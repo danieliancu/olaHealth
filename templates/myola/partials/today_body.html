@@ -1,0 +1,29 @@
+{% load i18n ui %}{% url 'today' as today_url %}
+<div class="today" id="today">
+  <div class="today-head">
+    <div>
+      <p class="eyebrow">{{ day_sub }}</p>
+      <h1>{{ day_title }}</h1>
+    </div>
+    <a class="btn btn-primary scan-cta" href="{{ scan_url }}">{% icon "scan-barcode" 20 %}<span>{% translate "Scan barcode" %}</span></a>
+  </div>
+  <div class="day-band">
+    <nav class="day-strip" aria-label="{% translate 'Choose a day' %}">
+      <a class="icon-btn" href="{{ today_url }}?date={{ week.prev }}" aria-label="{% translate 'Previous week' %}">{% icon "chevron-left" 20 %}</a>
+      <ol class="days">
+        {% for d in week.days %}<li>{% if d.future %}<span class="day is-future" aria-disabled="true" aria-label="{{ d.date|date:'l j F' }}"><span class="day-name">{{ d.date|date:"D"|slice:":1" }}</span><span class="day-num">{{ d.date|date:"j" }}</span><span class="day-dot" aria-hidden="true"></span></span>{% else %}<a class="day{% if d.selected %} is-selected{% endif %}{% if d.today %} is-today{% endif %}" href="{{ today_url }}?date={{ d.iso }}"{% if d.selected %} aria-current="date"{% endif %} aria-label="{{ d.date|date:'l j F' }}{% if d.logged %}, {% translate 'food logged' %}{% endif %}"><span class="day-name">{{ d.date|date:"D"|slice:":1" }}</span><span class="day-num">{{ d.date|date:"j" }}</span><span class="day-dot{% if d.logged %} is-on{% endif %}" aria-hidden="true"></span></a>{% endif %}</li>{% endfor %}
+      </ol>
+      {% if week.next %}<a class="icon-btn" href="{{ today_url }}?date={{ week.next }}" aria-label="{% translate 'Next week' %}">{% icon "chevron-right" 20 %}</a>{% else %}<span class="icon-btn is-disabled" aria-disabled="true" aria-label="{% translate 'Next week' %}">{% icon "chevron-right" 20 %}</span>{% endif %}
+    </nav>
+  </div>
+
+  {% if not profile.onboarded %}<p class="notice">{% icon "info" 18 %}<span>{% translate "Set up your goal and allergies in a minute." %} <a href="{% url 'start' %}">{% translate "Get started" %}</a></span></p>{% endif %}
+
+  <div class="today-grid">
+    {% include "myola/partials/today_summary.html" %}
+    {% include "myola/partials/today_diary.html" %}
+    {% include "myola/partials/today_water.html" %}
+    {% include "myola/partials/today_activity.html" %}
+  </div>
+  {% if toast %}{% include "myola/partials/today_toast.html" %}{% endif %}
+</div>

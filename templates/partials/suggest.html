@@ -1,0 +1,16 @@
+{% load i18n ui %}{# Search-as-you-type suggestions: plain links, swapped in by htmx (catalog.views.suggest_html). #}
+<div id="suggest-list" class="suggest-wrap">{% if show %}
+<ul class="suggest" aria-label="{% translate 'Suggestions' %}">
+  {% for p in results %}
+  <li><a class="suggest-item" href="{{ p.link }}">
+    {% if p.front_image_url %}<img class="suggest-thumb" src="{{ p.front_image_url|img }}" alt="" width="40" height="40">{% else %}<img class="suggest-thumb" src="{% asset 'img/placeholder' %}" alt="" width="40" height="40">{% endif %}
+    <span class="suggest-text"><span class="suggest-name">{{ p.name|default:_("Unnamed product") }}</span><span class="suggest-meta">{{ p.brand }}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</span></span>
+    {% if p.nutriscore_grade %}<span class="grade grade-sm grade-{{ p.nutriscore_grade }}"><span class="sr-only">Nutri-Score </span>{{ p.nutriscore_grade|upper }}</span>{% endif %}
+  </a></li>
+  {% empty %}
+  <li class="suggest-item" aria-disabled="true"><span class="suggest-empty">{% blocktranslate %}No products match “{{ q }}”{% endblocktranslate %}</span></li>
+  {% endfor %}
+  {% if results %}<li><a class="suggest-item" href="{{ all_url }}"><span class="suggest-all">{% blocktranslate %}See all results for “{{ q }}”{% endblocktranslate %}</span></a></li>{% endif %}
+</ul>
+<p class="sr-only" role="status">{% blocktranslate count n=results|length %}{{ n }} suggestion{% plural %}{{ n }} suggestions{% endblocktranslate %}</p>
+{% endif %}</div>

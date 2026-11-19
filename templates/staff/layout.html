@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% load static ui %}
+{% block title %}{% block staff_title %}Staff{% endblock %} · Staff{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'css/staff.css' %}"><meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="staff">
+  <nav class="staff-nav" aria-label="Staff panel">
+    <a href="{% url 'staff:dashboard' %}"{% if section == "dashboard" %} aria-current="page"{% endif %}>{% icon "chart-line" 18 %}<span>Dashboard</span></a>
+    {% if nav.moderation %}<a href="{% url 'staff:contributions' %}"{% if section == "moderation" %} aria-current="page"{% endif %}>{% icon "circle-check" 18 %}<span>Moderation</span></a>{% endif %}
+    {% if nav.flags %}<a href="{% url 'staff:flags' %}"{% if section == "flags" %} aria-current="page"{% endif %}>{% icon "triangle-alert" 18 %}<span>Review flags</span></a>{% endif %}
+    {% if nav.products %}<a href="{% url 'staff:products' %}"{% if section == "products" %} aria-current="page"{% endif %}>{% icon "search" 18 %}<span>Products</span></a>{% endif %}
+    {% if nav.users %}<a href="{% url 'staff:users' %}"{% if section == "users" %} aria-current="page"{% endif %}>{% icon "user-round" 18 %}<span>Users</span></a>{% endif %}
+    {% if nav.settings %}<a href="{% url 'staff:settings' %}"{% if section == "settings" %} aria-current="page"{% endif %}>{% icon "settings" 18 %}<span>Settings</span></a>{% endif %}
+    {% if nav.audit %}<a href="{% url 'staff:audit' %}"{% if section == "audit" %} aria-current="page"{% endif %}>{% icon "history" 18 %}<span>Audit log</span></a>{% endif %}
+  </nav>
+  {% block staff_content %}{% endblock %}
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load i18n ui %}
+{% block title %}{% translate "Your profile" %}{% endblock %}
+{% block content %}
+<div class="profile-page">
+  <div class="page-head">
+    <h1>{% translate "Your profile" %}</h1>
+    <a class="btn btn-link" href="{% url 'my-ola' %}">{% icon "chevron-left" 18 %}<span>{% translate "My Track" %}</span></a>
+  </div>
+  <p class="caption">{% translate "The same questions as when you started. Everything is optional and saved in your account." %}</p>
+  <nav class="profile-jump" aria-label="{% translate 'Profile sections' %}">
+    <a href="#about">{% translate "About you" %}</a>
+    <a href="#restrictions">{% translate "Restrictions and allergies" %}</a>
+    <a href="#conditions">{% translate "Health conditions" %}</a>
+    <a href="{% url 'settings-edit' %}">{% icon "settings" 16 %}<span>{% translate "Settings" %}</span></a>
+  </nav>
+  {% include "myola/partials/profile_about.html" %}
+  {% include "myola/partials/profile_restrictions.html" %}
+  {% include "myola/partials/profile_conditions.html" %}
+  <p class="caption"><a href="{% url 'start' %}">{% translate "Go through the questions again" %}</a></p>
+</div>
+{% endblock %}

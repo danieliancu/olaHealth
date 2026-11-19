@@ -1,0 +1,20 @@
+{% load i18n ui %}{% url 'today-entry' e.pk as edit_url %}{% url 'today-entry-delete' e.pk as delete_url %}{% url 'today' as today_url %}
+<form class="entry-edit" method="post" action="{{ edit_url }}" hx-post="{{ edit_url }}" hx-target="#today" hx-swap="outerHTML" data-no-busy novalidate aria-label="{% blocktranslate with name=e.name %}Edit {{ name }}{% endblocktranslate %}">
+  {% csrf_token %}
+  <p class="entry-edit-name"><strong>{{ e.name }}</strong>{% if e.brand %} <span class="caption">{{ e.brand }}</span>{% endif %}</p>
+  {% if e.portion or e.product_id %}<p class="caption entry-meta">{% if e.portion %}{{ e.portion }} {% endif %}{% if e.product_id %}<a href="{% url 'product' e.product_id %}">{% translate "Open product" %}</a>{% endif %}</p>{% endif %}
+  {% for err in form.non_field_errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
+  <label for="{{ form.amount.id_for_label }}">{% translate "Amount" %}</label>
+  <div class="amount-row">{{ form.amount }}{% if e.product_id %}<span class="unit-label">{{ e.unit }}</span>{% else %}{{ form.unit }}{% endif %}</div>
+  {% for err in form.amount.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
+  <div class="entry-edit-row">
+    <div><label for="{{ form.meal.id_for_label }}">{% translate "Meal" %}</label>{{ form.meal }}</div>
+    <div><label for="{{ form.date.id_for_label }}">{% translate "Day" %}</label>{{ form.date }}{% for err in form.date.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}</div>
+  </div>
+  <div class="diary-preview" id="pv-{{ e.pk }}" aria-live="polite">{% include "myola/partials/diary_preview.html" with pv=e.pv unit=e.unit %}</div>
+  <div class="dialog-actions entry-actions">
+    <button type="submit" class="btn btn-link btn-danger-link" formaction="{{ delete_url }}" hx-post="{{ delete_url }}">{% icon "trash-2" 18 %}<span>{% translate "Delete" %}</span></button>
+    <a class="btn" href="{{ today_url }}?date={{ e.date|date:'Y-m-d' }}" hx-get="{{ today_url }}?date={{ e.date|date:'Y-m-d' }}" hx-target="#today" hx-swap="outerHTML">{% translate "Cancel" %}</a>
+    <button type="submit" class="btn btn-primary">{% translate "Save" %}</button>
+  </div>
+</form>

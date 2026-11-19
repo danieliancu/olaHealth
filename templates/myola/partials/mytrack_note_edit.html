@@ -1,0 +1,28 @@
+{% load i18n ui %}<li class="note-item kind-{{ note.kind }}" id="note-{{ note.pk }}">
+  <form class="stack mytrack-note-edit" method="post" action="{% url 'note-edit' note.pk %}" hx-post="{% url 'note-edit' note.pk %}" hx-target="#note-{{ note.pk }}" hx-swap="outerHTML">
+    {% csrf_token %}
+    <h3>{% translate "Edit note" %}</h3>
+    <label for="note-{{ note.pk }}-text">{% translate "Note" %}</label>
+    <textarea id="note-{{ note.pk }}-text" name="text" maxlength="2000" required autofocus>{{ form.text.value|default_if_none:"" }}</textarea>
+    {% if form.text.errors %}<p class="field-error">{{ form.text.errors|join:" " }}</p>{% endif %}
+    <div class="grid-2">
+      <div>
+        <label for="note-{{ note.pk }}-kind">{% translate "Type" %}</label>
+        <select id="note-{{ note.pk }}-kind" name="kind">
+          {% for value, label in form.fields.kind.choices %}<option value="{{ value }}"{% if form.kind.value == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="note-{{ note.pk }}-product">{% translate "Product (optional)" %}</label>
+        <select id="note-{{ note.pk }}-product" name="product">
+          <option value="">{% translate "No product" %}</option>
+          {% for p in known_products %}<option value="{{ p.id }}"{% if form.product.value|stringformat:"s" == p.id|stringformat:"s" %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <button type="submit" class="btn btn-primary">{% translate "Save note" %}</button>
+      <a class="btn btn-link" href="{% url 'my-ola' %}?tab=notes#note-{{ note.pk }}" hx-get="{% url 'note-item' note.pk %}" hx-target="#note-{{ note.pk }}" hx-swap="outerHTML">{% translate "Cancel editing" %}</a>
+    </div>
+  </form>
+</li>

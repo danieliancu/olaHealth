@@ -229,12 +229,6 @@ fieldset.card { padding: 1rem; }
 }
 .cam-tool[aria-pressed="true"] { background: #2fd3a4; border-color: #2fd3a4; color: #102620; }
 .status { min-height: 1.5em; font-weight: 500; text-align: center; }
-.result-card { display: flex; gap: .9rem; align-items: flex-start; background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem; }
-.result-card h3 { margin-bottom: .2rem; }
-.result-card { flex-wrap: wrap; }
-.result-card > div { flex: 1; min-width: 0; }
-.result-card { scroll-margin-bottom: calc(var(--tabbar-h) + 1rem); scroll-margin-top: 5rem; }
-.result-card .open-product { flex-basis: 100%; margin-top: .25rem; }
 
 /* ---------- Products ---------- */
 .search-box { position: relative; }
@@ -253,10 +247,6 @@ fieldset.card { padding: 1rem; }
 .suggest-meta { color: var(--muted); font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .suggest-all { color: var(--accent-strong); font-weight: 700; }
 .suggest-empty { color: var(--muted); }
-.search-box.is-loading::after {
-  content: ""; position: absolute; right: .9rem; top: 50%; width: 16px; height: 16px; margin-top: -8px;
-  border: 2px solid var(--muted); border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite;
-}
 .search-box .icon { position: absolute; left: .8rem; top: 50%; transform: translateY(-50%); color: var(--muted); }
 .search-box input { padding-left: 2.6rem; border-radius: 12px; }
 .pills { display: flex; gap: .45rem; overflow-x: auto; padding: .1rem 0 .4rem; scrollbar-width: none; }
@@ -406,7 +396,6 @@ table.compare th[scope="row"] { overflow-wrap: normal; hyphens: auto; -webkit-hy
 .chart-diff { display: flex; align-items: center; justify-content: flex-end; gap: .4rem; margin: .1rem 0 .1rem; font-size: .82rem; }
 .chart-diff-label { color: var(--muted); }
 .chart-diff-value { font-weight: 700; color: var(--accent-strong); background: var(--accent-soft); border-radius: 999px; padding: .05rem .55rem; }
-.chart-canvas { position: relative; width: 100%; }
 @media (min-width: 768px) { .chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1024px) { .chart-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
@@ -432,7 +421,6 @@ table.compare th[scope="row"] { overflow-wrap: normal; hyphens: auto; -webkit-hy
 }
 .slot-add:hover, .slot-add:focus-within { border-color: var(--accent); color: var(--accent); }
 .slot-add .spinner { width: 26px; height: 26px; color: var(--accent); }
-.slot-add.is-uploading { border-style: solid; border-color: var(--accent); }
 .slot-img { position: relative; }
 .slot-img img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
 .slot-img form { position: absolute; top: 4px; right: 4px; }
@@ -530,13 +518,8 @@ details.about[open] > summary { margin-bottom: .6rem; }
 /* Card actions behind a discreet arrow (no JS: actions always visible, arrow hidden). */
 .card-actions-panel { display: flex; align-items: center; gap: 0; }
 html:not(.js) .js-only { display: none; }
-html.js .card-actions-panel:not(.is-open) { display: none; }
-html.js .card-actions-panel.is-open { animation: actions-in .18s ease-out; }
-@keyframes actions-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
 .actions-toggle { color: var(--muted); }
 .actions-toggle .icon { transition: transform .2s ease; }
-.actions-toggle[aria-expanded="true"] .icon { transform: rotate(180deg); }
-.actions-toggle[aria-expanded="true"] { color: var(--accent-strong); }
 button[aria-disabled="true"] { cursor: default; }
 .btn[aria-disabled="true"] { opacity: .8; }
 .btn-icon-danger:hover { background: #fde3df; color: #912018; }
@@ -564,13 +547,6 @@ button[aria-disabled="true"] { cursor: default; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .status { display: flex; align-items: center; justify-content: center; gap: .5rem; }
-.btn.is-busy { pointer-events: none; opacity: .85; }
-.btn.is-busy .icon { display: none; }
-img.is-loading {
-  background: linear-gradient(90deg, #eef4f2 25%, #f8fbfa 50%, #eef4f2 75%);
-  background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite;
-}
-@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 .pending { display: flex; align-items: center; gap: .6rem; }
 
 /* ---------- Desktop ---------- */
@@ -602,7 +578,6 @@ img.is-loading {
 /* Product page: actions, data status, explanations */
 .action-bar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; margin-top: .9rem; }
 .action-bar .btn { padding: .4rem .5rem; font-size: .85rem; gap: .35rem; min-height: 44px; }
-html:not(.js) .action-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .btn[data-list-toggle="buyOften"][aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn[data-list-toggle="avoid"][aria-pressed="true"] { background: #9a3412; border-color: #9a3412; color: #fff; }
 .status-pills { list-style: none; padding: 0; margin: .8rem 0 0; display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
@@ -721,7 +696,6 @@ a.alt-name:hover { text-decoration: underline; }
 .rs-may_contain, .rs-unknown { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
 .rs-compatible, .rs-not_declared { background: var(--accent-soft); border-color: #b7dfd2; }
 .prefs-panel { margin-top: .6rem; }
-.ola-restrictions:empty + .ola-prefs-line { border-top: 0; padding-top: 0; }
 /* Home: one message, one action, a quiet barcode field. */
 .home { display: grid; gap: 1.5rem; padding: 1rem 0 1.5rem; }
 .home .display { font-size: 2.3rem; line-height: 1.06; letter-spacing: -.03em; margin: 0 0 .75rem; text-wrap: balance; }
@@ -1090,28 +1064,7 @@ input[aria-invalid="true"] { border-color: var(--error); }
   .home-visual .showcase-img { bottom: auto; height: max(45%, calc(100% - 190px)); padding: 4% 12% 0; object-position: center top; }
 }
 @media (min-width: 1024px) { .home .display br.desktop-only { display: inline; } .home .display { margin-bottom: 1.4rem; } }
-.diary-preview-card [data-sc="name"], .diary-preview-card [data-sc="meta"] { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Home showcase: example products slide by; the card rolls its numbers. */
-.showcase-track { position: relative; aspect-ratio: 1 / 1; overflow: hidden; background: transparent; }
-.showcase-img { object-fit: contain; padding: 6%; }
-.showcase-img {
-  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-  transform: translateX(100%); transition: transform .6s cubic-bezier(.65, 0, .35, 1); visibility: hidden;
-}
-.showcase-img.is-active { transform: none; visibility: visible; }
-.showcase-img.is-leaving { transform: translateX(-100%); visibility: visible; }
-.showcase-img.no-anim { transition: none; }
-html:not(.js) .showcase-img:not(.is-active) { display: none; }
-.showcase-dots { display: flex; justify-content: center; gap: .25rem; margin-top: .6rem; }
-.showcase-dots button { width: 28px; height: 28px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; }
-.showcase-dots button::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: #c9d8d3; transition: width .3s, background .3s; }
-.showcase-dots button[aria-pressed="true"]::before { width: 22px; background: var(--accent); }
-html:not(.js) .showcase-dots { display: none; }
-.diary-preview-card [data-sc="name"], .diary-preview-card [data-sc="meta"] { display: block; transition: opacity .22s ease, transform .22s ease; }
-.diary-preview-card .is-leaving { opacity: 0; transform: translateY(-6px); }
-.roll { display: inline-block; font-variant-numeric: tabular-nums; }
-.roll.is-rolling { animation: roll .75s cubic-bezier(.2, .7, .2, 1); }
-@keyframes roll { 0% { transform: translateY(40%); opacity: .2; filter: blur(1.5px); } 45% { filter: blur(.6px); } 100% { transform: none; opacity: 1; filter: none; } }
 @media (min-width: 1024px) {
   .home-visual .diary-preview-card { bottom: 2.2rem; }
   .showcase-dots { justify-content: flex-end; }

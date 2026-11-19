@@ -1,0 +1,15 @@
+{% load i18n ui %}{# One bar chart. Context: chart (myola.services.progress.bar_chart + title/icon/diary). #}
+<section class="card chart-card" aria-labelledby="chart-{{ chart.key }}">
+  <div class="t-card-head">
+    <h2 id="chart-{{ chart.key }}">{% icon chart.icon 20 %} {{ chart.title }}</h2>
+    <span class="chart-avg">{% if chart.average is None %}{% translate "No entries" %}{% else %}{% blocktranslate with avg=chart.average unit=chart.unit %}Average {{ avg }} {{ unit }}{% endblocktranslate %}{% endif %}</span>
+  </div>
+  <svg class="bar-chart" viewBox="0 0 {{ chart.width }} {{ chart.height }}" width="100%" height="{{ chart.height }}" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    {% for b in chart.bars %}<rect class="bar-rect{% if b.empty %} is-empty{% elif b.partial %} is-partial{% endif %}" x="{{ b.x|stringformat:'s' }}" y="{{ b.y|stringformat:'s' }}" width="{{ b.width|stringformat:'s' }}" height="{{ b.height|stringformat:'s' }}" rx="2"><title>{{ b.date|date:"j M" }}: {% if b.empty %}{% translate "No entries" %}{% else %}{{ b.text }}{% if b.partial %} ({% translate "partial" %}){% endif %}{% endif %}</title></rect>{% endfor %}
+  </svg>
+  <ol class="bar-labels r-{{ chart.span }}" aria-hidden="true">{% for b in chart.bars %}<li>{{ b.label }}</li>{% endfor %}</ol>
+  <ul class="sr-only">
+    {% for b in chart.bars %}<li>{{ b.date|date:"l j F" }}: {% if b.empty %}{% translate "No entries" %}{% else %}{{ b.text }}{% if b.partial %} ({% translate "partial: some foods have unknown values" %}){% endif %}{% endif %}</li>{% endfor %}
+  </ul>
+  {% if chart.any_partial %}<p class="caption"><span class="partial-key" aria-hidden="true"></span> {% translate "Some days are partial: foods with unknown values are not counted." %}</p>{% endif %}
+</section>

@@ -15,7 +15,6 @@
   <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
   <link rel="icon" href="{% static 'img/icon.svg' %}" type="image/svg+xml">
   <script type="module" src="{% static 'js/dialog.js' %}"></script>
-  <script type="module" src="{% static 'js/app.js' %}"></script>
   {% block head %}{% endblock %}
 </head>
 <body data-placeholder="{% asset 'img/placeholder' %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
@@ -25,20 +24,18 @@
       <a class="brand" href="{% url 'home' %}"><span class="brand-ola">Foodo</span><span class="brand-health">Track</span></a>
       <div class="header-tools">
         <a class="icon-btn" href="{% url 'products' %}" aria-label="{% translate 'Search products' %}" title="{% translate 'Search products' %}">{% icon "search" 22 %}</a>
-        <a class="icon-btn header-count" href="{% url 'my-ola' %}#saved" aria-label="{% translate 'Favourites' %}" title="{% translate 'Favourites' %}">{% icon "heart" 22 %}<span class="count" data-saved-count hidden></span></a>
-        <a class="icon-btn header-account" href="{% url 'my-ola' %}#account" aria-label="{% translate 'Account' %}" title="{% translate 'Account' %}">{% icon "user-round" 22 %}</a>
+        <a class="icon-btn header-count" href="{% url 'saved' %}" aria-label="{% translate 'Favourites' %}" title="{% translate 'Favourites' %}">{% icon "heart" 22 %}{% include "partials/saved_count.html" %}</a>
+        {% if user.is_staff %}<a class="icon-btn" href="{% url 'staff:dashboard' %}" aria-label="{% translate 'Staff panel' %}" title="{% translate 'Staff panel' %}">{% icon "settings" 22 %}</a>{% endif %}
+        <a class="icon-btn header-account" href="{% if user.is_authenticated %}{% url 'my-ola' %}?tab=account{% else %}{% url 'account_login' %}{% endif %}" aria-label="{% translate 'Account' %}" title="{% translate 'Account' %}">{% icon "user-round" 22 %}</a>
       </div>
     </header>
     <main id="main" tabindex="-1">
-      {% if messages %}
-        <div class="messages" role="status">
-          {% for message in messages %}<p class="msg msg-{{ message.tags }}">{% if message.tags == "error" %}{% icon "triangle-alert" 18 %}{% else %}{% icon "info" 18 %}{% endif %}<span>{{ message }}</span></p>{% endfor %}
-        </div>
-      {% endif %}
+      {% if MAINTENANCE_MESSAGE %}<p class="notice notice-warn" role="status">{% icon "info" 18 %}<span>{{ MAINTENANCE_MESSAGE }}</span></p>{% endif %}
+      {% include "partials/messages.html" %}
       {% block content %}{% endblock %}
       <footer class="site-footer">
         <p>{% blocktranslate %}Product data and photos from <a href="https://world.openfoodfacts.org" rel="noopener">Open Food Facts</a> contributors (Open Database License; photos CC BY-SA), plus moderated corrections from FoodoTrack contributors.{% endblocktranslate %}</p>
-        <p><a href="{% url 'sources' %}">{% translate "Sources & methodology" %}</a> · {% translate "Information, not medical advice." %}</p>
+        <p><a href="{% url 'sources' %}">{% translate "Sources & methodology" %}</a> · <a href="{% url 'privacy' %}">{% translate "Privacy" %}</a> · <a href="{% url 'terms' %}">{% translate "Terms" %}</a> · <a href="{% url 'api-docs' %}">{% translate "API" %}</a> · {% translate "Information, not medical advice." %}</p>
       </footer>
     </main>
     {% url 'home' as home_url %}{% url 'scan' as scan_url %}{% url 'today' as today_url %}{% url 'progress' as progress_url %}{% url 'saved' as saved_url %}{% url 'my-ola' as myola_url %}
@@ -51,7 +48,6 @@
     </nav>
     {% endwith %}
   </div>
-  <div class="sr-only" aria-live="polite" data-live></div>
   {% include "partials/dialog.html" %}
 </body>
 </html>

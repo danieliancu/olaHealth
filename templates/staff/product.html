@@ -1,0 +1,53 @@
+{% extends "staff/layout.html" %}{% load ui %}
+{% block staff_title %}{{ product.name|default:"Product" }}{% endblock %}
+{% block staff_content %}
+<p><a class="staff-back" href="{% url 'staff:products' %}">{% icon "chevron-left" 16 %}<span>Products</span></a></p>
+<div class="page-head staff-head">
+  <h1>{{ product.name|default:"(no name)" }}</h1>
+  <a class="btn btn-outline btn-small" href="{% url 'product' product.pk %}" target="_blank" rel="noopener">Public page</a>
+</div>
+<dl class="staff-dl">
+  <dt>Brand</dt><dd>{{ product.brand|default:"—" }}</dd>
+  <dt>OFF code</dt><dd class="mono">{{ product.off_code|default:"— (local only)" }}</dd>
+  <dt>Identifiers</dt><dd>{% for i in identifiers %}<span class="mono">{{ i.normalized }}</span> <span class="hint">{{ i.kind }}{% if i.context %}, {{ i.context }}{% endif %}</span>{% if not forloop.last %} · {% endif %}{% empty %}—{% endfor %}</dd>
+  <dt>Sync</dt><dd><span class="badge badge-sync-{{ product.sync_label }}">{{ product.sync_label }}</span> last synced {{ product.off_synced_at|default:"never" }}{% if product.off_last_error %} · last error {{ product.off_last_error }} ({{ product.off_last_attempt_at }}){% endif %}</dd>
+  <dt>Locked fields</dt><dd>{% for f in product.locked_fields %}<span class="badge">{{ f }}</span> {% empty %}None (all fields follow Open Food Facts){% endfor %}</dd>
+  <dt>Completeness</dt><dd>{{ product.completeness }}%</dd>
+</dl>
+
+{% if can_refresh %}
+<form method="post" action="{% url 'staff:product-refresh' product.pk %}" class="staff-inline">{% csrf_token %}
+  <button class="btn btn-outline" type="submit">{% icon "refresh-cw" 18 %}<span>Refresh from OFF now</span></button>
+  <span class="hint">Queued as a background task; local corrections are kept.</span>
+</form>
+{% endif %}
+
+{% if flags %}
+<section class="card card-warn">
+  <h2>Open review flags</h2>
+  <ul>{% for f in flags %}<li><a href="{% url 'staff:flag' f.pk %}">{{ f.get_kind_display }}{% if f.field %}: {{ f.field }}{% endif %}</a> <span class="hint">{{ f.created_at|date:"j M Y" }}</span></li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>Revisions</h2>
+  <div class="table-wrap">
+  <table class="staff-table">
+    <caption class="sr-only">Revisions, newest first</caption>
+    <thead><tr><th scope="col">#</th><th scope="col">Source</th><th scope="col">Created</th><th scope="col">Contribution</th></tr></thead>
+    <tbody>
+    {% for r in revisions %}
+      <tr{% if r.pk == product.current_revision_id %} class="is-current"{% endif %}><th scope="row">r{{ r.number }}{% if r.pk == product.current_revision_id %} <span class="badge">current</span>{% endif %}</th><td>{{ r.source }}</td><td>{{ r.created_at|date:"j M Y H:i" }}</td><td>{% if r.contribution_id %}<a href="{% url 'staff:contribution' r.contribution_id %}">{{ r.contribution_id|stringformat:"s"|slice:":8" }}</a>{% else %}—{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="4">No revisions.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+{% if contributions %}
+<section class="card">
+  <h2>Contributions</h2>
+  <ul>{% for c in contributions %}<li><a href="{% url 'staff:contribution' c.pk %}">{{ c.get_problem_type_display }}</a> – <span class="staff-status staff-status-{{ c.status }}">{{ c.get_status_display }}</span> <span class="hint">{{ c.submitted_at|date:"j M Y" }}</span></li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}

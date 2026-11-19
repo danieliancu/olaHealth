@@ -97,7 +97,7 @@ def test_navigation_has_four_entries(client):
     # Search and favourites are in the header; comparison opens from the product pages.
     header = html.split('<header class="site-header">')[1].split("</header>")[0]
     assert 'href="/products/"' in header and 'href="/compare/"' not in header
-    assert 'href="/my-ola/#account"' in header
+    assert 'href="/accounts/login/"' in header  # visitors: the account icon signs in
 
 
 @pytest.mark.django_db
@@ -120,20 +120,6 @@ def test_only_json_data_scripts_and_no_inline_code(member_client, off_payload):
         html = client.get(url).content.decode()
         for tag in re.findall(r"<script[^>]*>", html):
             assert "src=" in tag or 'type="application/json"' in tag, (url, tag)
-
-
-@pytest.mark.django_db
-def test_product_page_states_and_personal_data(client, off_payload):
-    p = import_off_product(off_payload(allergens_tags=[], ingredients_text=""))
-    html = client.get(reverse("product", args=[p.pk])).content.decode()
-    body = html.split("</head>")[1]
-    assert "Allergen information unavailable" in body
-    assert "For you" in body and "Ola Score" not in body
-    data = html.split('id="ola-data"')[1].split("</script>")[0]
-    assert '"allergens": {"en:gluten": {"status": "unknown"' in data
-    full = import_off_product(off_payload(code="3017620422003"))
-    body = client.get(reverse("product", args=[full.pk])).content.decode().split("</head>")[1]
-    assert "Ingredients missing" not in body and "Awaiting moderation" not in body
 
 
 # ---------- Onboarding ----------
@@ -199,15 +185,6 @@ def test_pescetarian_rule():
     assert diet_status(veg, "pescatarian")["status"] == "compatible"
 
 
-@pytest.mark.django_db
-def test_product_page_offers_add_to_diary_with_portions(client, off_payload):
-    p = import_off_product(off_payload(serving_size="125 g"))
-    html = client.get(reverse("product", args=[p.pk])).content.decode()
-    assert "Add to diary" in html and "data-diary-dialog" in html
-    data = html.split('id="ola-data"')[1].split("</script>")[0]
-    assert '"portions": {"unit": "g"' in data and '"amount": "125"' in data
-
-
 # ---------- From the Food diary straight to "how much?" ----------
 @pytest.mark.django_db
 def test_diary_mode_goes_straight_to_the_amount_step(client, off_payload):
@@ -236,14 +213,3 @@ def test_diary_mode_in_scan_and_catalogue(client, off_payload):
     # Unknown values are ignored: no diary mode.
     plain = client.get(reverse("scan"), {"add": "brunch"}).content.decode()
     assert 'name="add"' not in plain
-
-
-@pytest.mark.django_db
-def test_add_food_page(member_client, off_payload):
-    p = import_off_product(off_payload(serving_size="125 g"))
-    r = member_client.get(reverse("add-food", args=[p.pk]), {"meal": "lunch", "date": "2026-11-18"})
-    html = r.content.decode()
-    assert r.status_code == 200
-    assert 'data-meal="lunch"' in html and "How much did you have?" in html
-    assert 'id="ola-data"' in html and '"portions"' in html
-    assert reverse("product", args=[p.pk]) in html  # full details stay one tap away

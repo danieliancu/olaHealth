@@ -1,5 +1,6 @@
 // Camera barcode scanning in the browser. Frames never leave the device: only the
-// decoded number is sent to /api/v1/lookup/.
+// decoded number is sent, by opening /lookup/?code=… (the server shows the product, the
+// "not found" page or, from the Food diary, the "how much?" step).
 // Decoding works on the area inside the on-screen frame, cropped from the full-resolution
 // video and enlarged, alternating plain and contrast-boosted copies: a barcode on a real
 // package is small, curved and glossy, and decodes far better at more pixels per bar.
@@ -7,14 +8,18 @@
 // frame the native detector misses (on some Android devices it is present but never finds
 // anything) and is the only decoder where BarcodeDetector does not exist (iOS, desktop).
 
-import { announce, spinner } from "./app.js";
+function spinner() {
+  const s = document.createElement("span");
+  s.className = "spinner";
+  s.setAttribute("aria-hidden", "true");
+  return s;
+}
 
 const FORMATS_NATIVE = ["ean_13", "ean_8", "upc_a", "upc_e", "itf"];
 const FORMATS_ZXING = ["EAN13", "EAN8", "UPCA", "UPCE", "ITF14"];
 const SCAN_INTERVAL_MS = 120;
 // EAN/UPC/ITF-14 carry a check digit that is verified below, so one valid read is enough.
 const CONFIRMATIONS = 1;
-const DUPLICATE_WINDOW_MS = 8000;
 
 const root = document.querySelector("[data-scanner]");
 if (root) init(root);
@@ -25,8 +30,6 @@ function init(root) {
   const startBtn = root.querySelector("[data-start]");
   const stopBtn = root.querySelector("[data-stop]");
   const statusEl = root.querySelector("[data-scan-status]");
-  const resultEl = root.querySelector("[data-result]");
-  const template = root.querySelector("[data-contribute-template]");
   const lookupUrl = root.dataset.lookupUrl;
   const viewfinder = root.querySelector(".viewfinder");
   const tools = root.querySelector("[data-tools]");
@@ -41,7 +44,6 @@ function init(root) {
   let timer = null;
   let busy = false;
   let candidate = { text: "", count: 0 };
-  let lastLookup = { text: "", at: 0 };
 
   // busy = true shows a small spinner next to the message (camera starting, lookup...).
   const setStatus = (msg, busy = false) => {
@@ -133,12 +135,14 @@ function init(root) {
   }
   stopBtn.addEventListener("click", () => stop("Camera stopped."));
   window.addEventListener("pagehide", () => stop());
+  // Back from the product page (page restored from cache): ready for the next scan.
+  window.addEventListener("pageshow", (event) => event.persisted && setStatus(""));
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") stop("Camera stopped because the page was hidden.");
   });
 
   async function start() {
-    resultEl.replaceChildren();
+    busy = false;
     startBtn.disabled = true;
     setStatus("Starting camera…", true);
     try {
@@ -149,7 +153,6 @@ function init(root) {
     } catch (err) {
       startBtn.disabled = false;
       setStatus(cameraErrorMessage(err));
-      announce(statusEl.textContent);
       return;
     }
     video.srcObject = stream;
@@ -166,7 +169,6 @@ function init(root) {
     }
     candidate = { text: "", count: 0 };
     setStatus("Point the camera at the barcode.", true);
-    announce("Camera on. Point it at the barcode.");
     loop();
   }
 
@@ -206,125 +208,16 @@ function init(root) {
     if (found.text === candidate.text) candidate.count += 1;
     else candidate = { text: found.text, count: 1 };
     if (candidate.count < CONFIRMATIONS) return;
-    const now = Date.now();
-    if (found.text === lastLookup.text && now - lastLookup.at < DUPLICATE_WINDOW_MS) return;
-    lastLookup = { text: found.text, at: now };
+    busy = true;
     stop();
     if (navigator.vibrate) navigator.vibrate(60);
-    await lookup(found.text, found.format);
+    setStatus(`Barcode ${found.text} read. Looking it up…`, true);
+    // The server decides: product page, "not found", or the diary's "how much?" step.
+    const params = new URLSearchParams({ code: found.text, format: found.format || "manual" });
+    const diary = new URLSearchParams(root.dataset.diaryQuery || "");
+    diary.forEach((value, key) => params.set(key, value));
+    window.location.assign(`${lookupUrl}?${params}`);
   }
-
-  async function lookup(code, format, attempt = 0) {
-    busy = true;
-    setStatus(`Barcode ${code} read. Looking it up…`, true);
-    announce(statusEl.textContent);
-    let response;
-    let body = {};
-    try {
-      const params = new URLSearchParams({ code, format });
-      response = await fetch(`${lookupUrl}?${params}`, {
-        headers: { Accept: "application/json" },
-        credentials: "same-origin",
-      });
-      body = await response.json().catch(() => ({}));
-    } catch (err) {
-      busy = false;
-      renderMessage(code, "Network problem. Check your connection and try again.");
-      return;
-    }
-    busy = false;
-    if (response.status === 202 && attempt < 5) {
-      const wait = Math.min(Number(response.headers.get("Retry-After")) || 2, 5) * 1000;
-      setTimeout(() => lookup(code, format, attempt + 1), wait);
-      return;
-    }
-    if (body.status === "found" && body.product) return renderProduct(code, format, body);
-    if (body.status === "not_found") return renderNotFound(code, format, body);
-    renderMessage(code, body.message || "Lookup failed. Please try again.");
-  }
-
-  function contributeForm(problem, { product = "", code = "", format = "" }, label) {
-    const form = template.cloneNode(true);
-    form.hidden = false;
-    form.removeAttribute("data-contribute-template");
-    form.querySelector("[name=problem_type]").value = problem;
-    form.querySelector("[name=product]").value = product;
-    form.querySelector("[name=code]").value = code;
-    form.querySelector("[name=format]").value = format;
-    form.querySelector("button").textContent = label;
-    return form;
-  }
-
-  function renderProduct(code, format, body) {
-    const p = body.product;
-    const card = el("div", "result-card");
-    if (p.image_url) {
-      const img = el("img", "product-photo");
-      img.src = p.image_url;
-      img.alt = "Front of the package";
-      img.width = 96;
-      img.height = 96;
-      card.append(img);
-    }
-    const info = el("div");
-    info.append(el("h3", "", p.name || "Name not available"));
-    info.append(el("p", "meta", [p.brand, p.quantity].filter(Boolean).join(" · ") || "Brand not available"));
-    if (body.stale) info.append(el("p", "hint", `Saved data from ${(body.synced_at || "").slice(0, 10)}; a refresh was requested.`));
-    if (body.code && body.code.kind === "restricted")
-      info.append(el("p", "tag tag-warn", "Store-internal code: it may identify different products in different shops."));
-    // From the Food diary: go straight to "how much?" (the full product page stays one tap away).
-    const diary = root.dataset.diaryQuery ? new URLSearchParams(root.dataset.diaryQuery) : null;
-    const open = el("a", "btn btn-primary", diary ? "Add to diary" : "Open product");
-    open.href = diary
-      ? `/today/add/${p.id}/?${new URLSearchParams({ meal: diary.get("add"), date: diary.get("date") || "", scanned: code })}`
-      : `${p.url}?scanned=${encodeURIComponent(code)}`;
-    if (diary) window.location.assign(open.href);
-    open.classList.add("btn-block", "open-product");
-    card.append(info, open);
-    resultEl.replaceChildren(card);
-    setStatus(`Found: ${p.name || code}.`);
-    announce(statusEl.textContent);
-    revealCard(card);
-    open.focus({ preventScroll: true });
-  }
-
-  function renderNotFound(code, format, body) {
-    const card = el("div", "result-card");
-    const info = el("div");
-    info.append(el("h3", "", "Product not found"));
-    info.append(el("p", "", body.message || "This product is not in our database yet."));
-    info.append(contributeForm("new_product", { code, format }, "Add this product"));
-    card.append(info);
-    resultEl.replaceChildren(card);
-    revealCard(card);
-    setStatus(`Barcode ${code}: product not found.`);
-    announce(statusEl.textContent);
-  }
-
-  function renderMessage(code, message) {
-    const card = el("div", "result-card");
-    card.append(el("p", "error", message));
-    const retry = el("button", "btn", "Try again");
-    retry.type = "button";
-    retry.addEventListener("click", () => lookup(code, "manual"));
-    card.append(retry);
-    resultEl.replaceChildren(card);
-    setStatus(message);
-    announce(message);
-  }
-}
-
-// Scroll so the whole card, including its bottom button, sits above the tab bar.
-function revealCard(card) {
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  card.scrollIntoView({ block: "end", behavior: reduce ? "auto" : "smooth" });
-}
-
-function el(tag, className = "", text = "") {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text) node.textContent = text;
-  return node;
 }
 
 function cameraErrorMessage(err) {

@@ -1,1 +1,146 @@
-/* catalog — see base.html; htmx-era styles for this area. */
+/* catalog — see base.html; htmx-era styles for this area (catalogue, product page, compare,
+   saved lists, home carousel). Rendered on the server; no style attributes anywhere (CSP). */
+
+/* ---------- Messages (also swapped in out-of-band by htmx) ---------- */
+.messages:empty { display: none; }
+
+/* ---------- Image placeholder shimmer (CSS only) ----------
+   A soft moving background behind photos; the loaded image covers it. It stops after a few
+   rounds so transparent images do not shimmer forever. */
+img.product-photo, img.thumb, .gallery img, .compare-head img, .suggest-thumb {
+  background: linear-gradient(90deg, #eef4f2 25%, #f8fbfa 50%, #eef4f2 75%);
+  background-size: 200% 100%; animation: shimmer 1.4s ease-in-out 5;
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* ---------- Search suggestions (htmx: plain links) ---------- */
+.suggest-wrap:empty { display: none; }
+.suggest a.suggest-item { color: var(--text); text-decoration: none; }
+.suggest a.suggest-item:hover, .suggest a.suggest-item:focus-visible { background: var(--accent-soft); outline: none; }
+.suggest li { list-style: none; }
+/* Closed when the search box loses focus (and is not hovered: Safari does not focus links). */
+.search-box:not(:focus-within):not(:hover) .suggest { display: none; }
+.search-box.htmx-request::after {
+  content: ""; position: absolute; right: .9rem; top: 1.5rem; width: 16px; height: 16px; margin-top: -8px;
+  border: 2px solid var(--muted); border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite;
+}
+.sort-row .htmx-indicator { color: var(--muted); }
+.filters.htmx-request + * { opacity: .85; }
+
+/* ---------- Card actions: <details> with a discreet arrow ---------- */
+.product-card .card-actions, .card-actions { display: block; position: relative; margin-top: auto; align-self: flex-end; margin-right: -.45rem; margin-bottom: -.35rem; }
+.card-actions > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.card-actions > summary::-webkit-details-marker { display: none; }
+.card-actions > summary .icon { transition: transform .2s ease; }
+.card-actions[open] > summary { color: var(--accent-strong); }
+.card-actions[open] > summary .icon { transform: rotate(180deg); }
+.card-actions .card-actions-panel {
+  position: absolute; right: 42px; bottom: 0; z-index: 5; background: var(--surface);
+  border-radius: 999px; animation: actions-in .18s ease-out;
+}
+.card-actions-panel form { display: contents; }
+.card-actions-panel a.btn-icon { display: inline-flex; align-items: center; justify-content: center; }
+@keyframes actions-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+.product-card .grow { position: relative; }
+.btn-icon.htmx-request, form.htmx-request .btn-icon { opacity: .6; }
+
+/* ---------- Product page actions ---------- */
+.action-bar > form { display: flex; margin: 0; }
+.action-bar > form > .btn, .action-bar > a.btn { flex: 1; height: 48px; min-height: 48px; white-space: nowrap; }
+.action-bar > details.more { display: block; margin: 0; }
+.action-bar > details.more > summary {
+  list-style: none; width: 100%; height: 48px; min-height: 48px; white-space: nowrap; cursor: pointer;
+}
+.action-bar > details.more > summary::-webkit-details-marker { display: none; }
+.action-bar > details.more[open] > summary .icon { transform: rotate(180deg); }
+.more-menu form { display: contents; }
+.more-menu a {
+  display: flex; align-items: center; gap: .55rem; min-height: 44px; padding: 0 .7rem; border-radius: 8px;
+  color: var(--text); text-decoration: none; font-weight: 500;
+}
+.more-menu a:hover { background: var(--accent-soft); }
+.action-bar form.htmx-request .btn, .more-menu form.htmx-request button { opacity: .7; }
+.sign-in-save { margin: .6rem 0 0; }
+.add-diary { text-decoration: none; }
+
+/* Quick note */
+.note-card > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.note-card > summary::-webkit-details-marker { display: none; }
+.note-card > summary h2 { display: inline-flex; align-items: center; gap: .4rem; margin: 0; font-size: 1.05rem; }
+.note-card[open] > summary > .icon { transform: rotate(180deg); }
+.note-card form { margin-top: .7rem; }
+.note-card textarea { width: 100%; }
+
+/* ---------- Compare: server-drawn horizontal bars (SVG) ---------- */
+.hbars { display: block; height: auto; overflow: visible; }
+.hbar-label { font-size: 12px; fill: #4f625c; }
+.hbar-value { font-size: 12px; font-weight: 600; fill: #14211d; }
+.hbar-value.is-missing { fill: #7b8a85; font-weight: 400; }
+.hbar-axis { stroke: #c3cdc9; stroke-width: 1; }
+.hbar-s0 { fill: #2a78d6; }
+.hbar-s1 { fill: #eb6834; }
+.hbar-s2 { fill: #1baf7a; }
+.compare-remove-form { margin: 0; }
+table.compare .compare-head button.compare-remove {
+  position: absolute; top: .45rem; right: .45rem; margin: 0; padding: 0; width: 30px; height: 30px; display: grid; place-items: center;
+  border-radius: 50%; background: #fff; border: 1.5px solid #c3d3ce; color: var(--text); box-shadow: 0 1px 3px rgba(20, 33, 29, .12); cursor: pointer;
+}
+table.compare .compare-head button.compare-remove:hover { background: #fde3df; border-color: #f1b8b2; color: #9a1c12; }
+
+/* ---------- Saved page ---------- */
+.segmented.seg-3 { grid-template-columns: repeat(3, 1fr); }
+.saved-nav a {
+  display: grid; place-items: center; min-height: 42px; border-radius: 9px; color: var(--muted);
+  font-weight: 500; text-decoration: none;
+}
+.saved-nav a:hover { background: var(--surface); color: var(--accent-strong); }
+.saved-section { margin-bottom: 1.5rem; scroll-margin-top: 5rem; }
+.saved-section h2 { scroll-margin-top: 5rem; }
+.saved-section .product-card { align-items: center; }
+.saved-section .product-card form { margin: 0; }
+.icon-btn.filled { color: var(--accent); }
+.icon-btn.filled .icon { fill: currentColor; }
+
+/* ---------- Contributions: photo slots upload on change (htmx) ---------- */
+.slot-add .slot-spinner { display: none; }
+.slot-add.htmx-request { border-style: solid; border-color: var(--accent); }
+.slot-add.htmx-request .slot-spinner { display: inline-block; }
+.slot-add.htmx-request > .icon { display: none; }
+
+/* ---------- Home: CSS scroll-snap carousel (swipe, or the dots link to each slide) ---------- */
+.showcase-track {
+  position: relative; display: flex; aspect-ratio: 1 / 1; overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; overscroll-behavior-x: contain;
+}
+.showcase-track::-webkit-scrollbar { display: none; }
+.showcase-track:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.showcase-slide { position: relative; flex: 0 0 100%; margin: 0; scroll-snap-align: center; scroll-snap-stop: always; }
+.showcase-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 6%; }
+.showcase-slide .diary-preview-card { left: 1rem; bottom: 1rem; }
+.diary-preview-card .dp-text > * { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.showcase-dots { display: flex; justify-content: center; gap: .25rem; margin-top: .6rem; }
+.showcase-dots a { width: 28px; height: 28px; display: grid; place-items: center; }
+.showcase-dots a::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: #c9d8d3; transition: width .3s, background .3s; }
+.showcase-dots a:hover::before { background: var(--accent); }
+/* The dot of the chosen slide (the first one until a dot is used). */
+.home-visual:has(#example-1:target) a[href="#example-1"]::before,
+.home-visual:has(#example-2:target) a[href="#example-2"]::before,
+.home-visual:has(#example-3:target) a[href="#example-3"]::before,
+.home-visual:not(:has(.showcase-slide:target)) a[href="#example-1"]::before { width: 22px; background: var(--accent); }
+@media (max-width: 1023px) {
+  .home-visual .showcase-slide .diary-preview-card { bottom: .8rem; }
+}
+@media (min-width: 1024px) {
+  .home-visual .showcase-slide .diary-preview-card { left: 1rem; bottom: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) { .showcase-track { scroll-behavior: auto; } }
+
+/* For you: the preference line directly under the title needs no separator. */
+.ola-card h2 + .ola-prefs-line { border-top: 0; padding-top: 0; margin-top: 0; }
+
+/* Foodo Score and alternatives */
+.foodo-score .score-value { display: flex; align-items: baseline; gap: .25rem; margin: .25rem 0 .5rem; }
+.foodo-score .score-value strong { font-size: 2.2rem; line-height: 1; color: var(--accent-strong); }
+.foodo-score .score-value span { color: var(--muted); }
+.alt-list { list-style: none; padding: 0; margin: .5rem 0 0; }
+.alt-plus { margin: .2rem 0 0; color: var(--accent-strong); font-weight: 500; }

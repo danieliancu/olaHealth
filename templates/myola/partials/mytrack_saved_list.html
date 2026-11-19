@@ -1,0 +1,20 @@
+{% load i18n ui %}<div class="card" id="saved-{{ list.kind }}">
+  {% if list.kind == "scan" %}
+  <div class="section-head"><h2>{% icon "history" 20 %} {% translate "Scan history" %}</h2>
+    {% if list.rows %}<form method="post" action="{% url 'scans-clear' %}" hx-post="{% url 'scans-clear' %}" hx-confirm="{% translate 'Clear scan history? Your scans are removed from your account.' %}">{% csrf_token %}<input type="hidden" name="tab" value="saved"><button type="submit" class="btn btn-link">{% translate "Clear" %}</button></form>{% endif %}
+  </div>
+  {% translate "scan history" as remove_label %}
+  <ul class="product-list compact">{% for row in list.rows %}{% include "myola/partials/mytrack_product_row.html" with row=row meta_scanned=True remove_kind="scan" remove_label=remove_label %}{% endfor %}</ul>
+  {% if not list.rows %}<p class="empty">{% translate "No scans yet." %}</p>{% endif %}
+  {% elif list.kind == "buy_often" %}
+  <h2>{% icon "shopping-basket" 20 %} {% translate "Buy often" %}</h2>
+  {% translate "Buy often" as remove_label %}
+  <ul class="product-list compact">{% for row in list.rows %}{% include "myola/partials/mytrack_product_row.html" with row=row remove_kind="buy_often" remove_label=remove_label %}{% endfor %}</ul>
+  {% if not list.rows %}<p class="empty">{% translate "Nothing marked “Buy often”." %}</p>{% endif %}
+  {% else %}
+  <h2>{% icon "ban" 20 %} {% translate "Avoid" %}</h2>
+  {% translate "Avoid" as remove_label %}
+  <ul class="product-list compact">{% for row in list.rows %}{% include "myola/partials/mytrack_product_row.html" with row=row remove_kind="avoid" remove_label=remove_label %}{% endfor %}</ul>
+  {% if not list.rows %}<p class="empty">{% translate "Nothing marked “Avoid”." %}</p>{% endif %}
+  {% endif %}
+</div>

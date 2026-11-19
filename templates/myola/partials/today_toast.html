@@ -1,0 +1,4 @@
+{% load i18n %}<div class="toast today-toast" role="status">
+  <span>{{ toast.text }}</span>
+  {% if toast.undo %}{% url 'today-undo' as undo_url %}<form method="post" action="{{ undo_url }}" hx-post="{{ undo_url }}" hx-target="#today" hx-swap="outerHTML" data-no-busy>{% csrf_token %}<input type="hidden" name="token" value="{{ toast.undo }}"><input type="hidden" name="date" value="{{ day_iso }}"><button type="submit" class="toast-undo">{% translate "Undo" %}</button></form>{% endif %}
+</div>

@@ -1,0 +1,68 @@
+{% load i18n ui %}{% url 'start' as start_url %}
+{# Onboarding: all four steps are in the page, only the current one is shown. Each step is #}
+{# its own form: a plain POST saves it and redirects to the next step; htmx swaps #onboard. #}
+<div class="onboard" id="onboard">
+  <div class="ob-top">
+    <ol class="ob-progress" aria-label="{% translate 'Onboarding progress' %}">
+      {% for n in steps %}<li{% if n <= step %} class="is-done"{% endif %}{% if n == step %} aria-current="step"{% endif %}><span class="sr-only">{% blocktranslate %}Step {{ n }}{% endblocktranslate %}</span></li>{% endfor %}
+    </ol>
+    <p class="ob-count">{% blocktranslate with total=steps|length %}Step {{ step }} of {{ total }}{% endblocktranslate %}</p>
+  </div>
+
+  {# Step 1 #}
+  <form class="ob-step" method="post" action="{{ start_url }}" hx-post="{{ start_url }}" hx-target="#onboard" hx-swap="outerHTML show:window:top" aria-labelledby="ob1" novalidate{% if step != 1 %} hidden{% endif %}>
+    {% csrf_token %}<input type="hidden" name="step" value="1">
+    <h1 id="ob1" tabindex="-1">{% translate "What is your goal?" %}</h1>
+    <fieldset class="option-list"{% if goal_form.goal.errors %} aria-describedby="ob-goal-err"{% endif %}>
+      <legend class="sr-only">{% translate "Your goal" %}</legend>
+      {% for g in goal_form.goal_options %}
+      <label class="option" for="{{ g.id }}"><input type="radio" id="{{ g.id }}" name="goal" value="{{ g.key }}"{% if g.checked %} checked{% endif %}><span class="option-icon">{% icon g.icon 22 %}</span><span>{{ g.label }}</span></label>
+      {% endfor %}
+    </fieldset>
+    {% for e in goal_form.goal.errors %}<p class="field-error" id="ob-goal-err" role="alert">{{ e }}</p>{% endfor %}
+    <div class="ob-actions">
+      <a class="btn btn-outline" href="{% url 'home' %}">{% icon "chevron-left" 18 %}<span>{% translate "Home" %}</span></a>
+      <button type="submit" class="btn btn-primary"><span>{% translate "Continue" %}</span>{% icon "chevron-right" 18 %}</button>
+    </div>
+  </form>
+
+  {# Step 2 #}
+  <form class="ob-step" method="post" action="{{ start_url }}" hx-post="{{ start_url }}" hx-target="#onboard" hx-swap="outerHTML show:window:top" aria-labelledby="ob2" novalidate{% if step != 2 %} hidden{% endif %}>
+    {% csrf_token %}<input type="hidden" name="step" value="2">
+    <h1 id="ob2" tabindex="-1">{% translate "About you" %}</h1>
+    <p class="hint">{% translate "Optional. Leave any of these empty, or skip this step." %}</p>
+    {% include "myola/partials/profile_about_fields.html" with form=about_form prefix="ob" %}
+    <a class="btn btn-link" href="{{ start_url }}?step=3" hx-get="{{ start_url }}?step=3" hx-target="#onboard" hx-swap="outerHTML show:window:top">{% translate "Skip this step" %}</a>
+    <div class="ob-actions">
+      <a class="btn btn-outline" href="{{ start_url }}?step=1" hx-get="{{ start_url }}?step=1" hx-target="#onboard" hx-swap="outerHTML show:window:top">{% icon "chevron-left" 18 %}<span>{% translate "Back" %}</span></a>
+      <button type="submit" class="btn btn-primary"><span>{% translate "Continue" %}</span>{% icon "chevron-right" 18 %}</button>
+    </div>
+  </form>
+
+  {# Step 3 #}
+  <form class="ob-step" method="post" action="{{ start_url }}" hx-post="{{ start_url }}" hx-target="#onboard" hx-swap="outerHTML show:window:top" aria-labelledby="ob3" novalidate{% if step != 3 %} hidden{% endif %}>
+    {% csrf_token %}<input type="hidden" name="step" value="3">
+    <h1 id="ob3" tabindex="-1">{% translate "Do you have any dietary restrictions or food allergies?" %}</h1>
+    <p class="ob-question">{% translate "Which restrictions or allergies do you have?" %}</p>
+    {% include "partials/restrictions_picker.html" with form=restrictions_form %}
+    <a class="btn btn-link" href="{{ start_url }}?step=4" hx-get="{{ start_url }}?step=4" hx-target="#onboard" hx-swap="outerHTML show:window:top">{% translate "Skip this step" %}</a>
+    <div class="ob-actions">
+      <a class="btn btn-outline" href="{{ start_url }}?step=2" hx-get="{{ start_url }}?step=2" hx-target="#onboard" hx-swap="outerHTML show:window:top">{% icon "chevron-left" 18 %}<span>{% translate "Back" %}</span></a>
+      <button type="submit" class="btn btn-primary"><span>{% translate "Continue" %}</span>{% icon "chevron-right" 18 %}</button>
+    </div>
+  </form>
+
+  {# Step 4 #}
+  <form class="ob-step" method="post" action="{{ start_url }}" hx-post="{{ start_url }}" hx-target="#onboard" hx-swap="outerHTML show:window:top" aria-labelledby="ob4" novalidate{% if step != 4 %} hidden{% endif %}>
+    {% csrf_token %}<input type="hidden" name="step" value="4">
+    <h1 id="ob4" tabindex="-1">{% translate "Have you ever had any of the following conditions?" %}</h1>
+    <p class="hint">{% translate "Optional. Saved only with your consent below. You can change or delete it in My Track, and it is never used for diagnoses, plans or advice." %}</p>
+    {% include "myola/partials/profile_conditions_fields.html" with form=conditions_form %}
+    <div class="ob-actions">
+      <a class="btn btn-outline" href="{{ start_url }}?step=3" hx-get="{{ start_url }}?step=3" hx-target="#onboard" hx-swap="outerHTML show:window:top">{% icon "chevron-left" 18 %}<span>{% translate "Back" %}</span></a>
+      <button type="submit" class="btn btn-primary"><span>{% translate "Finish" %}</span>{% icon "chevron-right" 18 %}</button>
+    </div>
+  </form>
+
+  <p class="caption ob-privacy">{% translate "Your answers are saved in your account. You can change or delete them at any time in My Track." %}</p>
+</div>

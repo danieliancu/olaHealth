@@ -1,0 +1,24 @@
+{% load i18n %}{# About you: gender, age, height, weight. Context: form (AboutYouForm), prefix (id prefix). #}
+{# Placeholders are examples only, never values. #}
+<fieldset class="ob-field">
+  <legend>{{ form.gender.label }}</legend>
+  <div class="chip-row">
+    {% for g in form.gender_options %}<label class="chip-radio" for="{{ prefix }}-gender-{{ g.key }}"><input type="radio" id="{{ prefix }}-gender-{{ g.key }}" name="gender" value="{{ g.key }}"{% if g.checked %} checked{% endif %}><span>{{ g.label }}</span></label>{% endfor %}
+  </div>
+  {% for e in form.gender.errors %}<p class="field-error" role="alert">{{ e }}</p>{% endfor %}
+</fieldset>
+<div class="ob-field">
+  <label for="{{ prefix }}-age">{{ form.age.label }}</label>
+  <div class="unit-input"><input id="{{ prefix }}-age" name="age" type="number" inputmode="numeric" min="13" max="120" step="1" placeholder="48" value="{{ form.age.value|default_if_none:'' }}"{% if form.age.errors %} aria-invalid="true" aria-describedby="{{ prefix }}-age-err"{% endif %}><span>{% translate "years" %}</span></div>
+  {% for e in form.age.errors %}<p class="field-error" id="{{ prefix }}-age-err">{{ e }}</p>{% endfor %}
+</div>
+<div class="ob-field">
+  <label for="{{ prefix }}-height">{{ form.height.label }}</label>
+  <div class="unit-input"><input id="{{ prefix }}-height" name="height" type="number" inputmode="decimal" min="100" max="250" step="any" placeholder="180" value="{{ form.height.value|default_if_none:'' }}"{% if form.height.errors %} aria-invalid="true" aria-describedby="{{ prefix }}-height-err"{% endif %}><span>cm</span></div>
+  {% for e in form.height.errors %}<p class="field-error" id="{{ prefix }}-height-err">{{ e }}</p>{% endfor %}
+</div>
+<div class="ob-field">
+  <label for="{{ prefix }}-weight">{{ form.weight.label }}</label>
+  <div class="unit-input"><input id="{{ prefix }}-weight" name="weight" type="number" inputmode="decimal" min="25" max="400" step="any" placeholder="100" value="{{ form.weight.value|default_if_none:'' }}"{% if form.weight.errors %} aria-invalid="true" aria-describedby="{{ prefix }}-weight-err"{% endif %}><span>kg</span></div>
+  {% for e in form.weight.errors %}<p class="field-error" id="{{ prefix }}-weight-err">{{ e }}</p>{% endfor %}
+</div>

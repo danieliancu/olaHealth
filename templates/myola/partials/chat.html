@@ -1,0 +1,6 @@
+{% comment %}
+Ask Foodo, includable anywhere (htmx loads the conversation when the panel is opened).
+  {% include "myola/partials/chat.html" with chat_product=product %}         product page
+  {% include "myola/partials/chat.html" with chat_context="personal" %}      My Track
+Optional: chat_open=True renders the panel open.
+{% endcomment %}{% if chat_product %}{% with pid=chat_product.pk|stringformat:"s" %}{% with ctx="product:"|add:pid %}{% include "myola/partials/chat_panel.html" with chat_context=ctx %}{% endwith %}{% endwith %}{% else %}{% include "myola/partials/chat_panel.html" with chat_context=chat_context|default:"personal" %}{% endif %}

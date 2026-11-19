@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Terms" %}{% endblock %}
+{% block content %}
+<article class="prose legal">
+<h1>{% translate "Terms of use" %}</h1>
+<p class="caption">{% translate "Last updated: 19 November 2026." %} {% translate "Draft: to be reviewed before launch." %}</p>
+<h2>{% translate "The service" %}</h2>
+<p>{% translate "FoodoTrack helps you read food labels, keep a food diary and compare products. Product data comes from Open Food Facts and from moderated corrections and can be incomplete or wrong: always check the label on the pack, especially for allergens." %}</p>
+<h2>{% translate "Your account" %}</h2>
+<p>{% translate "Keep your password safe. You are responsible for what is done with your account. You can delete it at any time in My Track." %}</p>
+<h2>{% translate "Contributions" %}</h2>
+<p>{% translate "Only submit photos and data you have the right to share. Contributions are published under the licences shown when you submit them." %}</p>
+<h2>{% translate "Fair use" %}</h2>
+<p>{% translate "Do not misuse the service, for example by automated scraping or attempts to break it. We may limit or suspend access to protect the service." %}</p>
+<h2>{% translate "No medical advice" %}</h2>
+<p>{% translate "Information in FoodoTrack, including Ask Foodo answers, is not medical advice." %}</p>
+<p><a href="{% url 'privacy' %}">{% translate "Privacy notice" %}</a></p>
+</article>
+{% endblock %}

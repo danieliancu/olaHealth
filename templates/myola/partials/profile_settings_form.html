@@ -1,0 +1,38 @@
+{% load i18n ui %}{% url 'settings-edit' as settings_url %}
+<form id="settings" class="profile-section" method="post" action="{{ settings_url }}" hx-post="{{ settings_url }}" hx-target="this" hx-swap="outerHTML" novalidate>
+  {% csrf_token %}
+  {% if form.errors %}<p class="msg msg-error" role="alert">{% icon "triangle-alert" 18 %}<span>{% translate "Check the highlighted values." %}</span></p>{% endif %}
+  <fieldset class="card stack" id="targets">
+    <legend class="settings-legend">{% translate "Daily targets" %}</legend>
+    <p class="caption">{% translate "Optional and set by you. Without a target, Today shows totals only." %}</p>
+    <div class="grid-2">
+      {% include "myola/partials/profile_target_field.html" with field=form.target_kcal unit="kcal" %}
+      {% include "myola/partials/profile_target_field.html" with field=form.target_protein unit="g" %}
+      {% include "myola/partials/profile_target_field.html" with field=form.target_carbs unit="g" %}
+      {% include "myola/partials/profile_target_field.html" with field=form.target_fat unit="g" %}
+    </div>
+    <p class="hint">{% translate "Leave a box empty to remove that target." %}</p>
+  </fieldset>
+  <fieldset class="card stack" id="display">
+    <legend class="settings-legend">{% translate "Display" %}</legend>
+    {% include "myola/partials/profile_switch.html" with field=form.show_energy %}
+    {% if profile.eating_disorder %}<p class="hint">{% translate "Calories stay hidden in Progress because of your health answers." %}</p>{% endif %}
+    {% include "myola/partials/profile_switch.html" with field=form.show_targets %}
+    {% include "myola/partials/profile_switch.html" with field=form.track_weight %}
+  </fieldset>
+  <fieldset class="card stack" id="notes">
+    <legend class="settings-legend">{% translate "Notes in replies" %}</legend>
+    {% include "myola/partials/profile_switch.html" with field=form.use_notes %}
+    <p class="caption">{% translate "Off by default. When on, Foodo uses only the notes relevant to the current conversation (the same product, or matching words)." %}</p>
+  </fieldset>
+  <fieldset class="card stack" id="timezone">
+    <legend class="settings-legend">{% translate "Time zone" %}</legend>
+    <label for="{{ form.timezone.id_for_label }}">{% translate "Your days start at midnight in" %}</label>
+    <select id="{{ form.timezone.id_for_label }}" name="timezone"{% if form.timezone.errors %} aria-invalid="true"{% endif %}>
+      {% for value, label in form.fields.timezone.choices %}<option value="{{ value }}"{% if value == form.timezone.value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    {% for e in form.timezone.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+  </fieldset>
+  {% include "myola/partials/profile_saved.html" %}
+  <div class="row"><button type="submit" class="btn btn-primary">{% translate "Save settings" %}</button></div>
+</form>

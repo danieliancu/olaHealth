@@ -1,0 +1,87 @@
+{% extends "staff/layout.html" %}{% load ui %}
+{% block staff_title %}Contribution {{ c.pk|stringformat:"s"|slice:":8" }}{% endblock %}
+{% block staff_content %}
+<p><a class="staff-back" href="{% url 'staff:contributions' %}">{% icon "chevron-left" 16 %}<span>Moderation queue</span></a></p>
+<h1>{{ c.get_problem_type_display }}</h1>
+<dl class="staff-dl">
+  <dt>Status</dt><dd><span class="staff-status staff-status-{{ c.status }}">{{ c.get_status_display }}</span>{% if c.moderation_reason %} – {{ c.moderation_reason }}{% endif %}</dd>
+  <dt>Submitted</dt><dd>{{ c.submitted_at|default:"—" }}</dd>
+  <dt>Product</dt><dd>{% if c.product %}<a href="{% url 'staff:product' c.product.pk %}">{{ c.product }}</a> · <a href="{% url 'product' c.product.pk %}" target="_blank" rel="noopener">public page</a>{% else %}New product{% endif %}{% if c.code %} · <span class="mono">{{ c.code }}</span>{% endif %}</dd>
+  <dt>Revisions</dt><dd>Base r{{ base.number|default:"—" }} · current r{{ current.number|default:"—" }}</dd>
+  <dt>Label language</dt><dd>{{ c.label_lang|default:"—" }}{% if c.country %} · {{ c.country }}{% endif %}</dd>
+  <dt>Consent to publish</dt><dd>{{ c.consent_publication|yesno:"Yes,No" }}</dd>
+  {% if c.moderator %}<dt>Moderated by</dt><dd>{{ c.moderator.email|default:c.moderator }} · {{ c.moderated_at }}</dd>{% endif %}
+</dl>
+{% if c.status == "conflict" %}<p class="notice notice-warn">{% icon "triangle-alert" 18 %}<span>The product changed since this contribution's base revision in a field it touches. Review the differences, then re-base (with a reason) or reject.</span></p>{% endif %}
+{% if c.note %}<section class="card"><h2>Contributor note</h2><p class="staff-pre">{{ c.note }}</p></section>{% endif %}
+{% if c.validation_warnings %}<section class="card card-warn"><h2>Validation warnings</h2><ul>{% for w in c.validation_warnings %}<li>{{ w }}</li>{% endfor %}</ul></section>{% endif %}
+
+<section class="card">
+  <h2>Proposed changes</h2>
+  {% if rows %}
+  <div class="table-wrap">
+  <table class="staff-table staff-diff">
+    <caption class="sr-only">Proposed changes compared with the base and current revisions</caption>
+    <thead><tr><th scope="col">Field</th><th scope="col">At base r{{ base.number|default:"—" }}</th><th scope="col">Current r{{ current.number|default:"—" }}</th><th scope="col">Proposed</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr class="{% if r.proposed %}is-proposed{% endif %}{% if r.conflict %} is-conflict{% endif %}">
+        <th scope="row">{{ r.field }}{% if r.changed_since_base %}<br><span class="badge badge-warn">changed since base</span>{% endif %}</th>
+        <td><pre>{{ r.base }}</pre></td><td><pre>{{ r.current }}</pre></td><td>{% if r.proposed %}<pre>{{ r.new }}</pre>{% else %}<span class="hint">not changed</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="empty">No data changes (photos only).</p>{% endif %}
+  {% if proposed_facts %}
+  <h3>Proposed nutrition</h3>
+  <div class="table-wrap"><table class="staff-table"><caption class="sr-only">Proposed nutrition facts</caption>
+    <thead><tr><th scope="col">Nutrient</th><th scope="col">Value</th><th scope="col">Basis</th><th scope="col">Preparation</th><th scope="col">Status</th></tr></thead>
+    <tbody>{% for f in proposed_facts %}<tr><th scope="row">{{ f.nutrient }}</th><td>{{ f.modifier|default:"" }}{{ f.value|default_if_none:"—" }} {{ f.unit }}</td><td>{{ f.basis }}</td><td>{{ f.preparation }}</td><td>{{ f.status }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Photos</h2>
+  <div class="staff-photos">
+    {% for img in images %}<figure><a href="{% url 'staff-image' img.pk %}" target="_blank" rel="noopener"><img src="{% url 'staff-image' img.pk %}" alt="{{ img.kind }} photo" loading="lazy"></a><figcaption>{{ img.kind }}{% if img.lang %} · {{ img.lang }}{% endif %} · {{ img.width }}×{{ img.height }}{% if img.is_public %} · public{% endif %}</figcaption></figure>{% empty %}<p class="empty">No photos.</p>{% endfor %}
+  </div>
+  {% for r in runs %}
+  <details class="staff-ocr"><summary>OCR {{ r.image.kind }} – {{ r.status }}{% if r.error %} ({{ r.error }}){% endif %}{% if r.duration_ms %}, {{ r.duration_ms }} ms{% endif %}</summary>
+    <pre>{{ r.text|default:"(no text)" }}</pre>
+    {% if r.parsed.proposals %}<p>Parser proposals (dictionary v{{ r.parsed.dictionary_version }}, basis {{ r.parsed.basis|default:"unknown" }}):</p>
+    <ul>{% for p in r.parsed.proposals %}<li>{{ p.nutrient }} = {{ p.value }} {{ p.unit }} <span class="hint">({{ p.line }})</span></li>{% endfor %}</ul>{% endif %}
+    {% if r.image.ocr_file %}<p><a href="{% url 'staff-image-variant' r.image.pk 'ocr' %}" target="_blank" rel="noopener">OCR input image</a></p>{% endif %}
+  </details>
+  {% endfor %}
+</section>
+
+<section class="card" id="decision">
+  <h2>Decision</h2>
+  {% if not can_moderate %}
+    <p>You can view contributions but do not have permission to approve or reject them.</p>
+  {% elif open %}
+  <form method="post" action="{% url 'staff:contribution' c.pk %}">{% csrf_token %}
+    <div class="field">
+      <label for="id_reason">Reason</label>
+      <textarea name="reason" id="id_reason" rows="3" maxlength="2000" aria-describedby="reason_help"></textarea>
+      <p class="hint" id="reason_help">Required to reject{% if c.status == "conflict" %} or re-base{% endif %}. Stored in the audit log.</p>
+    </div>
+    <div class="row">
+      {% if c.status == "submitted" %}<button class="btn btn-primary" type="submit" name="decision" value="approve">{% icon "check" 18 %}<span>Approve and publish</span></button>{% endif %}
+      {% if c.status == "conflict" %}<button class="btn btn-outline" type="submit" name="decision" value="rebase">{% icon "refresh-cw" 18 %}<span>Re-base onto current revision</span></button>{% endif %}
+      <button class="btn btn-danger" type="submit" name="decision" value="reject">{% icon "x" 18 %}<span>Reject</span></button>
+    </div>
+  </form>
+  {% else %}
+    <p>This contribution is {{ c.get_status_display|lower }}{% if c.moderation_reason %}: {{ c.moderation_reason }}{% endif %}.{% if c.resulting_revision %} Published as r{{ c.resulting_revision.number }}.{% endif %}</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>History</h2>
+  <ul class="staff-log">{% for a in audit %}<li><span class="hint">{{ a.created_at|date:"j M Y H:i" }}</span> <strong>{{ a.action }}</strong> by {{ a.actor.email|default:a.actor|default:"system" }}{% if a.reason %}: {{ a.reason }}{% endif %}{% if a.details %} <span class="hint mono">{{ a.details }}</span>{% endif %}</li>{% empty %}<li class="empty">No actions yet.</li>{% endfor %}</ul>
+</section>
+{% endblock %}

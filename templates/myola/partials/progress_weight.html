@@ -1,0 +1,23 @@
+{% load i18n ui %}{% url 'progress-weight' as weight_url %}
+<section class="card" id="weight" aria-labelledby="weight-h">
+  <div class="t-card-head"><h2 id="weight-h">{% icon "scale" 20 %} {% translate "Weight" %}</h2></div>
+  <form class="inline-form" method="post" action="{{ weight_url }}" hx-post="{{ weight_url }}" hx-target="#weight" hx-swap="outerHTML" novalidate>
+    {% csrf_token %}<input type="hidden" name="range" value="{{ span }}">
+    <label for="w-kg" class="sr-only">{% translate "Weight in kg" %}</label>
+    <div class="unit-input"><input id="w-kg" name="kg" type="number" inputmode="decimal" min="25" max="400" step="any" placeholder="{% translate 'Today' %}"{% if weight_form.kg.errors %} aria-invalid="true" aria-describedby="w-kg-err"{% endif %}><span>kg</span></div>
+    <button type="submit" class="btn btn-outline">{% translate "Log" %}</button>
+  </form>
+  {% for e in weight_form.kg.errors %}<p class="field-error" id="w-kg-err" role="alert">{{ e }}</p>{% endfor %}
+  <p class="hint">{% translate "One weight per day: logging again today replaces today's entry." %}</p>
+  {% include "myola/partials/profile_saved.html" with saved=weight_saved %}
+  {% if weights %}
+    <p class="weight-range">{{ weight_first.kg }} kg → {{ weight_last.kg }} kg ({% blocktranslate count n=weights|length %}{{ n }} entry{% plural %}{{ n }} entries{% endblocktranslate %})</p>
+    <ul class="log-list weight-log">
+      {% for w in weights reversed %}<li><span>{{ w.date|date:"j M" }}{% if w.date == today %} · {% translate "Today" %}{% endif %}</span><strong>{{ w.kg }} kg</strong>
+        <form class="weight-delete" method="post" action="{% url 'progress-weight-delete' w.pk %}" hx-post="{% url 'progress-weight-delete' w.pk %}" hx-target="#weight" hx-swap="outerHTML">{% csrf_token %}<input type="hidden" name="range" value="{{ span }}"><button type="submit" class="log-remove" aria-label="{% blocktranslate with day=w.date|date:'j F' %}Delete the weight of {{ day }}{% endblocktranslate %}">{% icon "x" 18 %}</button></form>
+      </li>{% endfor %}
+    </ul>
+  {% else %}
+    <p class="caption">{% translate "No weight logged in this period." %}</p>
+  {% endif %}
+</section>

@@ -1,0 +1,10 @@
+{% load i18n ui %}<li class="product-card">
+  <img class="thumb" alt="" width="48" height="48" loading="lazy" src="{% if row.image %}{{ row.image|img }}{% else %}{% asset 'img/placeholder' %}{% endif %}">
+  <div class="grow"><a class="product-link" href="{{ row.url }}">{{ row.name }}</a><p class="meta">{% if meta_scanned %}{% blocktranslate with day=row.at|date:"j M" %}Scanned {{ day }}{% endblocktranslate %}{% if row.code %} · {{ row.code }}{% endif %}{% else %}{% firstof row.brand "" %}{% if row.brand and row.quantity %} · {% endif %}{% firstof row.quantity "" %}{% endif %}</p></div>
+  {% if remove_kind %}
+  <form class="mytrack-remove" method="post" action="{% url 'saved-remove' %}" hx-post="{% url 'saved-remove' %}" hx-target="#saved-{{ remove_kind }}" hx-swap="outerHTML">
+    {% csrf_token %}<input type="hidden" name="kind" value="{{ remove_kind }}"><input type="hidden" name="product" value="{{ row.id }}">
+    <button type="submit" class="btn btn-icon btn-icon-danger" aria-label="{% blocktranslate with name=row.name list=remove_label %}Remove {{ name }} from {{ list }}{% endblocktranslate %}">{% icon "x" 20 %}</button>
+  </form>
+  {% endif %}
+</li>
