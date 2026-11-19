@@ -437,8 +437,8 @@ def add_food(request: HttpRequest, pk) -> HttpResponse:
     options = portion_data["options"]
     if request.method == "POST":
         data = request.POST.copy()
-        if data.get("date") == "other":  # "Other day" chip: the date comes from the calendar
-            data["date"] = data.get("date_other", "")
+        if data.get("date") == "other":  # "Other day" chosen but no day picked in the calendar
+            data["date"] = ""
         form = AddFoodForm(data, today=today)
         if not unit:
             form.fields["unit"].required = True
@@ -527,6 +527,7 @@ def add_food(request: HttpRequest, pk) -> HttpResponse:
             "day_label": _("Today") if day == today else date_format(day, "l j M"),
             "day_options": _day_options(today, day),
             "day_is_other": day < today - dt.timedelta(days=2),
+            "calendar": _calendar(today, day),
             "back_url": _today_url(day),
             "pv": diary.preview_rows(per100, amount, bool(unit), _show_energy(profile)),
             "nav_active": "today",
@@ -547,6 +548,40 @@ def _day_options(today: dt.date, day: dt.date) -> list[dict]:
             label, sub = date_format(d, "l"), date_format(d, "j M")
         out.append({"value": d.isoformat(), "label": label, "sub": sub, "checked": d == day})
     return out
+
+
+CALENDAR_WEEKS = 5
+
+
+def _calendar(today: dt.date, day: dt.date) -> dict:
+    """A month-style grid of the last ``CALENDAR_WEEKS`` weeks (Monday first), rendered as
+    radio buttons: no date input, no JavaScript. Future days are shown but disabled."""
+    last_sunday = today + dt.timedelta(days=6 - today.weekday())
+    start = last_sunday - dt.timedelta(days=7 * CALENDAR_WEEKS - 1)
+    weeks = []
+    for w in range(CALENDAR_WEEKS):
+        row = []
+        for i in range(7):
+            d = start + dt.timedelta(days=w * 7 + i)
+            row.append(
+                {
+                    "value": d.isoformat(),
+                    "num": d.day,
+                    "month": date_format(d, "M") if d.day == 1 or (w == 0 and i == 0) else "",
+                    "future": d > today,
+                    "today": d == today,
+                    "checked": d == day,
+                    "label": date_format(d, "l j F Y"),
+                }
+            )
+        weeks.append(row)
+    weekdays = [date_format(start + dt.timedelta(days=i), "D")[:2] for i in range(7)]
+    title = date_format(start, "F")
+    if start.month != today.month:
+        title = f"{title} – {date_format(today, 'F Y')}"
+    else:
+        title = date_format(today, "F Y")
+    return {"weeks": weeks, "weekdays": weekdays, "title": title}
 
 
 @login_required

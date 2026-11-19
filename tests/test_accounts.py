@@ -26,9 +26,11 @@ def test_scan_and_catalogue_stay_public(client, name):
 
 
 @pytest.mark.django_db
-def test_signed_in_home_opens_today(member_client):
+def test_signed_in_home_is_the_homepage_with_open_today(member_client):
     r = member_client.get(reverse("home"))
-    assert r.status_code == 302 and r["Location"] == reverse("today")
+    html = r.content.decode()
+    assert r.status_code == 200 and "Open Today" in html and 'href="/today/"' in html
+    assert "Get started" not in html
 
 
 @pytest.mark.django_db

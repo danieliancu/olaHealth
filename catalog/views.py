@@ -120,8 +120,7 @@ def _save_compare(request: HttpRequest, ids: list[str]) -> None:
 
 @require_GET
 def home(request: HttpRequest) -> HttpResponse:
-    if request.user.is_authenticated:
-        return redirect("today")
+    """The homepage, for everyone (the logo links here); signed-in users get "Open Today"."""
     return render(request, "catalog/home.html")
 
 

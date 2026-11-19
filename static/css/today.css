@@ -82,6 +82,25 @@ a.chip-btn { display: inline-flex; align-items: center; text-decoration: none; c
 .day-chips input:checked + span small, .day-chips input:checked + span .icon { color: rgba(255, 255, 255, .88); }
 .day-chips input:focus-visible + span { outline: 3px solid #f59e0b; outline-offset: 2px; }
 .day-other { display: none; margin-top: .6rem; padding: .7rem .8rem; border-radius: 12px; background: var(--accent-soft); }
-.day-other label { font-size: .85rem; }
-.day-other input[type="date"] { width: 100%; }
-.day-picker:has(input[value="other"]:checked) .day-other { display: block; }
+/* Calendar grid (radio buttons) shown for "Other day" or once a day in it is chosen */
+.day-picker:has(input[value="other"]:checked) .day-other,
+.day-picker:has(.cal input:checked) .day-other { display: block; }
+.day-picker:has(.cal input:checked) .day-chips input[value="other"] + span { background: var(--accent); border-color: var(--accent); color: #fff; }
+.day-picker:has(.cal input:checked) .day-chips input[value="other"] + span small,
+.day-picker:has(.cal input:checked) .day-chips input[value="other"] + span .icon { color: rgba(255, 255, 255, .88); }
+.cal-title { margin: 0 0 .5rem; font-weight: 700; text-align: center; color: var(--accent-strong); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .25rem; }
+.cal-head { text-align: center; font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; padding-bottom: .15rem; }
+.cal-day { position: relative; margin: 0; }
+.cal-day input { position: absolute; opacity: 0; }
+.cal-day span {
+  display: grid; place-items: center; align-content: center; aspect-ratio: 1; min-height: 38px; border-radius: 50%;
+  font-weight: 600; font-size: .92rem; cursor: pointer; background: var(--surface); line-height: 1;
+}
+.cal-day small { display: block; font-size: .6rem; font-weight: 700; color: var(--accent-strong); text-transform: uppercase; }
+.cal-day:hover span { background: #d3ece3; }
+.cal-day.is-today span { box-shadow: inset 0 0 0 2px var(--accent); }
+.cal-day input:checked + span { background: var(--accent); color: #fff; }
+.cal-day input:checked + span small { color: rgba(255, 255, 255, .85); }
+.cal-day input:focus-visible + span { outline: 3px solid #f59e0b; outline-offset: 2px; }
+.cal-day.is-future span { color: #b8c4c0; background: transparent; cursor: not-allowed; }

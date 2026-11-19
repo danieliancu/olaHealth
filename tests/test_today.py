@@ -534,10 +534,14 @@ def test_add_food_day_chips_and_other_day(member_client, member, off_payload):
     url = reverse("add-food", args=[p.pk])
     html = member_client.get(url).content.decode()
     assert "When did you have it?" in html and "Yesterday" in html and "Other day" in html
+    assert 'class="cal-grid"' in html and 'type="date"' not in html  # no native date picker
+    # "Other day" without picking a day in the calendar is refused, nothing is saved.
+    r = member_client.post(url, {"meal": "lunch", "date": "other", "amount": "125"})
+    assert r.status_code == 200 and not DiaryEntry.objects.exists()
     earlier = local_today(get_profile(member)) - dt.timedelta(days=5)
     r = member_client.post(
         url,
-        {"meal": "lunch", "date": "other", "date_other": earlier.isoformat(), "amount": "125"},
+        {"meal": "lunch", "date": earlier.isoformat(), "amount": "125"},
     )
     assert r.status_code == 302
     assert DiaryEntry.objects.get().date == earlier
