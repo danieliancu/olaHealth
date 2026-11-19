@@ -177,3 +177,7 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 /* Saved: tab labels on one line (Recently viewed) */
 .saved-nav a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; padding-left: .35rem; padding-right: .35rem; }
 @media (max-width: 400px) { .saved-nav a { font-size: .82rem; } }
+
+/* Alternatives: every photo the same size, cropped to fill (cover) */
+.alt-img { aspect-ratio: 1 / 1; width: 100%; overflow: hidden; background: #f6f8f7; display: block; }
+.alt-img img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; padding: 0; }
