@@ -116,3 +116,19 @@ a.chip-btn { display: inline-flex; align-items: center; text-decoration: none; c
   .day-chips strong { font-size: .78rem; }
   .day-chips small { font-size: .68rem; }
 }
+
+/* Edit entry: "Day" is a button as tall as the Meal select; it opens the calendar */
+.day-field { position: relative; }
+.day-field-label { display: block; font-weight: 500; margin: 0 0 .3rem; }
+.day-drop > summary {
+  display: flex; align-items: center; gap: .45rem; min-height: 48px; padding: 0 .8rem; list-style: none; cursor: pointer;
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); font-weight: 600;
+}
+.day-drop > summary::-webkit-details-marker { display: none; }
+.day-drop > summary .icon { color: var(--accent); flex: none; }
+.day-drop[open] > summary { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.day-drop-panel {
+  position: absolute; z-index: 20; right: 0; top: calc(100% + .35rem); width: min(320px, calc(100vw - 2rem));
+  padding: .6rem; border-radius: 14px; background: var(--surface); border: 1px solid var(--line);
+  box-shadow: 0 12px 30px rgba(16, 40, 32, .18);
+}

@@ -572,6 +572,7 @@ def _calendar(today: dt.date, day: dt.date) -> dict:
                     "today": d == today,
                     "checked": d == day,
                     "label": date_format(d, "l j F Y"),
+                    "short": date_format(d, "D j M"),
                 }
             )
         weeks.append(row)

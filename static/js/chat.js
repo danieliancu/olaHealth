@@ -46,3 +46,13 @@ document.addEventListener("htmx:afterSettle", (e) => {
     if (window.matchMedia("(pointer: fine)").matches) dialog.querySelector("input[name=text]")?.focus();
   }
 });
+
+// Day button (edit entry): show the chosen day on the button and close the calendar.
+document.addEventListener("change", (e) => {
+  const input = e.target;
+  if (!input.matches?.(".day-drop input[name=date]")) return;
+  const drop = input.closest(".day-drop");
+  const value = drop.querySelector("[data-day-value]");
+  if (value && input.dataset.dayLabel) value.textContent = input.dataset.dayLabel;
+  drop.open = false;
+});

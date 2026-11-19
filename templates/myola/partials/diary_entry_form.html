@@ -1,4 +1,4 @@
-{% load i18n ui %}{% url 'today-entry' e.pk as edit_url %}{% url 'today-entry-delete' e.pk as delete_url %}{% url 'today' as today_url %}
+{% load i18n ui diary %}{% url 'today-entry' e.pk as edit_url %}{% url 'today-entry-delete' e.pk as delete_url %}{% url 'today' as today_url %}
 <form class="entry-edit" method="post" action="{{ edit_url }}" hx-post="{{ edit_url }}" hx-target="#today" hx-swap="outerHTML" data-no-busy novalidate aria-label="{% blocktranslate with name=e.name %}Edit {{ name }}{% endblocktranslate %}">
   {% csrf_token %}
   <p class="entry-edit-name"><strong>{{ e.name }}</strong>{% if e.brand %} <span class="caption">{{ e.brand }}</span>{% endif %}</p>
@@ -9,7 +9,13 @@
   {% for err in form.amount.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
   <div class="entry-edit-row">
     <div><label for="{{ form.meal.id_for_label }}">{% translate "Meal" %}</label>{{ form.meal }}</div>
-    <div><label for="{{ form.date.id_for_label }}">{% translate "Day" %}</label>{{ form.date }}{% for err in form.date.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}</div>
+    <div class="day-field"><span class="day-field-label" id="day-l-{{ e.pk }}">{% translate "Day" %}</span>
+      <details class="day-drop">
+        <summary aria-labelledby="day-l-{{ e.pk }} day-v-{{ e.pk }}">{% icon "calendar-days" 18 %}<span id="day-v-{{ e.pk }}" data-day-value>{{ e.date|date:"D j M" }}</span></summary>
+        <div class="day-drop-panel">{% day_calendar e.date %}</div>
+      </details>
+      {% for err in form.date.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
+    </div>
   </div>
   <div class="diary-preview" id="pv-{{ e.pk }}" aria-live="polite">{% include "myola/partials/diary_preview.html" with pv=e.pv unit=e.unit %}</div>
   <div class="dialog-actions entry-actions">

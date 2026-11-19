@@ -1,0 +1,8 @@
+{% load i18n %}<div class="cal" role="group" aria-label="{% translate 'Pick a day' %}">
+  {% if outside %}<input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">{% endif %}
+  <p class="cal-title">{{ calendar.title }}</p>
+  <div class="cal-grid">
+    {% for w in calendar.weekdays %}<span class="cal-head" aria-hidden="true">{{ w }}</span>{% endfor %}
+    {% for week in calendar.weeks %}{% for c in week %}<label class="cal-day{% if c.today %} is-today{% endif %}{% if c.future %} is-future{% endif %}"><input type="radio" name="date" value="{{ c.value }}" aria-label="{{ c.label }}" data-day-label="{{ c.short }}"{% if c.checked and check %} checked{% endif %}{% if c.future %} disabled{% endif %}><span>{% if c.month %}<small>{{ c.month }}</small>{% endif %}{{ c.num }}</span></label>{% endfor %}{% endfor %}
+  </div>
+</div>

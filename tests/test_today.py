@@ -545,3 +545,27 @@ def test_add_food_day_chips_and_other_day(member_client, member, off_payload):
     )
     assert r.status_code == 302
     assert DiaryEntry.objects.get().date == earlier
+
+
+@pytest.mark.django_db
+def test_edit_entry_day_is_a_button_with_the_calendar(member_client, member):
+    import datetime as dt
+    from decimal import Decimal
+
+    from myola.models import DiaryEntry
+    from myola.services.profiles import get_profile, local_today
+
+    today = local_today(get_profile(member))
+    e = DiaryEntry.objects.create(
+        user=member, date=today, meal="lunch", name="Soup", amount=Decimal(200), unit="g"
+    )
+    html = member_client.get(reverse("today-entry", args=[e.pk]), HTTP_HX_REQUEST="true")
+    html = html.content.decode()
+    assert 'class="day-drop"' in html and 'class="cal-grid"' in html and 'type="date"' not in html
+    earlier = today - dt.timedelta(days=4)
+    member_client.post(
+        reverse("today-entry", args=[e.pk]),
+        {"amount": "200", "unit": "g", "meal": "dinner", "date": earlier.isoformat()},
+    )
+    e.refresh_from_db()
+    assert e.date == earlier and e.meal == "dinner"

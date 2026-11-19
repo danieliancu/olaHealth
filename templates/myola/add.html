@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n ui %}
+{% load i18n ui diary %}
 {% block title %}{% translate "Add to diary" %}{% endblock %}
 {% block content %}
 <div class="add-food">
@@ -42,13 +42,7 @@
           <label><input type="radio" name="date" value="other"{% if day_is_other %} checked{% endif %}><span>{% icon "calendar-days" 18 %}<small>{% translate "Other day" %}</small></span></label>
         </div>
         <div class="day-other">
-          <div class="cal" role="group" aria-label="{% translate 'Pick a day' %}">
-            <p class="cal-title">{{ calendar.title }}</p>
-            <div class="cal-grid">
-              {% for w in calendar.weekdays %}<span class="cal-head" aria-hidden="true">{{ w }}</span>{% endfor %}
-              {% for week in calendar.weeks %}{% for c in week %}<label class="cal-day{% if c.today %} is-today{% endif %}{% if c.future %} is-future{% endif %}"><input type="radio" name="date" value="{{ c.value }}" aria-label="{{ c.label }}"{% if c.checked and day_is_other %} checked{% endif %}{% if c.future %} disabled{% endif %}><span>{% if c.month %}<small>{{ c.month }}</small>{% endif %}{{ c.num }}</span></label>{% endfor %}{% endfor %}
-            </div>
-          </div>
+          {% day_calendar day check=day_is_other %}
         </div>
       </fieldset>
       {% for err in form.date.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
