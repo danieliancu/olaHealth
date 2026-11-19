@@ -25,7 +25,7 @@
       </li>
       {% endfor %}
     </ul>
-    {% if not user.is_authenticated %}<p class="caption"><a href="{% url 'account_login' %}?next={{ request.path|urlencode }}">{% translate "Sign in" %}</a> {% translate "to filter alternatives by your diets, allergies and Avoid list." %}</p>{% endif %}
+    {% if not user.is_authenticated %}<p class="caption"><a href="{% url 'account_login' %}?next={% url 'product' product.pk %}%23better">{% translate "Sign in" %}</a> {% translate "to filter alternatives by your diets, allergies and Avoid list." %}</p>{% endif %}
   {% else %}
     <p class="caption">{% translate "No better-scoring alternative found in this category yet." %}</p>
   {% endif %}

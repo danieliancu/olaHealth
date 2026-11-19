@@ -237,7 +237,7 @@ CHARTS = (
 def _progress_context(request, profile, span: int, weight_form=None, weight_saved="") -> dict:
     today = local_today(profile)
     data = progress_service.series(request.user, today, span)
-    show_energy = profile.show_energy and not profile.eating_disorder
+    show_energy = profile.energy_visible
     charts = []
     for key, title, icon, unit in CHARTS:
         if key == "energy" and not show_energy:

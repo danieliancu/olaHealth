@@ -1,5 +1,5 @@
 {% load i18n ui diary %}{% url 'today-entry' e.pk as edit_url %}{% url 'today-entry-delete' e.pk as delete_url %}{% url 'today' as today_url %}
-<form class="entry-edit" method="post" action="{{ edit_url }}" hx-post="{{ edit_url }}" hx-target="#today" hx-swap="outerHTML" data-no-busy novalidate aria-label="{% blocktranslate with name=e.name %}Edit {{ name }}{% endblocktranslate %}">
+<form class="entry-edit" method="post" action="{{ edit_url }}" hx-post="{{ edit_url }}" hx-target="#today" hx-swap="outerHTML" hx-disinherit="*" novalidate aria-label="{% blocktranslate with name=e.name %}Edit {{ name }}{% endblocktranslate %}">
   {% csrf_token %}
   <p class="entry-edit-name"><strong>{{ e.name }}</strong>{% if e.brand %} <span class="caption">{{ e.brand }}</span>{% endif %}</p>
   {% if e.portion or e.product_id %}<p class="caption entry-meta">{% if e.portion %}{{ e.portion }} {% endif %}{% if e.product_id %}<a href="{% url 'product' e.product_id %}">{% translate "Open product" %}</a>{% endif %}</p>{% endif %}

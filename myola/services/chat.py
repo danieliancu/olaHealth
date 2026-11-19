@@ -157,6 +157,7 @@ def build_facts(user, context: str, product=None, question: str = "") -> dict[st
     return {
         "context": context,
         "product": product_payload(product) if product is not None else None,
+        "energy_visible": profile.energy_visible,
         "goal": str(P.GOALS[profile.goal][0]) if profile.goal in P.GOALS else "",
         "diets": [(d, str(P.DIETS[d][0])) for d in prefs["diets"]],
         "allergens": [(a, str(P.ALLERGENS[a])) for a in prefs["allergens"]],
@@ -204,8 +205,13 @@ def rule_answer(intent: str | None, facts: dict[str, Any]) -> str:
             lines.append("Open a product and ask there: I read that product's label values.")
         else:
             values = p["facts"]["values"]
-            known = [f"{label} {values[k]['display']}" for k, label in VALUE_NAMES if k in values]
-            unknown = [label.lower() for k, label in VALUE_NAMES if k not in values]
+            names = [
+                (k, label)
+                for k, label in VALUE_NAMES
+                if k != "energy-kcal" or facts.get("energy_visible", True)
+            ]
+            known = [f"{label} {values[k]['display']}" for k, label in names if k in values]
+            unknown = [label.lower() for k, label in names if k not in values]
             if not known:
                 lines.append("No values per 100 g or 100 ml are recorded for this product.")
             else:

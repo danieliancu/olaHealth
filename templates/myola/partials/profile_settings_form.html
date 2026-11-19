@@ -16,7 +16,7 @@
   <fieldset class="card stack" id="display">
     <legend class="settings-legend">{% translate "Display" %}</legend>
     {% include "myola/partials/profile_switch.html" with field=form.show_energy %}
-    {% if profile.eating_disorder %}<p class="hint">{% translate "Calories stay hidden in Progress because of your health answers." %}</p>{% endif %}
+    {% if profile.eating_disorder %}<p class="hint">{% translate "Calories stay hidden everywhere (Today, Progress and Foodo’s answers) because of your health answers. To change this, update your health answers in Profile." %}</p>{% endif %}
     {% include "myola/partials/profile_switch.html" with field=form.show_targets %}
     {% include "myola/partials/profile_switch.html" with field=form.track_weight %}
   </fieldset>

@@ -167,10 +167,11 @@ def _profile_summary(profile) -> dict:
     if profile.weight and (profile.track_weight or not profile.eating_disorder):
         about.append((_("Weight"), f"{_num(profile.weight)} kg", "scale"))
     consented = profile.health_consent_at is not None
+    kcal_target = profile.target_kcal if profile.energy_visible else None
     targets = [
         (label, value, unit, TARGET_ICONS[key])
         for key, label, value, unit in (
-            ("energy", _("Energy"), profile.target_kcal if profile.show_energy else None, "kcal"),
+            ("energy", _("Energy"), kcal_target, "kcal"),
             ("protein", _("Protein"), profile.target_protein, "g"),
             ("carbs", _("Carbs"), profile.target_carbs, "g"),
             ("fat", _("Fat"), profile.target_fat, "g"),

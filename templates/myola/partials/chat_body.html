@@ -3,7 +3,7 @@
   <p class="chat-note">{% translate "Answers use only the facts in the app and what you saved in your account. No medical advice; no guarantee about allergens." %}</p>
   <ol class="chat-log" id="chat-log-{{ chat_id }}" role="log" aria-live="polite" aria-label="{% translate 'Conversation with Foodo' %}">{% include "myola/partials/chat_messages.html" with oob=False %}</ol>
   <p class="caption" id="chat-empty-{{ chat_id }}"{% if chat_messages %} hidden{% endif %}>{% translate "Pick a question or type your own." %}</p>
-  <form class="chat-send" method="post" action="{% url 'chat-send' %}" hx-post="{% url 'chat-send' %}" hx-target="#chat-log-{{ chat_id }}" hx-swap="beforeend scroll:bottom">
+  <form class="chat-send" method="post" action="{% url 'chat-send' %}" hx-post="{% url 'chat-send' %}" hx-target="#chat-log-{{ chat_id }}" hx-swap="beforeend scroll:bottom" hx-disabled-elt="find button">
     {% csrf_token %}
     <input type="hidden" name="context" value="{{ chat_context }}">
     {# The send button comes first so that Enter sends the typed question, not a suggestion. #}

@@ -106,6 +106,12 @@ class Profile(models.Model):
         return f"Profile of {self.user_id}"
 
     @property
+    def energy_visible(self) -> bool:
+        """The one rule for calories everywhere (Today, Progress, My Track, Ask Foodo): shown
+        only when switched on and never with an eating-disorder answer."""
+        return self.show_energy and not self.eating_disorder
+
+    @property
     def eating_disorder(self) -> bool:
         """An eating-disorder history hides energy numbers and weight tracking."""
         return "eating_disorder" in self.conditions

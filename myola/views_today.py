@@ -74,7 +74,7 @@ def _context(request: HttpRequest, profile, day: dt.date, **extra) -> dict:
     user = request.user
     today = local_today(profile)
     groups, day_totals = diary.day_diary(user, day)
-    show_energy = profile.show_energy and not profile.eating_disorder
+    show_energy = profile.energy_visible
     targets = profile.targets if profile.show_targets else {}
     quick = extra.pop("quick", None)  # (meal, bound form) after a failed quick add
     edit = extra.pop("edit", None)  # (entry id, form)
@@ -162,6 +162,15 @@ def _post_day(request: HttpRequest, profile) -> dt.date:
     return parse_day(request.POST.get("date"), profile)
 
 
+def _with_day_fallback(post, field: str):
+    """A day outside the calendar grid travels as ``<field>_fallback``; it counts only when no
+    day button was chosen (so tapping "Today" always wins)."""
+    data = post.copy()
+    if data.get(field) in (None, "", "other") and data.get(f"{field}_fallback"):
+        data[field] = data[f"{field}_fallback"]
+    return data
+
+
 @login_required
 @require_GET
 def today(request: HttpRequest) -> HttpResponse:
@@ -208,6 +217,7 @@ def _entry_form(entry: DiaryEntry, today: dt.date, data=None) -> EntryForm:
             "hx-get": reverse("today-entry-preview", args=[entry.pk]),
             "hx-trigger": "input changed delay:200ms",
             "hx-target": f"#pv-{entry.pk}",
+            "hx-swap": "innerHTML",  # keep the #pv- box (the form itself swaps outerHTML)
         }
     )
     return form
@@ -261,7 +271,7 @@ def entry(request: HttpRequest, pk) -> HttpResponse:
             context = {"e": e, "form": _entry_form(e, today), "day_iso": e.date.isoformat()}
             return render(request, "myola/partials/diary_entry_form.html", context)
         return redirect(f"{_today_url(e.date, edit=str(e.pk))}#entry-{e.pk}")
-    form = _entry_form(e, today, request.POST)
+    form = _entry_form(e, today, _with_day_fallback(request.POST, f"e{e.pk.hex[:8]}-date"))
     old_day = e.date
     if not form.is_valid():
         return _render_day(request, profile, old_day, edit=(e.pk, form))
@@ -281,7 +291,7 @@ def entry(request: HttpRequest, pk) -> HttpResponse:
 
 
 def _show_energy(profile) -> bool:
-    return profile.show_energy and not profile.eating_disorder
+    return profile.energy_visible
 
 
 @login_required
@@ -436,7 +446,7 @@ def add_food(request: HttpRequest, pk) -> HttpResponse:
     product, facts, unit, per100, portion_data = _product_parts(request, pk)
     options = portion_data["options"]
     if request.method == "POST":
-        data = request.POST.copy()
+        data = _with_day_fallback(request.POST, "date")
         if data.get("date") == "other":  # "Other day" chosen but no day picked in the calendar
             data["date"] = ""
         form = AddFoodForm(data, today=today)

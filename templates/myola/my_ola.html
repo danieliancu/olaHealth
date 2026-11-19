@@ -48,7 +48,7 @@
     </ul>
   </div>
 </section>
-{% include "myola/partials/chat.html" with chat_context="personal" button_label=_("Ask Foodo about your lists") hide_button=False %}
+<a class="btn btn-primary btn-block btn-ask" href="{% url 'chat' %}?context=personal" data-chat-open="chat-dialog-personal">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo about your lists" %}</span></a>
 
 {% elif tab == "profile" %}
 {# ---------- Profile ---------- #}
@@ -111,7 +111,7 @@
     </ul>
     {% else %}<p class="caption">{% translate "No targets set. Without a target, Today shows totals only." %}</p>{% endif %}
     <ul class="mytrack-flags profile-flags">
-      <li class="{% if profile.show_energy %}on{% else %}off{% endif %}">{% if profile.show_energy %}{% icon "flame" 16 %}{% translate "Calories shown" %}{% else %}{% icon "circle-off" 16 %}{% translate "Calories hidden" %}{% endif %}</li>
+      <li class="{% if profile.energy_visible %}on{% else %}off{% endif %}">{% if profile.energy_visible %}{% icon "flame" 16 %}{% translate "Calories shown" %}{% else %}{% icon "circle-off" 16 %}{% translate "Calories hidden" %}{% endif %}</li>
       <li class="{% if profile.track_weight %}on{% else %}off{% endif %}">{% if profile.track_weight %}{% icon "scale" 16 %}{% translate "Weight tracked in Progress" %}{% else %}{% icon "circle-off" 16 %}{% translate "Weight not tracked" %}{% endif %}</li>
       <li class="{% if profile.use_notes %}on{% else %}off{% endif %}">{% if profile.use_notes %}{% icon "notebook-pen" 16 %}{% translate "Notes used in Foodo’s replies" %}{% else %}{% icon "circle-off" 16 %}{% translate "Notes not used in Foodo’s replies" %}{% endif %}</li>
     </ul>
@@ -186,5 +186,6 @@
 </section>
 {% endif %}
 </div>
-{% if tab != "overview" %}{% include "myola/partials/chat.html" with chat_context="personal" hide_button=True %}{% endif %}
+{# One chat dialog per page, outside #mytrack so tab switches never duplicate or drop it. #}
+{% include "myola/partials/chat.html" with chat_context="personal" hide_button=True %}
 {% endblock %}

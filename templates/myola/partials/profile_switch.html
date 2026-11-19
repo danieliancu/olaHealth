@@ -1,1 +1,1 @@
-<label class="check" for="{{ field.id_for_label }}"><input type="checkbox" id="{{ field.id_for_label }}" name="{{ field.html_name }}" value="1"{% if field.value %} checked{% endif %}> <span>{{ field.label }}</span></label>
+<label class="check" for="{{ field.id_for_label }}"><input type="checkbox" id="{{ field.id_for_label }}" name="{{ field.html_name }}" value="1"{% if field.value %} checked{% endif %}{% if field.field.disabled %} disabled{% endif %}> <span>{{ field.label }}</span></label>

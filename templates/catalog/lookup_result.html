@@ -20,12 +20,15 @@
       <button class="btn btn-primary" type="submit">{% translate "Add this product" %}</button>
     </form>
   {% elif can_force %}
-    <a class="btn" href="{% url 'lookup' %}?code={{ code|urlencode }}&amp;allow_bad_check=1">{% translate "The number is correct – look it up anyway" %}</a>
+    <a class="btn" href="{% url 'lookup' %}?code={{ code|urlencode }}&amp;allow_bad_check=1{% if diary_query %}&amp;{{ diary_query }}{% endif %}">{% translate "The number is correct – look it up anyway" %}</a>
   {% elif status == "pending" %}
     <a class="btn" href="{{ request.get_full_path }}">{% translate "Check again" %}</a>
   {% elif error and error != "invalid_code" %}
     <a class="btn" href="{{ request.get_full_path }}">{% translate "Try again" %}</a>
   {% endif %}
 </section>
-<p><a href="{% url 'scan' %}">{% translate "Scan another product" %}</a></p>
+{% if diary %}
+<p class="notice">{% translate "Not in the catalogue yet? You can still log it by hand." %} <a href="{{ diary_back_url }}">{% blocktranslate with meal=diary_label %}Add it to {{ meal }} with Quick add{% endblocktranslate %}</a></p>
+{% endif %}
+<p><a href="{% url 'scan' %}{% if diary_query %}?{{ diary_query }}{% endif %}">{% translate "Scan another product" %}</a></p>
 {% endblock %}

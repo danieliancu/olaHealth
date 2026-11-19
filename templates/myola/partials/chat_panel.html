@@ -14,7 +14,7 @@ Context: chat_context ("personal" or "product:<uuid>"), optional chat_product, b
       </div>
       <button type="button" class="icon-btn" data-chat-close aria-label="{% translate 'Close' %}">{% icon "x" 22 %}</button>
     </div>
-    <div class="chat-loader" hx-get="{{ chat_url }}?context={{ chat_context|urlencode }}" hx-trigger="chat-open once" hx-swap="outerHTML">
+    <div class="chat-loader" hx-get="{{ chat_url }}?context={{ chat_context|urlencode }}" hx-trigger="chat-open" hx-swap="outerHTML">
       <p class="caption htmx-indicator">{% translate "Loading…" %}</p>
     </div>
   </div>

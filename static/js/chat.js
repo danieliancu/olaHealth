@@ -56,3 +56,22 @@ document.addEventListener("change", (e) => {
   if (value && input.dataset.dayLabel) value.textContent = input.dataset.dayLabel;
   drop.open = false;
 });
+
+// htmx errors (429 limit, 403, 500, network): htmx does not swap error responses, so say it.
+function showError(text) {
+  const box = document.getElementById("messages");
+  if (!box) return;
+  const p = document.createElement("p");
+  p.className = "msg msg-error";
+  p.setAttribute("role", "alert");
+  p.textContent = text;
+  box.replaceChildren(p);
+  box.scrollIntoView({ block: "nearest" });
+}
+document.addEventListener("htmx:responseError", (e) => {
+  const status = e.detail.xhr?.status;
+  if (status === 429) showError("Too many requests. Please wait a moment and try again.");
+  else if (status === 403) showError("This action was refused. Reload the page and try again.");
+  else showError("Something went wrong. Please try again.");
+});
+document.addEventListener("htmx:sendError", () => showError("No connection. Check your internet and try again."));

@@ -289,6 +289,10 @@ class SettingsForm(ProfileForm):
 
     def __init__(self, profile: Profile, *args, **kwargs):
         super().__init__(profile, *args, **kwargs)
+        if profile.eating_disorder:
+            # Calories stay hidden everywhere with this answer: the switch cannot turn them on.
+            self.fields["show_energy"].disabled = True
+            self.initial["show_energy"] = False
         if profile.timezone not in dict(timezone_choices()):
             self.initial["timezone"] = DEFAULT_TIMEZONE
 

@@ -209,7 +209,13 @@ def lookup_view(request: HttpRequest) -> HttpResponse:
         "message": result.message or _(ERROR_MESSAGES.get(result.error or result.status, "")),
         "parsed": result.code,
         "can_force": result.detail == "bad_check_digit",
+        **_diary_context(target),
     }
+    if target:
+        meal = target["add"] if target["add"] != "auto" else ""
+        context["diary_back_url"] = diary_target.today_url(target) + (
+            f"#meal-{meal}" if meal else ""
+        )
     status = {
         "not_found": 404,
         "pending": 202,
@@ -469,17 +475,18 @@ def product_note(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
     kind = request.POST.get("kind") or Note.Kind.GENERAL
     if kind not in Note.Kind.values:
         kind = Note.Kind.GENERAL
-    saved = bool(text)
+    full = Note.objects.filter(user=request.user).count() >= LIMITS["notes"]
+    saved = bool(text) and not full
     if saved:
         Note.objects.create(user=request.user, product=product, kind=kind, text=text)
-        stale = list(
-            Note.objects.filter(user=request.user)
-            .order_by("-updated_at")
-            .values_list("pk", flat=True)[LIMITS["notes"] :]
-        )
-        if stale:
-            Note.objects.filter(pk__in=stale).delete()
         messages.success(request, _("Note saved in My Track → Notes."))
+    elif full:
+        # Same rule as My Track: never delete an older note without asking.
+        messages.error(
+            request,
+            _("You have %(n)s notes, the maximum. Delete some in My Track → Notes first.")
+            % {"n": LIMITS["notes"]},
+        )
     else:
         messages.error(request, _("Write a note first."))
     if _htmx(request):

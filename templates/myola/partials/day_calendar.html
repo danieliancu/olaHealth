@@ -1,5 +1,5 @@
 {% load i18n %}<div class="cal" role="group" aria-label="{% translate 'Pick a day' %}">
-  {% if outside %}<input type="hidden" name="{{ name }}" value="{{ day|date:'Y-m-d' }}">{% endif %}
+  {% if outside %}<input type="hidden" name="{{ name }}_fallback" value="{{ day|date:'Y-m-d' }}">{% endif %}
   <p class="cal-title">{{ calendar.title }}</p>
   <div class="cal-grid">
     {% for w in calendar.weekdays %}<span class="cal-head" aria-hidden="true">{{ w }}</span>{% endfor %}
