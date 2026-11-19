@@ -1409,3 +1409,8 @@ input:disabled { background: #f4f8f6; color: var(--muted); }
 .chat-dialog .chat-inline, .chat-dialog .chat-loader { display: contents; }
 .chat-dialog .chat-send { flex: none; display: flex; flex-direction: column; gap: .4rem; }
 .chat-dialog .chat-inline > .caption { margin: 0; flex: none; }
+
+/* Home: the three small feature cards are centred */
+.mini-list li { text-align: center; }
+.mini-list .feature-icon { display: flex; justify-content: center; margin-left: auto; margin-right: auto; }
+.mini-list h3, .mini-list p { margin-left: auto; margin-right: auto; }
