@@ -66,9 +66,9 @@
       <p class="ola-prefs-line">{% translate "Check this product against your diet and allergies." %} <a class="link-btn" href="{{ login_url }}">{% translate "Sign in" %}</a></p>
     {% endif %}
     {% if user.is_authenticated %}
-      {% include "myola/partials/chat.html" with chat_context=chat_context chat_product=product %}
+      {% include "myola/partials/chat.html" with chat_context=chat_context chat_product=product button_label=_("Ask Foodo about this product") %}
     {% else %}
-      <a class="btn btn-outline btn-block ask-ola" href="{{ login_url }}">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo about this product" %}</span></a>
+      <a class="btn btn-primary btn-block btn-ask ask-ola" href="{{ login_url }}">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo about this product" %}</span></a>
     {% endif %}
   </section>
 

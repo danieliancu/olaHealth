@@ -5,7 +5,7 @@
 <div id="mytrack">
 <div class="page-head">
   <h1>{% translate "My Track" %}</h1>
-  <a class="btn btn-primary btn-small" href="{% url 'chat' %}?context=personal">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo" %}</span></a>
+  <a class="btn btn-primary btn-small btn-ask" id="ask-foodo" href="{% url 'chat' %}?context=personal" data-chat-open="chat-dialog-personal">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo" %}</span></a>
 </div>
 {% include "myola/partials/mytrack_messages.html" %}
 
@@ -48,7 +48,7 @@
     </ul>
   </div>
 </section>
-{% include "myola/partials/chat.html" with chat_context="personal" %}
+{% include "myola/partials/chat.html" with chat_context="personal" button_label=_("Ask Foodo about your lists") hide_button=False %}
 
 {% elif tab == "profile" %}
 {# ---------- Profile ---------- #}
@@ -186,4 +186,5 @@
 </section>
 {% endif %}
 </div>
+{% if tab != "overview" %}{% include "myola/partials/chat.html" with chat_context="personal" hide_button=True %}{% endif %}
 {% endblock %}

@@ -1,12 +1,25 @@
-{% load i18n ui %}<details class="card chat-panel" id="ask-foodo"{% if chat_open %} open{% endif %}>
-  <summary><span class="chat-panel-title">{% icon "sparkles" 20 %}<span>{% translate "Ask Foodo" %}</span></span>{% icon "chevron-down" 18 %}</summary>
-  {% if user.is_authenticated %}
-  <div hx-get="{% url 'chat' %}?context={{ chat_context|urlencode }}" hx-trigger="{% if chat_open %}load{% else %}toggle once from:closest details{% endif %}" hx-swap="outerHTML">
-    <p class="caption">{% translate "Questions about this product or your lists, answered from the facts in the app." %}</p>
-    <a class="btn btn-outline" href="{% url 'chat' %}?context={{ chat_context|urlencode }}">{% icon "message-circle" 18 %}<span>{% translate "Open the conversation" %}</span></a>
+{% load i18n ui %}{% comment %}
+Ask Foodo: a green button that opens a full-screen dialog (static/js/chat.js). On phones the
+dialog fills exactly the space above the on-screen keyboard. The conversation is loaded and sent
+by the server (htmx). Without JavaScript the button is a link to the full chat page.
+Context: chat_context ("personal" or "product:<uuid>"), optional chat_product, button_label.
+{% endcomment %}{% url 'chat' as chat_url %}{% with cid=chat_context|slugify %}
+{% if user.is_authenticated %}
+{% if not hide_button %}<a class="btn btn-primary btn-block btn-ask" href="{{ chat_url }}?context={{ chat_context|urlencode }}" data-chat-open="chat-dialog-{{ cid }}">{% icon "sparkles" 18 %}<span>{{ button_label|default:_("Ask Foodo") }}</span></a>{% endif %}
+<dialog class="dialog chat-dialog" id="chat-dialog-{{ cid }}" aria-labelledby="chat-title-{{ cid }}">
+  <div class="chat">
+    <div class="chat-head">
+      <div>
+        <h2 id="chat-title-{{ cid }}">{% icon "sparkles" 20 %} {% translate "Ask Foodo" %}</h2>
+      </div>
+      <button type="button" class="icon-btn" data-chat-close aria-label="{% translate 'Close' %}">{% icon "x" 22 %}</button>
+    </div>
+    <div class="chat-loader" hx-get="{{ chat_url }}?context={{ chat_context|urlencode }}" hx-trigger="chat-open once" hx-swap="outerHTML">
+      <p class="caption htmx-indicator">{% translate "Loading…" %}</p>
+    </div>
   </div>
-  {% else %}
-  <p class="caption">{% translate "Sign in to ask Foodo about this product and your lists." %}</p>
-  <a class="btn btn-outline" href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}">{% icon "log-in" 18 %}<span>{% translate "Sign in" %}</span></a>
-  {% endif %}
-</details>
+</dialog>
+{% else %}
+<a class="btn btn-primary btn-block btn-ask" href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}">{% icon "sparkles" 18 %}<span>{{ button_label|default:_("Ask Foodo") }}</span></a>
+{% endif %}
+{% endwith %}
