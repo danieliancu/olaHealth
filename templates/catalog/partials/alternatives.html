@@ -14,16 +14,14 @@
   </div>
   {% if alternatives %}
     <h3>{% translate "Better alternatives sold in the UK" %}</h3>
-    <ul class="alt-list">
+    <ul class="alt-slider" aria-label="{% translate 'Better alternatives' %}">
       {% for a in alternatives %}
-      <li class="product-card">
-        {% if a.image %}<img class="thumb" src="{{ a.image }}" alt="" width="48" height="48" loading="lazy">{% endif %}
-        <div class="grow">
-          <a class="product-link" href="{{ a.url }}">{{ a.name|default:_("Unnamed product") }}</a>
-          <p class="meta">{% if a.brand %}{{ a.brand }} · {% endif %}{% translate "Score" %} {{ a.score }} {% translate "vs" %} {{ a.reference_score }}</p>
-          {% if a.advantages %}<p class="alt-plus">{{ a.advantages|join:" · " }}</p>{% endif %}
-          {% if a.trade_offs %}<p class="caption">{% translate "Trade-offs:" %} {{ a.trade_offs|join:" · " }}</p>{% endif %}
-        </div>
+      <li class="alt-card">
+        <a href="{{ a.url }}">
+          <span class="alt-img">{% if a.image %}<img src="{{ a.image }}" alt="" loading="lazy">{% else %}<img src="{% asset 'img/placeholder' %}" alt="">{% endif %}</span>
+          <span class="alt-name">{{ a.name|default:_("Unnamed product") }}</span>
+          <span class="alt-foot"><span class="alt-brand">{{ a.brand }}</span><span class="alt-score">{{ a.score }}</span></span>
+        </a>
       </li>
       {% endfor %}
     </ul>
