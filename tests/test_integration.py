@@ -95,3 +95,18 @@ def test_maintenance_banner_and_footer_links(client):
     s.maintenance_message = "Short maintenance tonight at 22:00."
     s.save()
     assert "Short maintenance tonight" in client.get(reverse("scan")).content.decode()
+
+
+@pytest.mark.django_db
+def test_opening_an_alternative_is_not_a_scan(member_client, member, off_payload):
+    from myola.models import ProductVisit
+
+    p = import_off_product(off_payload())
+    code = off_payload()["code"]
+    r = member_client.get(reverse("lookup"), {"code": code, "via": "alternative"})
+    assert r.status_code == 302 and r["Location"] == reverse("product", args=[p.pk])
+    member_client.get(r["Location"])
+    assert not ProductVisit.objects.filter(user=member).exclude(code="").exists()
+    # A real scan still carries the code.
+    r = member_client.get(reverse("lookup"), {"code": code})
+    assert "scanned=" in r["Location"]

@@ -116,7 +116,8 @@ def _off_candidate(raw: dict[str, Any], category: str) -> dict[str, Any] | None:
         brand=data.get("brand") or "",
         quantity=data.get("quantity") or "",
         image=image,
-        url=f"{reverse('lookup')}?{urlencode({'code': code})}",
+        # via=alternative: opening a suggestion is a visit, not a scan (no "scanned" badge).
+        url=f"{reverse('lookup')}?{urlencode({'code': code, 'via': 'alternative'})}",
     )
     return {
         "source": "off",

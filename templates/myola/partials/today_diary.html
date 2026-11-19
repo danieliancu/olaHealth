@@ -9,12 +9,12 @@
   </div>{% endif %}
   {% for g in groups %}<section class="meal" aria-labelledby="meal-{{ g.key }}">
     <div class="meal-head">
-      <span class="meal-icon">{% icon g.icon 20 %}</span>
+      <span class="meal-icon">{% icon g.icon 22 %}</span>
       <h3 id="meal-{{ g.key }}">{{ g.label }}</h3>
-      {% if g.entries and show_energy %}<span class="meal-sub">{{ g.kcal_display }} kcal{% if g.kcal_partial %}<span class="sr-only">, {% translate "partial" %}</span><span aria-hidden="true">*</span>{% endif %}</span>{% endif %}
+      {% if g.entries and show_energy %}<span class="meal-sub meal-kcal">{{ g.kcal_display }} kcal{% if g.kcal_partial %}<span class="sr-only">, {% translate "partial" %}</span><span aria-hidden="true">*</span>{% endif %}</span>{% endif %}
       <span class="meal-tools">
-        <a class="meal-add" href="{{ g.scan_url }}" aria-label="{% blocktranslate with meal=g.label %}Scan a barcode for {{ meal }}{% endblocktranslate %}" title="{% translate 'Scan a barcode' %}">{% icon "scan-barcode" 20 %}</a>
-        <a class="meal-add" href="{{ g.search_url }}" aria-label="{% blocktranslate with meal=g.label %}Search products for {{ meal }}{% endblocktranslate %}" title="{% translate 'Search products' %}">{% icon "search" 20 %}</a>
+        <a class="meal-add" href="{{ g.scan_url }}" aria-label="{% blocktranslate with meal=g.label %}Scan a barcode for {{ meal }}{% endblocktranslate %}" title="{% translate 'Scan a barcode' %}">{% icon "scan-barcode" 22 %}</a>
+        <a class="meal-add" href="{{ g.search_url }}" aria-label="{% blocktranslate with meal=g.label %}Search products for {{ meal }}{% endblocktranslate %}" title="{% translate 'Search products' %}">{% icon "search" 22 %}</a>
       </span>
     </div>
     {% if g.entries %}<ul class="entry-list">

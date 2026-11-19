@@ -198,6 +198,8 @@ def lookup_view(request: HttpRequest) -> HttpResponse:
         if target:
             return redirect(diary_target.add_url(result.product.pk, target, code))
         url = reverse("product", args=[result.product.pk])
+        if request.GET.get("via") == "alternative":  # opened from "Better alternatives"
+            return redirect(url)
         return redirect(f"{url}?{urlencode({'scanned': code})}")
     context = {
         "code": code,

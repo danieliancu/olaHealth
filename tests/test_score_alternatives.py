@@ -148,7 +148,7 @@ def test_ranking_advantages_and_trade_offs(reference, off_payload, off_client):
     assert [r["name"] for r in result] == ["Best yogurt", "Plain yogurt"]
     best, local = result
     assert best["source"] == "off" and best["off_code"] == "5000000000101"
-    assert best["url"] == "/lookup/?code=5000000000101"
+    assert best["url"] == "/lookup/?code=5000000000101&via=alternative"
     assert best["score"] == 100 and best["reference_score"] == 35
     assert best["advantage"] == "Nutri-Score A vs D"
     assert "NOVA group 1 vs 4" in best["advantages"]
