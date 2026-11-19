@@ -172,3 +172,8 @@ a.chip-btn { display: inline-flex; align-items: center; text-decoration: none; c
 }
 .t-diary .quick-add > summary:hover { background: none; text-decoration: underline; text-underline-offset: 3px; }
 .t-diary .quick-add > summary .icon { color: var(--accent); }
+
+/* Day button: regular weight like the Meal select, date on one line */
+.day-drop > summary { font-weight: 400; gap: .35rem; padding: 0 .6rem; white-space: nowrap; overflow: hidden; }
+.day-drop > summary > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.day-drop > summary .icon { width: 16px; height: 16px; }
