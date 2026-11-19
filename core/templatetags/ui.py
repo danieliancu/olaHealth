@@ -91,6 +91,7 @@ ICONS = {
     "log-out",
     "mail",
     "key-round",
+    "lock",
 }
 
 

@@ -26,7 +26,7 @@
         <a class="icon-btn" href="{% url 'products' %}" aria-label="{% translate 'Search products' %}" title="{% translate 'Search products' %}">{% icon "search" 22 %}</a>
         <a class="icon-btn header-count" href="{% url 'saved' %}" aria-label="{% translate 'Favourites' %}" title="{% translate 'Favourites' %}">{% icon "heart" 22 %}{% include "partials/saved_count.html" %}</a>
         {% if user.is_staff %}<a class="icon-btn" href="{% url 'staff:dashboard' %}" aria-label="{% translate 'Staff panel' %}" title="{% translate 'Staff panel' %}">{% icon "settings" 22 %}</a>{% endif %}
-        <a class="icon-btn header-account" href="{% if user.is_authenticated %}{% url 'my-ola' %}?tab=account{% else %}{% url 'account_login' %}{% endif %}" aria-label="{% translate 'Account' %}" title="{% translate 'Account' %}">{% icon "user-round" 22 %}</a>
+        <a class="icon-btn header-account" href="{% if user.is_authenticated %}{% url 'my-ola' %}?tab=account{% else %}{% url 'account_login' %}{% endif %}" aria-label="{% if user.is_authenticated %}{% translate 'Account (signed in)' %}{% else %}{% translate 'Sign in' %}{% endif %}" title="{% if user.is_authenticated %}{% translate 'Signed in' %}{% else %}{% translate 'Sign in' %}{% endif %}">{% if user.is_authenticated %}{% icon "lock" 22 "signed-in" %}{% else %}{% icon "user-round" 22 %}{% endif %}</a>
       </div>
     </header>
     <main id="main" tabindex="-1">

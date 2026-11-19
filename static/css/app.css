@@ -1398,3 +1398,6 @@ input:disabled { background: #f4f8f6; color: var(--muted); }
 .htmx-indicator { opacity: 0; transition: opacity .2s ease-in; }
 .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
 .htmx-request[aria-busy="true"], form.htmx-request { cursor: progress; }
+
+/* Header: signed-in account icon */
+.header-account .icon.signed-in { color: var(--accent); }
