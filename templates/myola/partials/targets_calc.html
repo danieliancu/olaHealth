@@ -1,0 +1,90 @@
+{% load i18n ui %}{% url 'targets-calculate' as calc_url %}{% url 'targets-save' as save_url %}{% url 'settings-edit' as settings_url %}
+<div class="targets-calc" id="targets-calc">
+  <div class="targets-calc-head">
+    <span class="targets-calc-icon" aria-hidden="true">{% icon "calculator" 20 %}</span>
+    <h2 id="targets-calc-title">{% translate "Daily targets" %}</h2>
+    <a class="icon-btn js-hide-close" href="{{ settings_url }}#targets" data-targets-close aria-label="{% translate 'Close' %}">{% icon "x" 20 %}</a>
+  </div>
+{% if result and result.refused %}
+  <p class="notice">{% icon "info" 18 %}<span>{{ result.refused }}</span></p>
+  <div class="dialog-actions"><a class="btn btn-primary" href="{{ settings_url }}#targets" data-targets-close>{% translate "Close" %}</a></div>
+{% elif result %}
+  <form method="post" action="{{ save_url }}" hx-post="{{ save_url }}" hx-target="#targets-calc" hx-swap="outerHTML" novalidate>
+    {% csrf_token %}
+    {% for name in details.asked %}<input type="hidden" name="asked" value="{{ name }}">{% endfor %}
+    {% for name, value in carry %}{% if name != "d-sex" or not ask_sex %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endif %}{% endfor %}
+    <p class="caption targets-basis">{% blocktranslate %}Based on: {{ basis }}.{% endblocktranslate %} <a href="{{ calc_url }}?all=1" hx-get="{{ calc_url }}?all=1" hx-target="#targets-calc" hx-swap="outerHTML">{% translate "Change details" %}</a></p>
+    {% if ask_sex %}<div class="field targets-sex">
+      <label for="d-sex">{{ details.sex.label }}</label>
+      <select id="d-sex" name="d-sex" hx-post="{{ calc_url }}" hx-trigger="change" hx-target="#targets-calc" hx-swap="outerHTML" hx-include="closest form">{% for value, label in details.fields.sex.choices %}<option value="{{ value }}"{% if value == details.cleaned_data.sex|default:"between" %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    </div>{% endif %}
+    <div class="targets-values">
+      {% include "myola/partials/profile_target_field.html" with field=save_form.target_kcal unit="kcal" %}
+      {% include "myola/partials/profile_target_field.html" with field=save_form.target_protein unit="g" %}
+      {% include "myola/partials/profile_target_field.html" with field=save_form.target_carbs unit="g" %}
+      {% include "myola/partials/profile_target_field.html" with field=save_form.target_fat unit="g" %}
+    </div>
+    {% for note in result.notes %}<p class="notice">{% icon "info" 18 %}<span>{{ note }}</span></p>{% endfor %}
+    {% if current %}<p class="caption">{% translate "Your current targets:" %} {% for label, value, unit in current %}{{ label }} {{ value }} {{ unit }}{% if not forloop.last %} · {% endif %}{% endfor %}. {% translate "They change only when you save." %}</p>{% endif %}
+    <details class="targets-how">
+      <summary>{% translate "How we work this out" %}</summary>
+      <ul>
+        <li>{% translate "Resting energy with the Mifflin-St Jeor equation (age, sex, height, weight), multiplied by your activity level (1.4 to 2.0)." %}</li>
+        <li>{% translate "Losing weight: about 600 kcal a day less, as the NHS suggests, never below your resting energy. Gaining muscle and losing fat: 300 less. Gaining muscle: 250 more." %}</li>
+        <li>{% translate "Protein: 0.75 g per kg (UK reference intake), or 1.6 g per kg when building muscle. Fat: 30% of energy (UK advice: at most 35%). Carbs: the rest, about half your energy." %}</li>
+      </ul>
+      <p class="caption"><a href="{{ nhs_url }}" target="_blank" rel="noopener">{% translate "NHS: calorie counting" %}</a></p>
+    </details>
+    <p class="hint">{% translate "An estimate, not medical advice. You can change any value before saving." %}</p>
+    <div class="dialog-actions">
+      <a class="btn btn-outline" href="{{ settings_url }}#targets" data-targets-close>{% translate "Cancel" %}</a>
+      <button type="submit" class="btn btn-primary">{% translate "Save targets" %}</button>
+    </div>
+  </form>
+{% else %}
+  <form method="post" action="{{ calc_url }}" hx-post="{{ calc_url }}" hx-target="#targets-calc" hx-swap="outerHTML" novalidate>
+    {% csrf_token %}
+    {% for name in details.asked %}<input type="hidden" name="asked" value="{{ name }}">{% endfor %}
+    <p class="caption">{% if details.asked|length < 6 %}{% translate "To estimate your targets we need a few more details. They are saved to your profile only when you save the targets." %}{% else %}{% translate "Check your details. They are saved to your profile only when you save the targets." %}{% endif %}</p>
+    {% if "age" in details.asked %}<div class="ob-field">
+      <label for="d-age">{% translate "How old are you?" %}</label>
+      <div class="unit-input"><input id="d-age" name="d-age" type="number" inputmode="numeric" min="13" max="120" step="1" value="{{ details.age.value|default_if_none:'' }}"{% if details.age.errors %} aria-invalid="true"{% endif %}><span>{% translate "years" %}</span></div>
+      {% for e in details.age.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </div>{% endif %}
+    {% if "gender" in details.asked %}<fieldset class="ob-field">
+      <legend>{% translate "What is your gender?" %}</legend>
+      <div class="chip-row">{% for o in details.gender_options %}<label class="chip-radio" for="{{ o.id }}"><input type="radio" id="{{ o.id }}" name="d-gender" value="{{ o.key }}"{% if o.checked %} checked{% endif %}><span>{{ o.label }}</span></label>{% endfor %}</div>
+      {% for e in details.gender.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </fieldset>{% endif %}
+    {% if ask_sex or "gender" in details.asked %}<fieldset class="ob-field targets-sex-field"{% if "gender" in details.asked %} data-sex-for-gender{% endif %}>
+      <legend>{{ details.sex.label }}</legend>
+      <p class="hint">{% translate "The equation differs for men and women. If neither fits, we use the average of both." %}</p>
+      <div class="chip-row">{% for o in details.sex_options %}<label class="chip-radio" for="{{ o.id }}"><input type="radio" id="{{ o.id }}" name="d-sex" value="{{ o.key }}"{% if o.checked %} checked{% endif %}><span>{{ o.label }}</span></label>{% endfor %}</div>
+    </fieldset>{% endif %}
+    {% if "height" in details.asked %}<div class="ob-field">
+      <label for="d-height">{% translate "What is your height?" %}</label>
+      <div class="unit-input"><input id="d-height" name="d-height" type="number" inputmode="decimal" min="100" max="250" step="any" value="{{ details.height.value|default_if_none:'' }}"{% if details.height.errors %} aria-invalid="true"{% endif %}><span>cm</span></div>
+      {% for e in details.height.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </div>{% endif %}
+    {% if "weight" in details.asked %}<div class="ob-field">
+      <label for="d-weight">{% translate "What is your current weight?" %}</label>
+      <div class="unit-input"><input id="d-weight" name="d-weight" type="number" inputmode="decimal" min="25" max="400" step="any" value="{{ details.weight.value|default_if_none:'' }}"{% if details.weight.errors %} aria-invalid="true"{% endif %}><span>kg</span></div>
+      {% for e in details.weight.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </div>{% endif %}
+    {% if "activity_level" in details.asked %}<fieldset class="ob-field">
+      <legend>{% translate "How active are you?" %}</legend>
+      <div class="targets-levels">{% for o in details.activity_options %}<label class="targets-level" for="{{ o.id }}"><input type="radio" id="{{ o.id }}" name="d-activity_level" value="{{ o.key }}"{% if o.checked %} checked{% endif %}><span><strong>{{ o.label }}</strong><span class="caption">{{ o.hint }}</span></span></label>{% endfor %}</div>
+      {% for e in details.activity_level.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </fieldset>{% endif %}
+    {% if "goal" in details.asked %}<fieldset class="ob-field">
+      <legend>{% translate "Your goal" %}</legend>
+      <div class="chip-row">{% for o in details.goal_options %}<label class="chip-radio" for="{{ o.id }}"><input type="radio" id="{{ o.id }}" name="d-goal" value="{{ o.key }}"{% if o.checked %} checked{% endif %}><span>{{ o.label }}</span></label>{% endfor %}</div>
+      {% for e in details.goal.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </fieldset>{% endif %}
+    <div class="dialog-actions">
+      <a class="btn btn-outline" href="{{ settings_url }}#targets" data-targets-close>{% translate "Cancel" %}</a>
+      <button type="submit" class="btn btn-primary">{% translate "Calculate" %}</button>
+    </div>
+  </form>
+{% endif %}
+</div>

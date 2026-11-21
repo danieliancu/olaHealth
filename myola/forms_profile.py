@@ -170,10 +170,22 @@ class RestrictionsForm(ProfileForm):
         label=_("Religious restriction – note (optional)"), max_length=300, required=False
     )
     other_note = forms.CharField(label=_("Other – note (optional)"), max_length=300, required=False)
+    consent = forms.BooleanField(
+        label=_(
+            "I agree that AskFoodo stores my restrictions and allergies in my account to check "
+            "products for me. I can delete them at any time."
+        ),
+        required=False,
+    )
 
     def __init__(self, profile: Profile, *args, id_prefix: str = "r", **kwargs):
         self.id_prefix = id_prefix
         kwargs.setdefault("auto_id", f"{id_prefix}-%s")
+        if "initial" not in kwargs:
+            kwargs["initial"] = {
+                name: getattr(profile, name) for name in self.base_fields if name != "consent"
+            }
+            kwargs["initial"]["consent"] = profile.restrictions_consent_at is not None
         super().__init__(profile, *args, **kwargs)
 
     def clean_restrictions(self) -> list[str]:
@@ -195,7 +207,23 @@ class RestrictionsForm(ProfileForm):
             data["religious_note"] = ""
         if "other" not in chosen:
             data["other_note"] = ""
+        if chosen - EXCLUSIVE_RESTRICTIONS and not data.get("consent"):
+            self.add_error(
+                "consent",
+                _("Tick the box so AskFoodo can keep your restrictions and allergies."),
+            )
         return data
+
+    def save(self) -> Profile:
+        values = {k: v for k, v in self.cleaned_data.items() if k != "consent"}
+        sensitive = set(values.get("restrictions") or []) - EXCLUSIVE_RESTRICTIONS
+        # A ticked box is kept (and stays ticked) even before any restriction is chosen.
+        values["restrictions_consent_at"] = (
+            (self.profile.restrictions_consent_at or timezone.now())
+            if sensitive or self.cleaned_data.get("consent")
+            else None
+        )
+        return self._write(values)
 
     @property
     def restriction_options(self) -> list[dict]:
@@ -222,7 +250,7 @@ class ConditionsForm(ProfileForm):
     )
     consent = forms.BooleanField(
         label=_(
-            "I agree that FoodoTrack stores these health answers in my account. "
+            "I agree that AskFoodo stores these health answers in my account. "
             "I can delete them at any time."
         ),
         required=False,
@@ -285,7 +313,32 @@ class SettingsForm(ProfileForm):
     use_notes = forms.BooleanField(
         label=_("Use my Notes to personalise Foodo’s replies"), required=False
     )
+    ai_use_preferences = forms.BooleanField(
+        label=_("Use my diets and allergies in AI answers"), required=False
+    )
     timezone = forms.ChoiceField(label=_("Time zone"), choices=timezone_choices)
+    notify_reminders = forms.BooleanField(label=_("Daily reminders"), required=False)
+    notify_achievements = forms.BooleanField(label=_("New achievements"), required=False)
+    notify_contributions = forms.BooleanField(
+        label=_("Answers to my product corrections"), required=False
+    )
+    notify_announcements = forms.BooleanField(label=_("News from AskFoodo"), required=False)
+    notify_water = forms.BooleanField(label=_("Water reminders"), required=False)
+    weigh_day = forms.TypedChoiceField(
+        label=_("Weekly weigh-in reminder on"),
+        coerce=int,
+        required=False,
+        empty_value=0,
+        choices=[
+            (0, _("Monday")),
+            (1, _("Tuesday")),
+            (2, _("Wednesday")),
+            (3, _("Thursday")),
+            (4, _("Friday")),
+            (5, _("Saturday")),
+            (6, _("Sunday")),
+        ],
+    )
 
     def __init__(self, profile: Profile, *args, **kwargs):
         super().__init__(profile, *args, **kwargs)
@@ -307,3 +360,90 @@ class WeightForm(forms.Form):
             "required": _("Enter a weight between 25 and 400 kg."),
         },
     )
+
+
+# ---------- Daily targets: Calculate automatically ----------
+DETAIL_FIELDS = ("age", "gender", "height", "weight", "activity_level", "goal")
+SEX_CHOICES = [
+    ("between", _("In between (average)")),
+    ("female", _("Female")),
+    ("male", _("Male")),
+]
+
+
+class TargetsDetailsForm(forms.Form):
+    """Only the details the estimate still needs (``asked``), plus the equation to use when
+    the gender is not male or female. Nothing is saved by this form."""
+
+    prefix = "d"
+    age = AboutYouForm.base_fields["age"]
+    gender = forms.ChoiceField(label=_("Gender"), choices=_choices(P.GENDERS))
+    height = AboutYouForm.base_fields["height"]
+    weight = AboutYouForm.base_fields["weight"]
+    activity_level = forms.ChoiceField(
+        label=_("How active are you?"), choices=_choices(P.ACTIVITY_LEVELS)
+    )
+    goal = forms.ChoiceField(label=_("Your goal"), choices=_choices(P.GOALS))
+    sex = forms.ChoiceField(
+        label=_("Which equation should we use?"), choices=SEX_CHOICES, initial="between"
+    )
+
+    def __init__(self, profile: Profile, asked: list[str], *args, **kwargs):
+        self.profile = profile
+        self.asked = [name for name in asked if name in DETAIL_FIELDS]
+        kwargs.setdefault("initial", {n: getattr(profile, n) for n in self.asked})
+        super().__init__(*args, **kwargs)
+        for name in list(self.fields):
+            if name not in (*self.asked, "sex"):
+                del self.fields[name]
+        for name in self.asked:
+            self.fields[name].required = True
+        self.fields["sex"].required = False
+
+    def gender_value(self) -> str:
+        if "gender" in self.asked:
+            return self["gender"].value() or ""
+        return self.profile.gender
+
+    def values(self) -> dict:
+        """All six details: the answers given here, the profile for the rest."""
+        out = {name: getattr(self.profile, name) for name in DETAIL_FIELDS}
+        out.update({n: self.cleaned_data[n] for n in self.asked})
+        return out
+
+    @property
+    def gender_options(self) -> list[dict]:
+        return self.option_list("gender", P.GENDERS)
+
+    @property
+    def sex_options(self) -> list[dict]:
+        return self.option_list("sex", dict(SEX_CHOICES))
+
+    @property
+    def activity_options(self) -> list[dict]:
+        return self.option_list("activity_level", P.ACTIVITY_LEVELS)
+
+    @property
+    def goal_options(self) -> list[dict]:
+        return self.option_list("goal", P.GOALS)
+
+    def option_list(self, name: str, mapping: dict) -> list[dict]:
+        value = str(self[name].value() or (self.fields[name].initial or ""))
+        return [
+            {
+                "key": key,
+                "label": v[0] if isinstance(v, tuple) else v,
+                "hint": v[1] if isinstance(v, tuple) and len(v) > 2 else "",
+                "checked": key == value,
+                "id": f"d-{name}-{key}",
+            }
+            for key, v in mapping.items()
+        ]
+
+
+class TargetsSaveForm(forms.Form):
+    prefix = "t"
+    target_kcal = _target(_("Energy"), 10000)
+    target_protein = _target(_("Protein"), 1000)
+    target_carbs = _target(_("Carbs"), 2000)
+    target_fat = _target(_("Fat"), 1000)

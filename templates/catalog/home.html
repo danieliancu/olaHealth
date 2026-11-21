@@ -1,91 +1,55 @@
 {% extends "base.html" %}
-{% load static i18n ui %}
-{% block title %}{% translate "Scan food. Keep track." %}{% endblock %}
+{% load i18n ui %}
+{% block title %}{% translate "Home" %}{% endblock %}
 {% block content %}
-<section class="home" aria-labelledby="hero-h" data-home>
-  <div class="home-copy">
-    <h1 id="hero-h" class="display">{% translate "Scan food." %}<br class="desktop-only"> {% translate "Keep track." %}</h1>
-    <p class="lead desktop-lead">{% translate "Scan a barcode, check the label against your allergies and log what you eat, with water and activity, in one calm daily view." %}</p>
-    <div class="home-actions">
-      {% if user.is_authenticated %}<a class="btn btn-primary btn-cta" href="{% url 'today' %}">{% icon "calendar-days" 20 %}<span>{% translate "Open Today" %}</span></a>{% else %}<a class="btn btn-primary btn-cta" href="{% url 'account_signup' %}">{% icon "arrow-right" 20 %}<span>{% translate "Get started" %}</span></a>{% endif %}
-      <a class="btn btn-outline btn-cta-secondary" href="{% url 'scan' %}">{% icon "scan-barcode" 20 %}<span>{% translate "Scan a barcode" %}</span></a>
+{# Visitors. Signed-in users get the Today dashboard on this same address (catalog.views.home). #}
+<div class="today home-public">
+  <h1 class="sr-only">{% translate "Welcome to AskFoodo" %}</h1>
+
+  {# Desktop (1024px+): a photo hero with a large title and buttons. Phones keep the card below. #}
+  <section class="home-hero" aria-labelledby="hero-h">
+    <div class="home-hero-text">
+      <p class="home-hero-eyebrow">{% icon "leaf" 16 %}{% translate "Food labels, made simple" %}</p>
+      <h2 id="hero-h">{% translate "Scan food." %} <br class="home-hero-br">{% translate "Keep track." %}</h2>
+      <p class="home-hero-lead">{% translate "Scan a barcode, check the label against your allergies and log what you eat, with water and activity, in one calm daily view." %}</p>
+      <div class="home-hero-actions">
+        <a class="btn btn-primary" href="{% url 'account_signup' %}">{% translate "Get started" %}{% icon "chevron-right" 18 %}</a>
+        <a class="btn btn-light" href="{% url 'scan' %}">{% icon "scan-barcode" 18 %}{% translate "Scan a barcode" %}</a>
+      </div>
     </div>
-    {% if not user.is_authenticated %}<p class="caption">{% translate "Free account. Scanning works without one." %} <a href="{% url 'account_login' %}">{% translate "Sign in" %}</a></p>{% endif %}
-  </div>
-  <div class="home-visual" aria-roledescription="carousel" aria-label="{% translate 'Example products' %}">
-    {# CSS scroll-snap carousel: swipe or use the dots (links to each slide). #}
-    <div class="showcase-track" tabindex="0">
-      {% translate "Roasted Chickpea Snacks" as n1 %}{% translate "Sparkling Apple Drink" as n2 %}{% translate "Greek Yoghurt" as n3 %}
-      {% translate "Snacks · 30 g · scanned" as m1 %}{% translate "Lunch · 330 ml · scanned" as m2 %}{% translate "Breakfast · 150 g · scanned" as m3 %}
-      {% translate "A pouch of roasted chickpea snacks with a bowl of chickpeas" as a1 %}{% translate "A can of sparkling apple drink with a slice of green apple" as a2 %}{% translate "A tub of Greek yoghurt with blueberries" as a3 %}
-      {% asset 'img/home/chickpea' as img1 %}{% asset 'img/home/apple-drink' as img2 %}{% asset 'img/home/greek-yoghurt' as img3 %}
-      {% include "partials/showcase_slide.html" with n=1 img=img1 alt=a1 name=n1 meta=m1 meal="snacks" kcal="125" protein="6.2" carbs="15.1" fat="3.9" water="1.25" activity="35" %}
-      {% include "partials/showcase_slide.html" with n=2 img=img2 alt=a2 name=n2 meta=m2 meal="lunch" kcal="139" protein="0" carbs="34.3" fat="0" water="1.5" activity="42" lazy=True %}
-      {% include "partials/showcase_slide.html" with n=3 img=img3 alt=a3 name=n3 meta=m3 meal="breakfast" kcal="146" protein="8.6" carbs="6" fat="9.8" water="0.75" activity="20" lazy=True %}
+  </section>
+
+  <section class="nudge home-nudge" aria-labelledby="welcome-h">
+    <span class="nudge-icon">{% icon "leaf" 20 %}</span>
+    <div class="nudge-body">
+      <h2 id="welcome-h">{% translate "Scan food. Keep track." %}</h2>
+      <input type="checkbox" id="welcome-more" class="see-more-toggle sr-only">
+      <p class="clamp-2">{% translate "Scan a barcode, check the label against your allergies and log what you eat, with water and activity, in one calm daily view." %}</p>
+      <label class="see-more" for="welcome-more">{% translate "See more" %}</label>
+      <a class="nudge-link" href="{% url 'account_signup' %}">{% translate "Get started" %}{% icon "chevron-right" 16 %}</a>
     </div>
-    <nav class="showcase-dots" aria-label="{% translate 'Choose an example' %}">
-      <a href="#example-1" aria-label="{% translate 'Example 1: Roasted Chickpea Snacks' %}"></a>
-      <a href="#example-2" aria-label="{% translate 'Example 2: Sparkling Apple Drink' %}"></a>
-      <a href="#example-3" aria-label="{% translate 'Example 3: Greek Yoghurt' %}"></a>
-    </nav>
-  </div>
-</section>
+  </section>
 
-<section class="how" aria-labelledby="how-h">
-  <p class="features-kicker">{% translate "How it works" %}</p>
-  <h2 id="how-h" class="features-title">{% translate "From barcode to diary in three steps." %}</h2>
-  <ol class="steps">
-    <li class="step"><div class="phone"><img src="{% static 'img/home/screens/scan.webp' %}" alt="{% translate 'FoodoTrack scanner, opened from the lunch section of the diary' %}" width="780" height="1688" loading="lazy"></div>
-      <h3><span class="step-num">1</span>{% translate "Scan the barcode" %}</h3>
-      <p>{% translate "Use the camera or type the number. The product comes from Open Food Facts." %}</p></li>
-    <li class="step"><div class="phone"><img src="{% static 'img/home/screens/amount.webp' %}" alt="{% translate 'Choosing a portion of rice cakes, with energy, protein, carbs and fat worked out' %}" width="780" height="1688" loading="lazy"></div>
-      <h3><span class="step-num">2</span>{% translate "Say how much" %}</h3>
-      <p>{% translate "Pick a declared portion or type grams or millilitres. You see the values before you add." %}</p></li>
-    <li class="step"><div class="phone"><img src="{% static 'img/home/screens/today.webp' %}" alt="{% translate 'The Today screen with the daily summary and the food diary' %}" width="780" height="1688" loading="lazy"></div>
-      <h3><span class="step-num">3</span>{% translate "See your day" %}</h3>
-      <p>{% translate "Energy, protein, carbs and fat add up as you go, meal by meal." %}</p></li>
-  </ol>
-</section>
-
-<section class="story" aria-labelledby="story-allergy-h">
-  <div class="phone"><img src="{% static 'img/home/screens/allergy.webp' %}" alt="{% translate 'A product checked against a lactose intolerance and a peanut allergy' %}" width="780" height="1688" loading="lazy"></div>
-  <div class="story-text">
-    <p class="features-kicker">{% translate "Diets and allergies" %}</p>
-    <h2 id="story-allergy-h">{% translate "Every label, checked against you." %}</h2>
-    <p>{% translate "Tell FoodoTrack your diet and allergies once. Each product then shows what the source says about them." %}</p>
-    <ul class="ticks">
-      <li>{% translate "Contains, may contain, or cannot be confirmed" %}</li>
-      <li>{% translate "Lactose intolerance and a milk allergy are kept apart" %}</li>
-      <li>{% translate "Never called “safe”: the physical label stays the reference" %}</li>
+  <section class="dash-section" aria-labelledby="try-h">
+    <h2 class="dash-title" id="try-h">{% translate "What would you like to check?" %}</h2>
+    <ul class="meal-tiles try-tiles stagger">
+      <li><a class="meal-tile" href="{% url 'scan' %}"><span class="meal-tile-icon">{% icon "scan-barcode" 22 %}</span><span class="meal-tile-label">{% translate "Scan" %}</span><span class="meal-tile-sub">{% translate "Barcode" %}</span><span class="meal-tile-more">{% translate "Point at any barcode" %}</span></a></li>
+      <li><a class="meal-tile" href="{% url 'products' %}"><span class="meal-tile-icon">{% icon "search" 22 %}</span><span class="meal-tile-label">{% translate "Search" %}</span><span class="meal-tile-sub">{% translate "By name" %}</span><span class="meal-tile-more">{% translate "Find by name or brand" %}</span></a></li>
+      <li><a class="meal-tile" href="{% url 'compare' %}"><span class="meal-tile-icon">{% icon "git-compare-arrows" 22 %}</span><span class="meal-tile-label">{% translate "Compare" %}</span><span class="meal-tile-sub">{% translate "Up to 3" %}</span><span class="meal-tile-more">{% translate "Up to 3, side by side" %}</span></a></li>
+      <li><a class="meal-tile" href="{% url 'learn' %}"><span class="meal-tile-icon">{% icon "book-open" 22 %}</span><span class="meal-tile-label">{% translate "Learn" %}</span><span class="meal-tile-sub">{% translate "Topics" %}</span>{% translate "Helpful topics, magazine style" as fallback %}<span class="meal-tile-more">{% include "partials/learn_ticker.html" %}</span></a></li>
     </ul>
-  </div>
-</section>
+  </section>
 
-<section class="story story-reverse" aria-labelledby="story-progress-h">
-  <div class="phone"><img src="{% static 'img/home/screens/progress.webp' %}" alt="{% translate 'Seven-day trends for energy and protein, with one day without entries' %}" width="780" height="1688" loading="lazy"></div>
-  <div class="story-text">
-    <p class="features-kicker">{% translate "Progress" %}</p>
-    <h2 id="story-progress-h">{% translate "Consistency, not pressure." %}</h2>
-    <p>{% translate "Seven- and thirty-day trends for what you eat, drink and move. A day you skip is simply “no entries”, never a zero." %}</p>
-    <ul class="ticks">
-      <li>{% translate "Water in one tap, activity in minutes" %}</li>
-      <li>{% translate "Targets only if you set them" %}</li>
-      <li>{% translate "Weight tracking only if you switch it on" %}</li>
+  <section class="dash-section" aria-labelledby="actions-h">
+    <h2 class="dash-title dash-title-sm" id="actions-h">{% translate "Quick actions" %}</h2>
+    <ul class="quick-actions stagger">
+      <li><a class="qa qa-primary" href="{% url 'scan' %}"><span class="qa-icon">{% icon "scan-barcode" 20 %}</span><span class="qa-text"><strong>{% translate "Scan a barcode" %}</strong><small>{% translate "Works without an account" %}</small></span></a></li>
+      <li><a class="qa" href="{% url 'account_signup' %}"><span class="qa-icon">{% icon "notebook-pen" 20 %}</span><span class="qa-text"><strong>{% translate "Create a free account" %}</strong><small>{% translate "Food diary, water, activity and progress" %}</small></span></a></li>
+      <li><a class="qa" href="{% url 'account_login' %}?next={% url 'chat' %}"><span class="qa-icon">{% icon "message-circle" 20 %}</span><span class="qa-text"><strong>{% translate "Ask Foodo" %}</strong><small>{% translate "Sign in to ask about your lists and scans" %}</small></span></a></li>
+      <li><a class="qa" href="{% url 'products' %}"><span class="qa-icon">{% icon "leaf" 20 %}</span><span class="qa-text"><strong>{% translate "Healthier choices" %}</strong><small>{% translate "Better-scoring picks in the same category" %}</small></span></a></li>
     </ul>
-  </div>
-</section>
+  </section>
 
-<section class="home-more" aria-label="{% translate 'More in FoodoTrack' %}">
-  <ul class="mini-list">
-    <li><span class="feature-icon">{% icon "heart" 40 %}</span><h3>{% translate "Favourites and lists" %}</h3><p>{% translate "Keep the products you like, buy often or avoid." %}</p></li>
-    <li><span class="feature-icon">{% icon "notebook-pen" 40 %}</span><h3>{% translate "Notes" %}</h3><p>{% translate "A word on taste or why you avoid something, next to the product." %}</p></li>
-    <li><span class="feature-icon">{% icon "sparkles" 40 %}</span><h3>{% translate "Ask Foodo" %}</h3><p>{% translate "Quick answers from the label and your own lists." %}</p></li>
-  </ul>
-</section>
-
-<section class="closing" aria-labelledby="closing-h">
-  <h2 id="closing-h">{% translate "Private by default." %}</h2>
-  <p>{% translate "Your diary, notes and preferences belong to your account only: never shared, never in the public catalogue, and you can delete them at any time." %}</p>
-  {% if user.is_authenticated %}<a class="btn btn-primary btn-cta" href="{% url 'today' %}">{% icon "calendar-days" 20 %}<span>{% translate "Open Today" %}</span></a>{% else %}<a class="btn btn-primary btn-cta" href="{% url 'account_signup' %}">{% icon "arrow-right" 20 %}<span>{% translate "Get started" %}</span></a>{% endif %}
-</section>
+  {% include "myola/partials/today_cheer.html" %}
+</div>
 {% endblock %}

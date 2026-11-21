@@ -1,1 +1,1 @@
-{% load ui %}{% if saved %}<p class="msg msg-success profile-saved" role="status">{% icon "circle-check" 18 %}<span>{{ saved }}</span></p>{% endif %}
+{% load ui %}{# "Saved." as the site's floating toast: in an htmx response it goes out of band into #messages (fixed at the bottom). #}{% if saved %}<div {% if request.META.HTTP_HX_REQUEST %}id="messages" hx-swap-oob="true" {% endif %}class="messages" role="status"><p class="msg msg-success">{% icon "circle-check" 18 %}<span>{{ saved }}</span></p></div>{% endif %}

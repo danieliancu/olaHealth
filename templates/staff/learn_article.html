@@ -1,0 +1,39 @@
+{% extends "staff/layout.html" %}{% load ui static %}
+{% block head %}{{ block.super }}<script type="module" src="{% static 'js/rich-editor.js' %}"></script>{% endblock %}
+{% block staff_title %}{% if article %}Edit article{% else %}New article{% endif %}{% endblock %}
+{% block staff_content %}
+<p class="back"><a href="{% url 'staff:learn' %}">{% icon "chevron-left" 18 %}<span>All articles</span></a></p>
+<div class="cms-head">
+  <h1>{% if article %}{{ article.title }}{% else %}New article{% endif %}</h1>
+  {% if article %}<a class="btn btn-outline btn-small" href="{% url 'learn-article' article.slug %}" target="_blank" rel="noopener">{% icon "arrow-right" 16 %}<span>View on site</span></a>{% endif %}
+</div>
+{% if article %}
+<section class="card cms-preview" aria-label="Search result preview">
+  <p class="cms-preview-label">Search result preview</p>
+  <p class="cms-serp-url">{{ request.get_host }} › learn › {{ article.slug }}</p>
+  <p class="cms-serp-title">{{ article.page_title }}</p>
+  <p class="cms-serp-desc">{{ article.description }}</p>
+  <p class="hint">Title {{ article.page_title|length }}/70 · Description {{ article.description|length }}/160{% if article.noindex %} · hidden from search engines{% endif %}{% if not article.published %} · not published{% endif %}</p>
+</section>
+{% endif %}
+<div id="body-html" hidden>{{ body_html }}</div>
+<form method="post" enctype="multipart/form-data" class="card staff-form cms-form" novalidate>{% csrf_token %}
+  {% if form.non_field_errors %}<div class="error-box" role="alert">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+  {% for field in form.visible_fields %}{% if field.name != "image" and field.name != "image_alt" %}{% include "staff/partials/field.html" %}{% endif %}{% endfor %}
+  <fieldset class="cms-image">
+    <legend>Image</legend>
+    {% if article and article.image_url %}<img class="cms-current" src="{{ article.image_url }}" alt="" width="240" height="180">{% endif %}
+    {% include "staff/partials/field.html" with field=form.image %}
+    {% include "staff/partials/field.html" with field=form.image_alt %}
+  </fieldset>
+  <div class="row">
+    <button class="btn btn-primary" type="submit">{% icon "check" 18 %}<span>Save article</span></button>
+  </div>
+</form>
+{% if article %}
+{% include "staff/partials/learn_products.html" with attached=lp_attached %}
+<form method="post" action="{% url 'staff:learn-delete' article.pk %}" class="cms-delete" data-confirm-tone="danger" data-confirm="Delete “{{ article.title }}”? This cannot be undone.">{% csrf_token %}
+  <button class="btn btn-link btn-danger-link" type="submit">{% icon "trash-2" 16 %}<span>Delete this article</span></button>
+</form>
+{% endif %}
+{% endblock %}

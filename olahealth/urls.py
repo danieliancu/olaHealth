@@ -1,12 +1,16 @@
 from django.contrib import admin
-from django.urls import include, path
+from django.contrib.sitemaps.views import sitemap
+from django.urls import include, path, re_path
+from django.views.generic import RedirectView
 
 from catalog import views as catalog_views
 from contributions import views as contribution_views
+from core import learn
 from core import views as core_views
+from core.sitemaps import SITEMAPS
 
-admin.site.site_header = "FoodoTrack moderation"
-admin.site.site_title = "FoodoTrack admin"
+admin.site.site_header = "AskFoodo moderation"
+admin.site.site_title = "AskFoodo admin"
 
 urlpatterns = [
     path("", catalog_views.home, name="home"),
@@ -35,10 +39,20 @@ urlpatterns = [
     path("images/off/<uuid:pk>/", catalog_views.off_image, name="off-image"),
     path("contribute/", include("contributions.urls")),
     path("accounts/", include("allauth.urls")),
+    # Old addresses (/my-ola/...) keep working: permanent redirect to /ask-foodo/...
+    re_path(
+        r"^my-ola/(?P<rest>.*)$",
+        RedirectView.as_view(url="/ask-foodo/%(rest)s", permanent=True, query_string=True),
+    ),
     path("", include("myola.urls")),
     path("api/v1/", include("catalog.api_urls")),
     path("staff/", include("staff.urls")),
     path("admin/", admin.site.urls),
+    path("sitemap.xml", sitemap, {"sitemaps": SITEMAPS}, name="sitemap"),
+    path("learn/", learn.learn_index, name="learn"),
+    path("learn/topic/<slug:key>/", learn.learn_topic, name="learn-topic"),
+    path("learn/<slug:slug>/", learn.learn_article, name="learn-article"),
+    path("learn/<slug:slug>/image/", learn.learn_image, name="learn-image"),
     path("privacy/", core_views.privacy, name="privacy"),
     path("terms/", core_views.terms, name="terms"),
     path("healthz", core_views.healthz, name="healthz"),

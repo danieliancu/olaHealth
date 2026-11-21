@@ -1,0 +1,31 @@
+{% load i18n ui %}{# Saved page: Favourites + Recently viewed; a heart re-renders this block (ui=saved), so a product changes list at once. #}
+<div id="saved-lists">
+<section aria-labelledby="fav-h" class="saved-section">
+  <h2 id="fav-h">{% translate "Favourites" %}</h2>
+  {% if favourites %}
+  <ul class="product-list">
+    {% for p in favourites %}
+    {% translate "Remove from favourites" as remove_label %}
+    {% include "partials/product_row.html" with kind="favorite" remove_label=remove_label %}
+    {% endfor %}
+  </ul>
+  {% else %}
+  {% translate "No favourites yet. Use the heart on a product page." as t %}{% translate "Search products" as act %}{% url 'products' as u %}{% include "partials/empty.html" with icon="heart" text=t url=u action=act %}
+  {% endif %}
+</section>
+
+<section aria-labelledby="hist-h" class="saved-section">
+  <h2 id="hist-h">{% translate "Recently viewed" %}</h2>
+  {% if recent %}
+  <ul class="product-list">
+    {% for p in recent %}{% include "partials/product_row.html" with kind="" add_fav=True %}{% endfor %}
+  </ul>
+  <form method="post" action="{% url 'saved-clear' 'history' %}" data-confirm="{% translate 'This removes your recently viewed products and scans.' %}"
+        data-confirm-title="{% translate 'Clear history?' %}" data-confirm-label="{% translate 'Clear' %}" data-confirm-tone="danger">
+    {% csrf_token %}<button type="submit" class="btn btn-link">{% translate "Clear history" %}</button>
+  </form>
+  {% else %}
+  <p class="empty">{% translate "No products viewed yet." %}</p>
+  {% endif %}
+</section>
+</div>

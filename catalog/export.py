@@ -25,7 +25,7 @@ LICENSE_NOTICE = {
     "images": "Each image lists its own license and attribution.",
     "attribution": (
         "Contains information from Open Food Facts (https://openfoodfacts.org), made available "
-        "under the ODbL, and corrections from FoodoTrack contributors."
+        "under the ODbL, and corrections from AskFoodo contributors."
     ),
 }
 

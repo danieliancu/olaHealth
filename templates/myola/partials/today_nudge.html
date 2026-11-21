@@ -1,0 +1,8 @@
+{% load i18n ui %}<section class="nudge" aria-labelledby="nudge-h">
+  <span class="nudge-icon">{% icon nudge.icon 20 %}</span>
+  <div class="nudge-body">
+    <h2 id="nudge-h">{{ nudge.title }}</h2>
+    <p>{{ nudge.text }}</p>
+    {% if nudge.url %}<a class="nudge-link" href="{{ nudge.url }}">{{ nudge.action }}{% icon "chevron-right" 16 %}</a>{% endif %}
+  </div>
+</section>

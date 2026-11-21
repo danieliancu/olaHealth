@@ -36,6 +36,7 @@ def _fill(user, product):
     m.Note.objects.create(user=user, text="Too sweet", product=product)
     m.Memory.objects.create(user=user, text="Likes plain yogurt")
     m.ChatMessage.objects.create(user=user, role="user", text="Is it vegan?")
+    m.Notification.objects.create(user=user, kind="reminder", key="r:1", title="Your diary is open")
 
 
 PERSONAL_MODELS = [
@@ -49,6 +50,7 @@ PERSONAL_MODELS = [
     m.Note,
     m.Memory,
     m.ChatMessage,
+    m.Notification,
 ]
 
 
@@ -86,6 +88,7 @@ def test_download_contains_only_my_data(member_client, member, off_payload):
         "notes",
         "memories",
         "chat_messages",
+        "notifications",
     ):
         assert len(data[key]) == 1, key
     assert "SECRET OF OTHER" not in r.content.decode()

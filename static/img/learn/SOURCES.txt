@@ -1,0 +1,7 @@
+Learn article photos: Unsplash, free licence (https://unsplash.com/license). Resized to 720x540 WebP.
+read-a-label.webp      https://unsplash.com/photos/woman-shops-for-produce-at-a-supermarket-eJM7swj-D4g
+hidden-sugar.webp      https://unsplash.com/photos/a-pile-of-sugar-cubes-sitting-on-top-of-each-other-TXVntZ190Ao
+nutri-score.webp       https://unsplash.com/photos/yogurt-and-milk-on-supermarket-shelves-yiRIQsa7rLI
+nova.webp              https://unsplash.com/photos/a-close-up-of-a-pile-of-corn-chips-4jUffy7Sx2w
+additives.webp         https://unsplash.com/photos/jars-of-spices-and-seasonings-neatly-arranged-on-shelves-PDBnKupmi7E
+allergens-traces.webp  https://unsplash.com/photos/pile-of-peanuts-13lLAWadKwU

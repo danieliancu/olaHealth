@@ -1,23 +1,32 @@
 {% load i18n ui %}{% url 'today' as today_url %}
-<div class="today" id="today">
+<div class="today{% if swapped %} is-swapped{% endif %}" id="today">
+  <div class="today-hero">{# desktop: photo hero around the greeting and the day picker #}
   <div class="today-head">
     <div>
-      <p class="eyebrow">{{ day_sub }}</p>
-      <h1>{{ day_title }}</h1>
+      {% if is_today %}<p class="greet">{{ greeting }}{% if first_name %}, {{ first_name }}{% endif %}</p>
+      <h1 class="sr-only">{{ day_title }}</h1>
+      <p class="eyebrow">{{ day|date:"l, F j" }}</p>{% else %}<p class="eyebrow">{{ day_sub }}</p>
+      <h1>{{ day_title }}</h1>{% endif %}
     </div>
-    <a class="btn btn-primary scan-cta" href="{{ scan_url }}">{% icon "scan-barcode" 20 %}<span>{% translate "Scan barcode" %}</span></a>
+    <a class="icon-btn head-tool head-bell" href="{% url 'notifications' %}" aria-label="{% if notif_unread %}{% blocktranslate count n=notif_unread %}Notifications: {{ n }} unread{% plural %}Notifications: {{ n }} unread{% endblocktranslate %}{% else %}{% translate 'Notifications' %}{% endif %}" title="{% translate 'Notifications' %}">{% icon "bell" 20 %}{% include "partials/notif_count.html" %}</a>
   </div>
   <div class="day-band">
     <nav class="day-strip" aria-label="{% translate 'Choose a day' %}">
-      <a class="icon-btn" href="{{ today_url }}?date={{ week.prev }}" aria-label="{% translate 'Previous week' %}">{% icon "chevron-left" 20 %}</a>
-      <ol class="days">
+      <a class="icon-btn" href="{{ today_url }}?date={{ week.prev }}" hx-get="{{ today_url }}?date={{ week.prev }}" hx-target="#today" hx-swap="outerHTML" hx-push-url="true" data-week-nav="prev" aria-label="{% translate 'Previous week' %}">{% icon "chevron-left" 20 %}</a>
+      <ol class="days two-weeks">
+        {% for d in week.earlier %}<li class="is-earlier">{% if d.future %}<span class="day is-future" aria-disabled="true" aria-label="{{ d.date|date:'l j F' }}"><span class="day-name">{{ d.date|date:"D"|slice:":1" }}</span><span class="day-num">{{ d.date|date:"j" }}</span><span class="day-dot" aria-hidden="true"></span></span>{% else %}<a class="day{% if d.selected %} is-selected{% endif %}{% if d.today %} is-today{% endif %}" href="{{ today_url }}?date={{ d.iso }}"{% if d.selected %} aria-current="date"{% endif %} aria-label="{{ d.date|date:'l j F' }}{% if d.logged %}, {% translate 'food logged' %}{% endif %}"><span class="day-name">{{ d.date|date:"D"|slice:":1" }}</span><span class="day-num">{{ d.date|date:"j" }}</span><span class="day-dot{% if d.logged %} is-on{% endif %}" aria-hidden="true"></span></a>{% endif %}</li>{% endfor %}
         {% for d in week.days %}<li>{% if d.future %}<span class="day is-future" aria-disabled="true" aria-label="{{ d.date|date:'l j F' }}"><span class="day-name">{{ d.date|date:"D"|slice:":1" }}</span><span class="day-num">{{ d.date|date:"j" }}</span><span class="day-dot" aria-hidden="true"></span></span>{% else %}<a class="day{% if d.selected %} is-selected{% endif %}{% if d.today %} is-today{% endif %}" href="{{ today_url }}?date={{ d.iso }}"{% if d.selected %} aria-current="date"{% endif %} aria-label="{{ d.date|date:'l j F' }}{% if d.logged %}, {% translate 'food logged' %}{% endif %}"><span class="day-name">{{ d.date|date:"D"|slice:":1" }}</span><span class="day-num">{{ d.date|date:"j" }}</span><span class="day-dot{% if d.logged %} is-on{% endif %}" aria-hidden="true"></span></a>{% endif %}</li>{% endfor %}
       </ol>
-      {% if week.next %}<a class="icon-btn" href="{{ today_url }}?date={{ week.next }}" aria-label="{% translate 'Next week' %}">{% icon "chevron-right" 20 %}</a>{% else %}<span class="icon-btn is-disabled" aria-disabled="true" aria-label="{% translate 'Next week' %}">{% icon "chevron-right" 20 %}</span>{% endif %}
+      {% if week.next %}<a class="icon-btn" href="{{ today_url }}?date={{ week.next }}" hx-get="{{ today_url }}?date={{ week.next }}" hx-target="#today" hx-swap="outerHTML" hx-push-url="true" data-week-nav="next" aria-label="{% translate 'Next week' %}">{% icon "chevron-right" 20 %}</a>{% else %}<span class="icon-btn is-disabled" aria-disabled="true" aria-label="{% translate 'Next week' %}">{% icon "chevron-right" 20 %}</span>{% endif %}
     </nav>
   </div>
+  </div>
 
-  {% if not profile.onboarded %}<p class="notice">{% icon "info" 18 %}<span>{% translate "Set up your goal and allergies in a minute." %} <a href="{% url 'start' %}">{% translate "Get started" %}</a></span></p>{% endif %}
+  {% if not profile.onboarded %}<p class="notice notice-setup">{% icon "info" 18 %}<span>{% translate "Set up your goal and allergies in a minute." %} <a href="{% url 'start' %}">{% translate "Get started" %}</a></span></p>{% endif %}
+
+  {% if nudge %}{% include "myola/partials/today_nudge.html" %}{% endif %}
+  {% include "myola/partials/today_meals.html" %}
+  {% include "myola/partials/today_actions.html" %}
 
   <div class="today-grid">
     {% include "myola/partials/today_summary.html" %}
@@ -25,5 +34,6 @@
     {% include "myola/partials/today_water.html" %}
     {% include "myola/partials/today_activity.html" %}
   </div>
+  {% include "myola/partials/today_cheer.html" %}
   {% if toast %}{% include "myola/partials/today_toast.html" %}{% endif %}
 </div>

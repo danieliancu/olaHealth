@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load i18n ui %}
+{% block title %}{{ topic.title }} · {% translate "Learn" %}{% endblock %}
+{% block head %}<meta name="description" content="{% blocktranslate with t=topic.title %}{{ t }}: the latest articles on AskFoodo Learn.{% endblocktranslate %}">{% endblock %}
+{% block content %}
+<div class="learn learn-topic">
+  <p class="back"><a href="{% url 'learn' %}">{% icon "chevron-left" 18 %}<span>{% translate "Learn" %}</span></a></p>
+  <div class="page-head page-head-soft">
+    <span class="soft-icon">{% icon topic.icon 20 %}</span>
+    <div>
+      <h1>{{ topic.title }}</h1>
+      <p class="page-sub">{% blocktranslate count n=articles|length %}{{ n }} article, newest first{% plural %}{{ n }} articles, newest first{% endblocktranslate %}</p>
+    </div>
+  </div>
+  <section aria-label="{{ topic.title }}">
+    <ul class="article-list stagger">
+      {% for a in articles %}<li>{% include "learn/article_card.html" with show_date=True %}</li>{% empty %}<li>{% translate "No articles in this topic yet." as t %}{% include "partials/empty.html" with icon=topic.icon text=t %}</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

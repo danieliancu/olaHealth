@@ -86,7 +86,7 @@ def test_tapping_today_wins_over_an_old_day(member_client, member, off_payload):
 @pytest.mark.django_db
 @pytest.mark.parametrize("tab", ["overview", "profile", "notes", "saved", "account"])
 def test_one_chat_dialog_on_every_my_track_tab(member_client, tab):
-    html = member_client.get(reverse("my-ola"), {"tab": tab}).content.decode()
+    html = member_client.get(reverse("ask-foodo"), {"tab": tab}).content.decode()
     assert html.count('id="chat-dialog-personal"') == 1
 
 
@@ -135,7 +135,7 @@ def test_calories_follow_one_rule(member_client, member):
     assert "Calories stay hidden everywhere" in html
     field = html.split('name="show_energy"')[1].split(">")[0]
     assert "disabled" in field
-    my = member_client.get(reverse("my-ola"), {"tab": "profile"}).content.decode()
+    my = member_client.get(reverse("ask-foodo"), {"tab": "profile"}).content.decode()
     assert "Calories hidden" in my
 
 

@@ -142,6 +142,14 @@ def test_reimport_is_idempotent(off_payload):
     assert ProductRevision.objects.filter(product=p).count() == 2
 
 
+def test_html_entities_from_off_become_real_characters(off_payload):
+    p = import_off_product(
+        off_payload(product_name="Biscuits &quot;lotus&quot; maxi pack", brands="Lotus &amp; Co")
+    )
+    assert (p.name, p.brand) == ('Biscuits "lotus" maxi pack', "Lotus & Co")
+    assert p.current_revision.data["name"] == 'Biscuits "lotus" maxi pack'
+
+
 def test_revisions_are_immutable(off_payload):
     from catalog.models import ImmutableError
 

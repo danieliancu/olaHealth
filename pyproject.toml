@@ -23,6 +23,7 @@ dependencies = [
     "drf-spectacular>=0.28",
     "drf-spectacular-sidecar>=2025.1",
     "sentry-sdk[django]>=2.20",
+    "django-unfold>=0.40",
 ]
 
 [dependency-groups]
@@ -40,10 +41,11 @@ package = false
 DJANGO_SETTINGS_MODULE = "olahealth.settings"
 python_files = ["test_*.py"]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers -m 'not ocr and not network'"
+addopts = "-ra --strict-markers -m 'not ocr and not network and not live_ai'"
 markers = [
     "ocr: end-to-end OCR tests using the real Tesseract binary (run with -m ocr)",
     "network: tests calling the real Open Food Facts API (never in the default suite)",
+    "live_ai: evaluation of Ask Foodo answers with the real AI provider (costs money; run with -m live_ai)",
 ]
 filterwarnings = ["error::RuntimeWarning", "ignore:No directory at:UserWarning"]
 

@@ -1,0 +1,39 @@
+{% load ui %}<section class="card cms-products" id="learn-products" aria-labelledby="lp-h">
+  <h2 id="lp-h">Products in this article</h2>
+  <p class="hint">Shown at the end of the article. Search our catalogue first; if a product is missing, search Open Food Facts and it is imported when you add it.</p>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  {% if attached %}
+  <ul class="cms-list">
+    {% for p in attached %}<li class="cms-row">
+      {% if p.front_image_url %}<img class="cms-thumb" src="{{ p.front_image_url }}" alt="" width="56" height="56" loading="lazy">{% else %}<span class="cms-thumb">{% icon "cuboid" 20 %}</span>{% endif %}
+      <span class="cms-text"><strong>{{ p.name|default:"Unnamed product" }}</strong><small>{{ p.brand }}{% if p.quantity %} · {{ p.quantity }}{% endif %}</small></span>
+      <form method="post" action="{% url 'staff:learn-products-remove' article.pk p.pk %}" hx-post="{% url 'staff:learn-products-remove' article.pk p.pk %}" hx-target="#learn-products" hx-swap="outerHTML">{% csrf_token %}<button class="btn btn-link btn-danger-link" type="submit">Remove</button></form>
+    </li>{% endfor %}
+  </ul>
+  {% else %}<p class="hint">No products linked yet.</p>{% endif %}
+
+  <form class="cms-product-search" method="get" action="{% url 'staff:learn-products' article.pk %}" hx-get="{% url 'staff:learn-products' article.pk %}" hx-target="#learn-products" hx-swap="outerHTML">
+    <label class="sr-only" for="lp-q">Search products</label>
+    <input id="lp-q" type="search" name="q" value="{{ q|default:'' }}" placeholder="Product name, brand or barcode" minlength="2">
+    <fieldset class="cms-source"><legend class="sr-only">Where to search</legend>
+      <label class="check small"><input type="radio" name="source" value="local"{% if source != "off" %} checked{% endif %}> <span>Our catalogue</span></label>
+      <label class="check small"><input type="radio" name="source" value="off"{% if source == "off" %} checked{% endif %}> <span>Open Food Facts</span></label>
+    </fieldset>
+    <button class="btn btn-outline btn-small" type="submit">{% icon "search" 16 %}<span>Search</span></button>
+  </form>
+
+  {% if q %}
+  {% if results %}
+  <ul class="cms-list cms-results">
+    {% for r in results %}<li class="cms-row">
+      {% if r.image %}<img class="cms-thumb" src="{{ r.image }}" alt="" width="56" height="56" loading="lazy">{% else %}<span class="cms-thumb">{% icon "cuboid" 20 %}</span>{% endif %}
+      <span class="cms-text"><strong>{{ r.name|default:"Unnamed product" }}</strong><small>{{ r.brand }}{% if r.code %} · {{ r.code }} · Open Food Facts{% endif %}</small></span>
+      <form method="post" action="{% url 'staff:learn-products-add' article.pk %}" hx-post="{% url 'staff:learn-products-add' article.pk %}" hx-target="#learn-products" hx-swap="outerHTML">{% csrf_token %}
+        {% if r.pk %}<input type="hidden" name="product" value="{{ r.pk }}">{% else %}<input type="hidden" name="code" value="{{ r.code }}">{% endif %}
+        <button class="btn btn-primary btn-small" type="submit">{% icon "plus" 16 %}<span>Add</span></button>
+      </form>
+    </li>{% endfor %}
+  </ul>
+  {% else %}<p class="hint">Nothing found{% if source != "off" %} in our catalogue; try Open Food Facts{% endif %}.</p>{% endif %}
+  {% endif %}
+</section>

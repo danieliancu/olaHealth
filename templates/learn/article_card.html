@@ -1,0 +1,8 @@
+{% load i18n ui static %}<a class="article-card" href="{% url 'learn-article' a.slug %}">
+  <img class="article-thumb" src="{{ a.image_url }}" alt="" width="88" height="88" loading="lazy" decoding="async">
+  <span class="article-text">
+    <span class="article-meta"><span class="pill">{{ a.topic_title }}</span>{% if show_date %}<time class="article-date" datetime="{{ a.published_at|date:'Y-m-d' }}">{{ a.published_at|date:"j M Y" }}</time>{% endif %}</span>
+    <strong>{{ a.title }}</strong>
+    <span class="article-foot"><span class="read-more">{% translate "Read more" %}{% icon "chevron-right" 14 %}</span><span class="read-time">{% icon "clock" 13 %}<span>{% blocktranslate with n=a.minutes %}{{ n }} min{% endblocktranslate %}</span><span class="sr-only"> {% translate "read" %}</span></span></span>
+  </span>
+</a>

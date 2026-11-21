@@ -22,7 +22,7 @@
     </div>
     <div class="row">
       <button type="submit" class="btn btn-primary">{% translate "Save note" %}</button>
-      <a class="btn btn-link" href="{% url 'my-ola' %}?tab=notes#note-{{ note.pk }}" hx-get="{% url 'note-item' note.pk %}" hx-target="#note-{{ note.pk }}" hx-swap="outerHTML">{% translate "Cancel editing" %}</a>
+      <a class="btn btn-link" href="{% url 'ask-foodo' %}?tab=notes#note-{{ note.pk }}" hx-get="{% url 'note-item' note.pk %}" hx-target="#note-{{ note.pk }}" hx-swap="outerHTML">{% translate "Cancel editing" %}</a>
     </div>
   </form>
 </li>

@@ -58,7 +58,7 @@ by this repository.
   Scan a barcode (Open Food Facts lookup), check the label, then **Add to diary** with the meal
   and the amount, with a preview before saving.
 * **Progress** (`/progress/`): 7- and 30-day trends; optional weight.
-* **My Track** (`/my-ola/`): profile and settings, scans and lists, Notes, Ask Foodo, and deleting
+* **My Track** (`/ask-foodo/`): profile and settings, scans and lists, Notes, Ask Foodo, and deleting
   your data. Search and comparison are in the header.
 * Personal data is stored in PostgreSQL per account (`myola/models.py`) and deleted with the
   account; **Download my data** exports it as JSON. Pages are server-rendered Django + htmx;
@@ -176,5 +176,5 @@ rebuild the image (`docker compose build`) so `collectstatic` includes them.
   Lucide icons (ISC, `static/vendor/lucide/LICENSE`), htmx 2.0.4 (0BSD,
   `static/vendor/htmx/LICENSE`). The Compare charts are SVG drawn on
   the server (no chart library).
-* The FoodoTrack **code** is proprietary, all rights reserved (see `LICENSE`). This is
+* The AskFoodo **code** is proprietary, all rights reserved (see `LICENSE`). This is
   independent of the data licences above.

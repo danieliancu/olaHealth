@@ -26,7 +26,7 @@ from myola import diary_target
 from myola.forms_today import ActivityForm, AddFoodForm, EntryForm, QuickAddForm, WaterForm
 from myola.models import LIMITS, ActivityEntry, DiaryEntry, Meal, WaterEntry
 from myola.preferences import ACTIVITIES, ALLERGENS, DIETS, picker_context
-from myola.services import diary
+from myola.services import diary, nudges
 from myola.services.lists import record_visit
 from myola.services.profiles import derive_prefs, get_profile, local_today, parse_day, user_tz
 
@@ -102,8 +102,19 @@ def _context(request: HttpRequest, profile, day: dt.date, **extra) -> dict:
     for a in activity:
         a.label = ACTIVITIES.get(a.kind, ACTIVITIES["other"])[0]
     scan_target = {"add": "auto", "date": day.isoformat()}
+    scan_url = f"{reverse('scan')}?{diary_target.query(scan_target)}"
     rows = diary.target_rows(day_totals, targets, show_energy)
+    now = timezone.now().astimezone(user_tz(profile))
     return {
+        "greeting": nudges.greeting(now),
+        "first_name": user.first_name,
+        "nudge": nudges.pick_nudge(
+            is_today=day == today,
+            now=now,
+            groups=groups,
+            water_ml=sum(w.ml for w in water),
+            scan_url=scan_url,
+        ),
         "profile": profile,
         "picker": picker_context(),
         "nav_active": "today",
@@ -120,7 +131,7 @@ def _context(request: HttpRequest, profile, day: dt.date, **extra) -> dict:
         "any_partial": bool(day_totals.count) and any(r["partial"] for r in rows),
         "show_energy": show_energy,
         "has_targets": any(profile.targets.values()),
-        "scan_url": f"{reverse('scan')}?{diary_target.query(scan_target)}",
+        "scan_url": scan_url,
         "water": water,
         "water_total": diary.water_display(sum(w.ml for w in water)),
         "water_form": WaterForm(today=today, initial={"date": day}),
@@ -140,6 +151,7 @@ def _render_day(request: HttpRequest, profile, day: dt.date, **extra) -> HttpRes
     """The whole page, or only the day body for htmx."""
     context = _context(request, profile, day, **extra)
     if _htmx(request):
+        context["swapped"] = True
         return render(request, "myola/partials/today_body.html", context)
     return render(request, "myola/today.html", context)
 
@@ -458,7 +470,7 @@ def add_food(request: HttpRequest, pk) -> HttpResponse:
             chosen = next((o for o in options if o["key"] == d["portion"]), None)
             portion = chosen["label"] if chosen and _amount(chosen["amount"]) == amount else ""
             try:
-                diary.add_entry(
+                added = diary.add_entry(
                     request.user,
                     date=d["date"],
                     meal=d["meal"],
@@ -479,7 +491,8 @@ def add_food(request: HttpRequest, pk) -> HttpResponse:
                 messages.success(
                     request, _("Added to %(meal)s.") % {"meal": MEAL_LABELS[d["meal"]]}
                 )
-                return redirect(_today_url(d["date"], added=d["meal"]))
+                # Land on the day with the page scrolled to the food just added.
+                return redirect(f"{_today_url(d['date'], added=d['meal'])}#entry-{added.pk}")
         amount = _amount(request.POST.get("amount"))
         portion_key = request.POST.get("portion", "")
     else:
@@ -550,12 +563,13 @@ def _day_options(today: dt.date, day: dt.date) -> list[dict]:
     out = []
     for back in range(3):
         d = today - dt.timedelta(days=back)
+        # Every chip reads like "Today / 20 Nov": a short day on top, a detail under it.
         if back == 0:
             label, sub = _("Today"), date_format(d, "j M")
         elif back == 1:
             label, sub = _("Yesterday"), date_format(d, "j M")
         else:
-            label, sub = date_format(d, "l"), date_format(d, "j M")
+            label, sub = date_format(d, "D"), date_format(d, "j M")
         out.append({"value": d.isoformat(), "label": label, "sub": sub, "checked": d == day})
     return out
 

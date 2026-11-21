@@ -83,17 +83,17 @@ def test_blocking_lists_only_unconfirmed_active_restrictions():
 def test_home_is_scan_first(client):
     html = client.get(reverse("home")).content.decode()
     assert "Get started" in html and 'href="/accounts/signup/"' in html and 'href="/scan/"' in html
-    assert 'aria-label="Example products"' in html  # the showcase is labelled as examples
+    assert "Welcome to AskFoodo" in html and 'class="quick-actions stagger"' in html
     assert "magazine" not in html.lower() and "try the demo" not in html.lower()
 
 
 @pytest.mark.django_db
-def test_navigation_has_four_entries(client):
+def test_navigation_has_five_entries(client):
     html = client.get(reverse("home")).content.decode()
     nav = html.split('<nav class="tabbar"')[1].split("</nav>")[0]
     labels = re.findall(r"<span>([^<]+)</span></a>", nav)
-    assert labels == ["Today", "Scan", "Progress", "My Track"]
-    assert 'href="/my-ola/"' in nav and 'href="/today/"' in nav
+    assert labels == ["Home", "Scan", "Ask Foodo", "Progress", "Learn"]
+    assert 'href="/learn/"' in nav and 'href="/"' in nav and 'href="/ask-foodo/chat/"' in nav
     # Search and favourites are in the header; comparison opens from the product pages.
     header = html.split('<header class="site-header">')[1].split("</header>")[0]
     assert 'href="/products/"' in header and 'href="/compare/"' not in header
@@ -102,7 +102,7 @@ def test_navigation_has_four_entries(client):
 
 @pytest.mark.django_db
 def test_my_ola_and_the_old_saved_route(member_client):
-    for name in ("my-ola", "saved", "start", "today", "progress"):
+    for name in ("ask-foodo", "saved", "start", "today", "progress"):
         assert member_client.get(reverse(name)).status_code == 200
     assert member_client.get("/demo/").status_code == 404
 
@@ -112,7 +112,7 @@ def test_only_json_data_scripts_and_no_inline_code(member_client, off_payload):
     client = member_client
     pages = [
         reverse("product", args=[import_off_product(off_payload()).pk]),
-        reverse("my-ola"),
+        reverse("ask-foodo"),
         reverse("today"),
         reverse("account_email"),
     ]
@@ -213,3 +213,10 @@ def test_diary_mode_in_scan_and_catalogue(client, off_payload):
     # Unknown values are ignored: no diary mode.
     plain = client.get(reverse("scan"), {"add": "brunch"}).content.decode()
     assert 'name="add"' not in plain
+
+
+@pytest.mark.django_db
+def test_old_my_ola_addresses_redirect(client):
+    r = client.get("/my-ola/settings/?x=1")
+    assert r.status_code == 301 and r["Location"] == "/ask-foodo/settings/?x=1"
+    assert reverse("ask-foodo") == "/ask-foodo/"

@@ -2,7 +2,7 @@
 {% load i18n ui static %}
 {% block title %}{% translate "Compare" %}{% endblock %}
 {% block content %}
-<h1>{% translate "Compare products" %}</h1>
+<div class="page-head page-head-soft"><span class="soft-icon">{% icon "git-compare-arrows" 20 %}</span><h1>{% translate "Compare products" %}</h1></div>
 {% if missing %}<p class="notice notice-warn" role="status">{% icon "info" 18 %}<span>{% blocktranslate count n=missing %}{{ n }} product is no longer available and was removed from the comparison.{% plural %}{{ n }} products are no longer available and were removed from the comparison.{% endblocktranslate %}</span></p>{% endif %}
 {% if error %}
   <section class="card">

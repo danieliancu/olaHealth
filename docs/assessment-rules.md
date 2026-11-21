@@ -1,6 +1,6 @@
 # Assessment rules
 
-FoodoTrack shows indicators published by Open Food Facts and explains their state, plus one
+AskFoodo shows indicators published by Open Food Facts and explains their state, plus one
 transparent summary, the **Foodo Score** (`score.v1`, section at the end): every deducted point
 is listed with its reason. No "safe for allergies" statements, no disease claims; Ask Foodo may
 use an AI model only to phrase facts computed here.

@@ -6,3 +6,6 @@ staticfiles/
 .pytest_cache/
 .ruff_cache/
 /data/
+
+# Local test login (never commit)
+.dev-login.txt

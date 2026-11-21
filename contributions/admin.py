@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
+from unfold.admin import ModelAdmin, TabularInline
 
 from catalog.models import ProductRevision
 from contributions.models import Contribution, ContributionImage, ModerationAudit, OCRRun
@@ -42,7 +43,7 @@ def _pretty(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, indent=1)
 
 
-class ImageInline(admin.TabularInline):
+class ImageInline(TabularInline):
     model = ContributionImage
     extra = 0
     can_delete = False
@@ -63,7 +64,7 @@ class ImageInline(admin.TabularInline):
         return False
 
 
-class AuditInline(admin.TabularInline):
+class AuditInline(TabularInline):
     model = ModerationAudit
     extra = 0
     can_delete = False
@@ -75,7 +76,7 @@ class AuditInline(admin.TabularInline):
 
 
 @admin.register(Contribution)
-class ContributionAdmin(admin.ModelAdmin):
+class ContributionAdmin(ModelAdmin):
     list_display = (
         "short_id",
         "problem_type",
@@ -227,7 +228,7 @@ class ContributionAdmin(admin.ModelAdmin):
 
 
 @admin.register(OCRRun)
-class OCRRunAdmin(admin.ModelAdmin):
+class OCRRunAdmin(ModelAdmin):
     list_display = (
         "id",
         "image",
@@ -249,7 +250,7 @@ class OCRRunAdmin(admin.ModelAdmin):
 
 
 @admin.register(ModerationAudit)
-class ModerationAuditAdmin(admin.ModelAdmin):
+class ModerationAuditAdmin(ModelAdmin):
     list_display = ("created_at", "actor", "action", "contribution", "reason")
     list_filter = ("action", ("created_at", admin.DateFieldListFilter))
     readonly_fields = [f.name for f in ModerationAudit._meta.fields]

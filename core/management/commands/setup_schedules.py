@@ -15,6 +15,10 @@ SCHEDULES = [
     ),
     ("export-catalogue", "catalog.export.write_export", Schedule.DAILY),
     ("sync-taxonomies", "catalog.tasks.sync_taxonomies", Schedule.WEEKLY),
+    ("notification-reminders", "myola.tasks.send_reminders", Schedule.HOURLY),
+    ("purge-old-notifications", "myola.tasks.purge_old_notifications", Schedule.DAILY),
+    ("notify-new-articles", "myola.tasks.notify_new_articles", Schedule.HOURLY),
+    ("purge-old-ai-answers", "ai.tasks.purge_old_ai_answers", Schedule.DAILY),
 ]
 
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -16,16 +16,21 @@ from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from django.views.decorators.http import require_http_methods, require_POST
 
+from myola import preferences as P
 from myola.forms_profile import (
+    SEX_CHOICES,
     AboutYouForm,
     ConditionsForm,
     GoalForm,
     RestrictionsForm,
     SettingsForm,
+    TargetsDetailsForm,
+    TargetsSaveForm,
     WeightForm,
 )
 from myola.models import WeightEntry
 from myola.services import progress as progress_service
+from myola.services import targets as targets_service
 from myola.services.profiles import clear_health, finish_onboarding, get_profile, local_today
 
 STEPS = 4
@@ -142,7 +147,7 @@ def _render_profile(request, profile, section=None, bound=None, saved=False) -> 
         **_profile_forms(profile, section, bound),
         "profile": profile,
         "saved": saved,
-        "nav_active": "my-ola",
+        "nav_active": "ask-foodo",
     }
     if section and is_htmx(request):
         return render(request, f"myola/partials/profile_{section}.html", context)
@@ -216,10 +221,138 @@ def settings_edit(request: HttpRequest) -> HttpResponse:
             messages.success(request, saved)
             return redirect(_safe_next(request, reverse("settings-edit")))
         form = SettingsForm(profile)
-    context = {"form": form, "profile": profile, "saved": saved, "nav_active": "my-ola"}
+    context = {"form": form, "profile": profile, "saved": saved, "nav_active": "ask-foodo"}
     if request.method == "POST" and is_htmx(request):
         return render(request, "myola/partials/profile_settings_form.html", context)
     return render(request, "myola/settings_edit.html", context)
+
+
+# ---------- Daily targets: Calculate automatically ----------
+def _targets_profile(request: HttpRequest):
+    profile = get_profile(request.user)
+    if profile.eating_disorder:
+        raise Http404  # no calorie targets at all (calories are hidden everywhere)
+    return profile
+
+
+def _asked(request: HttpRequest, profile) -> list[str]:
+    """The details this estimate asks for: what is missing, or all of them ("Change details");
+    on a POST, the list the form was built with."""
+    if request.method == "POST":
+        return [n for n in request.POST.getlist("asked") if n in targets_service.FIELDS]
+    if request.GET.get("all"):
+        return list(targets_service.FIELDS)
+    return targets_service.missing(profile)
+
+
+def _targets_render(request, profile, details, result=None, save_form=None) -> HttpResponse:
+    gender = details.gender_value()
+    context = {
+        "profile": profile,
+        "details": details,
+        "ask_sex": targets_service.needs_sex_choice(gender) and bool(gender),
+        "result": result,
+        "save_form": save_form,
+        "current": [
+            (label, value, unit)
+            for label, value, unit in (
+                (_("Energy"), profile.target_kcal, "kcal"),
+                (_("Protein"), profile.target_protein, "g"),
+                (_("Carbs"), profile.target_carbs, "g"),
+                (_("Fat"), profile.target_fat, "g"),
+            )
+            if value
+        ],
+        "nhs_url": targets_service.NHS_URL,
+        "nav_active": "ask-foodo",
+    }
+    if details.is_bound and details.is_valid():
+        v = details.values()
+        sex = details.cleaned_data.get("sex") or "between"
+        context["carry"] = [(f"d-{n}", details.cleaned_data[n]) for n in details.asked]
+        context["carry"].append(("d-sex", sex))
+        context["basis"] = ", ".join(
+            str(part)
+            for part in (
+                v["age"],
+                P.GENDERS.get(v["gender"], "")
+                if v["gender"] in ("male", "female")
+                else dict(SEX_CHOICES).get(sex, ""),
+                f"{float(v['height']):g} cm",
+                f"{float(v['weight']):g} kg",
+                P.ACTIVITY_LEVELS[v["activity_level"]][0],
+                P.GOALS[v["goal"]][0],
+            )
+            if part
+        ).lower()
+    if is_htmx(request):
+        return render(request, "myola/partials/targets_calc.html", context)
+    return render(request, "myola/targets_calc_page.html", context)
+
+
+def _estimate(details, profile):
+    v = details.values()
+    sex = v["gender"] if v["gender"] in ("male", "female") else details.cleaned_data.get("sex")
+    return targets_service.estimate(
+        age=v["age"],
+        sex=sex or "between",
+        height=v["height"],
+        weight=v["weight"],
+        activity_level=v["activity_level"],
+        goal=v["goal"],
+        conditions=profile.conditions,
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def targets_calculate(request: HttpRequest) -> HttpResponse:
+    """Step 1 asks only for the missing details; step 2 shows the four estimated targets,
+    editable. Nothing is saved here."""
+    profile = _targets_profile(request)
+    asked = _asked(request, profile)
+    data = request.POST if request.method == "POST" else None
+    details = TargetsDetailsForm(profile, asked, data)
+    if data is None and asked:
+        return _targets_render(request, profile, details)
+    if data is None:
+        details = TargetsDetailsForm(profile, [], {"d-sex": request.GET.get("sex", "between")})
+    if not details.is_valid():
+        return _targets_render(request, profile, details)
+    result = _estimate(details, profile)
+    save_form = TargetsSaveForm(
+        initial={
+            "target_kcal": result.kcal,
+            "target_protein": result.protein,
+            "target_carbs": result.carbs,
+            "target_fat": result.fat,
+        }
+    )
+    return _targets_render(request, profile, details, result, save_form)
+
+
+@login_required
+@require_POST
+def targets_save(request: HttpRequest) -> HttpResponse:
+    """Save the (possibly edited) targets, and the details typed in step 1."""
+    profile = _targets_profile(request)
+    details = TargetsDetailsForm(profile, _asked(request, profile), request.POST)
+    save_form = TargetsSaveForm(request.POST)
+    if not (details.is_valid() and save_form.is_valid()):
+        result = _estimate(details, profile) if details.is_valid() else None
+        return _targets_render(request, profile, details, result, save_form)
+    values = {name: details.cleaned_data[name] for name in details.asked}
+    values.update(save_form.cleaned_data)
+    for name, value in values.items():
+        setattr(profile, name, value)
+    profile.save(update_fields=[*values, "updated_at"])
+    messages.success(request, _("Targets saved."))
+    url = reverse("settings-edit") + "#targets"
+    if is_htmx(request):
+        response = HttpResponse(status=204)
+        response["HX-Redirect"] = url
+        return response
+    return redirect(url)
 
 
 # ---------- Progress ----------

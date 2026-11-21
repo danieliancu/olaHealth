@@ -1,0 +1,29 @@
+{% extends "staff/layout.html" %}{% load ui %}
+{% block staff_title %}AI answers{% endblock %}
+{% block staff_content %}
+<h1>AI answers</h1>
+<p class="hint">Every question Ask Foodo sent to the AI provider in the last {{ retention_days }} days, without who asked. Older entries are deleted automatically.</p>
+{% with t=totals %}
+<div class="staff-tiles">
+  <div class="staff-stat"><span class="staff-stat-label">Questions sent</span><span class="staff-stat-value">{{ t.total }}</span><span class="hint">Cost {{ t.cost|gbp }}</span></div>
+  <div class="staff-stat"><span class="staff-stat-label">Answered by the AI</span><span class="staff-stat-value">{{ t.answered }}</span><span class="hint">{{ t.routed }} handed to the rules · {{ t.failed }} failed</span></div>
+  <div class="staff-stat{% if t.blocked %} is-attention{% endif %}"><span class="staff-stat-label">Blocked by the safety check</span><span class="staff-stat-value">{{ t.blocked }}</span><span class="hint">The rule-based answer was shown instead</span></div>
+  <div class="staff-stat{% if t.down %} is-attention{% endif %}"><span class="staff-stat-label">User ratings</span><span class="staff-stat-value">{{ t.up }} / {{ t.down }}</span><span class="hint">Helpful / not helpful</span></div>
+</div>
+{% endwith %}
+<section class="card">
+  <form class="staff-filters" method="get" action="{% url 'staff:ai-answers' %}" hx-get="{% url 'staff:ai-answers' %}" hx-target="#staff-results" hx-push-url="true" hx-trigger="change, submit">
+    <div class="field"><label for="ai-kind">Chat</label>
+      <select name="kind" id="ai-kind"><option value="">All chats</option>{% for v, l in kinds %}<option value="{{ v }}"{% if v == kind %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+    </div>
+    <div class="field"><label for="ai-outcome">Outcome</label>
+      <select name="outcome" id="ai-outcome"><option value="">All outcomes</option>{% for v, l in outcomes %}<option value="{{ v }}"{% if v == outcome %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+    </div>
+    <div class="field"><label for="ai-rating">Rating</label>
+      <select name="rating" id="ai-rating"><option value="">Any rating</option><option value="up"{% if rating == "up" %} selected{% endif %}>Helpful</option><option value="down"{% if rating == "down" %} selected{% endif %}>Not helpful</option><option value="none"{% if rating == "none" %} selected{% endif %}>Not rated</option></select>
+    </div>
+    <button class="btn btn-outline btn-small" type="submit">Filter</button>
+  </form>
+  <div id="staff-results">{% include "staff/partials/ai_answer_results.html" %}</div>
+</section>
+{% endblock %}

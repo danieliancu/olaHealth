@@ -1,0 +1,48 @@
+/* API docs (Swagger UI): AskFoodo type and colours, readable code on phones.
+   The template's inline <style> is blocked by the CSP (style-src 'self'), so its rules are here too. */
+@font-face {
+  font-family: "Nunito"; font-style: normal; font-weight: 200 1000; font-display: swap;
+  src: url("../fonts/nunito-latin-wght-normal.woff2") format("woff2-variations");
+}
+html { box-sizing: border-box; overflow-y: scroll; }
+*, *::after, *::before { box-sizing: inherit; }
+body { margin: 0; background: #f9fafb; }
+.swagger-ui, .swagger-ui .info .title, .swagger-ui .opblock-tag, .swagger-ui .opblock .opblock-summary-description,
+.swagger-ui table thead tr td, .swagger-ui table thead tr th, .swagger-ui .response-col_status,
+.swagger-ui .parameter__name, .swagger-ui .tab li, .swagger-ui .btn, .swagger-ui label, .swagger-ui .info p {
+  font-family: "Nunito", "Segoe UI", system-ui, sans-serif;
+}
+.swagger-ui .wrapper { padding: 0 16px; max-width: 1040px; }
+.swagger-ui .info { margin: 32px 0 24px; }
+.swagger-ui .info .title { color: #1f2937; }
+.swagger-ui a { color: #0b7a5e; }
+.swagger-ui .opblock.opblock-get { border-color: #9fd3b9; background: #f3faf6; border-radius: 12px; }
+.swagger-ui .opblock.opblock-get .opblock-summary-method { background: #1f7a59; border-radius: 8px; }
+.swagger-ui .opblock.opblock-get .opblock-summary { border-color: #9fd3b9; }
+.swagger-ui .btn.execute { background: #1f7a59; border-color: #1f7a59; }
+
+/* Code: keep JSON lines intact; scroll sideways instead of breaking every word. */
+.swagger-ui .microlight, .swagger-ui pre, .swagger-ui .highlight-code pre, .swagger-ui .model-example pre {
+  white-space: pre !important; word-break: normal !important; overflow-wrap: normal !important;
+  overflow-x: auto; max-width: 100%; border-radius: 10px; font-size: 12px; line-height: 1.5;
+}
+.swagger-ui .highlight-code, .swagger-ui .model-example { max-width: 100%; overflow: hidden; }
+
+/* Phones: response and parameter tables stack, so the description and examples get the full width. */
+@media (max-width: 640px) {
+  .swagger-ui .wrapper { padding: 0 12px; }
+  .swagger-ui .opblock .opblock-summary { flex-wrap: wrap; }
+  .swagger-ui .opblock .opblock-summary-path { max-width: none; flex: 1 1 60%; }
+  .swagger-ui .opblock-body { padding: 0; }
+  .swagger-ui table, .swagger-ui table tbody, .swagger-ui table tr, .swagger-ui table td { display: block; width: 100%; }
+  .swagger-ui table thead { display: none; }
+  .swagger-ui table.responses-table tr.response { padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+  .swagger-ui .response-col_status { font-weight: 700; font-size: 16px; padding: 0 0 6px !important; }
+  .swagger-ui .response-col_description, .swagger-ui .response-col_links { padding: 0 !important; }
+  .swagger-ui .response-col_links { color: #6b7280; font-size: 12px; margin-top: 6px; }
+  .swagger-ui table.parameters td.parameters-col_name { padding: 8px 0 0 !important; }
+  .swagger-ui table.parameters td.parameters-col_description { padding: 4px 0 12px !important; }
+  .swagger-ui .parameters-col_description input, .swagger-ui .parameters-col_description select { width: 100%; max-width: none; }
+  .swagger-ui .response-control-media-type select, .swagger-ui select { max-width: 100%; }
+  .swagger-ui .tab { flex-wrap: wrap; }
+}

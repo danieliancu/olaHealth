@@ -1,15 +1,27 @@
-{% load i18n ui %}{# A product in a saved list; `kind` is the mark removed by the button (none: no button). #}
+{% load i18n ui %}{# A product in a saved list. kind: the mark the button removes; add_fav: outline heart that adds to favourites. #}
 <li class="product-card">
   {% if p.front_image_url %}<img class="thumb" src="{{ p.front_image_url|img }}" alt="" width="64" height="64" loading="lazy">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="64" height="64">{% endif %}
   <div class="grow">
     <a class="product-link" href="{% url 'product' p.pk %}">{{ p.name|default:_("Unnamed product") }}</a>
     <p class="meta">{{ p.brand }}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</p>
   </div>
-  {% if kind %}
+  {% if kind == "favorite" %}
+  <form method="post" action="{% url 'product-mark' p.pk kind %}" hx-post="{% url 'product-mark' p.pk kind %}" hx-target="#saved-lists" hx-swap="outerHTML" hx-disabled-elt="find button">
+    {% csrf_token %}<input type="hidden" name="ui" value="saved"><input type="hidden" name="next" value="{% url 'saved' %}">
+    <button type="submit" class="icon-btn filled" title="{{ remove_label }}"
+            aria-label="{{ remove_label }}: {{ p.name|default:_('product') }}">{% icon "heart-fill" 22 %}</button>
+  </form>
+  {% elif kind %}
   <form method="post" action="{% url 'product-mark' p.pk kind %}" hx-post="{% url 'product-mark' p.pk kind %}" hx-target="closest li" hx-swap="delete" hx-disabled-elt="find button">
     {% csrf_token %}<input type="hidden" name="ui" value="row"><input type="hidden" name="next" value="{% url 'saved' %}">
-    <button type="submit" class="icon-btn{% if kind == 'favorite' %} filled{% endif %}" title="{{ remove_label }}"
-            aria-label="{{ remove_label }}: {{ p.name|default:_('product') }}">{% if kind == "favorite" %}{% icon "heart" 22 %}{% else %}{% icon "undo-2" 22 %}{% endif %}</button>
+    <button type="submit" class="icon-btn" title="{{ remove_label }}"
+            aria-label="{{ remove_label }}: {{ p.name|default:_('product') }}">{% icon "undo-2" 22 %}</button>
+  </form>
+  {% elif add_fav %}
+  <form method="post" action="{% url 'product-mark' p.pk 'favorite' %}" hx-post="{% url 'product-mark' p.pk 'favorite' %}" hx-target="#saved-lists" hx-swap="outerHTML" hx-disabled-elt="find button">
+    {% csrf_token %}<input type="hidden" name="ui" value="saved"><input type="hidden" name="next" value="{% url 'saved' %}">
+    <button type="submit" class="icon-btn" title="{% translate 'Add to favourites' %}"
+            aria-label="{% translate 'Add to favourites' %}: {{ p.name|default:_('product') }}">{% icon "heart" 22 %}</button>
   </form>
   {% endif %}
 </li>

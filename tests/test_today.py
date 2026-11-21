@@ -145,7 +145,7 @@ def test_today_page_renders_the_day(member_client, member):
     r = member_client.get(reverse("today"))
     html = r.content.decode()
     assert r.status_code == 200
-    assert "<h1>Today</h1>" in html
+    assert ">Today</h1>" in html
     assert "Yogurt" in html and "Mystery bar" in html
     assert "194</strong>" not in html  # values are formatted with a unit
     assert "194<small> kcal</small>" in html  # 200 g × 97 kcal
@@ -173,9 +173,9 @@ def test_today_with_a_past_date_and_a_future_one(member_client, member):
     assert "<h1>Yesterday</h1>" in html and "Old soup" in html
     future = (today + dt.timedelta(days=3)).isoformat()
     html = member_client.get(reverse("today"), {"date": future}).content.decode()
-    assert "<h1>Today</h1>" in html and "Old soup" not in html
+    assert ">Today</h1>" in html and "Old soup" not in html
     html = member_client.get(reverse("today"), {"date": "nonsense"}).content.decode()
-    assert "<h1>Today</h1>" in html
+    assert ">Today</h1>" in html
 
 
 @pytest.mark.django_db
@@ -200,20 +200,20 @@ def test_targets_show_a_meter_unless_switched_off(member_client, member):
     profile.onboarded = True
     profile.save()
     html = member_client.get(reverse("today")).content.decode()
-    assert 'class="meter"' in html and 'width="9"' in html  # 194 of 2000 kcal
+    assert 'class="meter level-low"' in html and 'width="9"' in html  # 194 of 2000 kcal
     assert "of 2000 kcal" in html
     assert "Set up your goal" not in html
     profile.show_targets = False
     profile.save()
     html = member_client.get(reverse("today")).content.decode()
-    assert 'class="meter"' not in html
+    assert 'class="meter' not in html
 
 
 @pytest.mark.django_db
 def test_htmx_gets_only_the_day_body(member_client):
     r = member_client.get(reverse("today"), **HX)
     html = r.content.decode()
-    assert html.lstrip().startswith('<div class="today" id="today">')
+    assert html.lstrip().startswith('<div class="today is-swapped" id="today">')
     assert "<html" not in html
 
 
@@ -252,7 +252,7 @@ def test_quick_add_errors_reopen_the_form(member_client, member):
     )
     html = r.content.decode()
     assert r.status_code == 200 and not DiaryEntry.objects.exists()
-    assert '<details class="quick-add" open>' in html and "field-error" in html
+    assert '<details class="quick-add" id="quick-lunch" open>' in html and "field-error" in html
 
 
 @pytest.mark.django_db
@@ -464,8 +464,9 @@ def test_add_food_saves_a_snapshot_and_the_scan(member_client, member, off_paylo
         },
     )
     assert r.status_code == 302
-    assert r["Location"] == f"{reverse('today')}?date={day}&added=lunch"
     e = DiaryEntry.objects.get(user=member)
+    # Back on the day, scrolled to the food just added.
+    assert r["Location"] == f"{reverse('today')}?date={day}&added=lunch#entry-{e.pk}"
     assert (e.product_id, e.meal, e.unit, e.basis_known) == (p.pk, "lunch", "g", True)
     assert e.kcal_100 == Decimal("97") and e.fat_100 == Decimal("5")
     assert e.portion == "1 serving (125 g)" and e.name == "Greek style yogurt"
@@ -576,3 +577,16 @@ def test_edit_entry_day_is_a_button_with_the_calendar(member_client, member):
     )
     e.refresh_from_db()
     assert e.date == earlier and e.meal == "dinner"
+
+
+@pytest.mark.django_db
+def test_delete_from_the_edit_form_sends_one_request(member_client, member):
+    """The Delete button only changes the form's action: a second htmx request on the button
+    itself used to delete twice, and the second one answered 404 ("an error")."""
+    e = make_entry(member)
+    html = member_client.get(reverse("today-entry", args=[e.pk]), **HX).content.decode()
+    delete_url = reverse("today-entry-delete", args=[e.pk])
+    assert f'formaction="{delete_url}"' in html
+    assert f'hx-post="{delete_url}"' not in html
+    r = member_client.post(delete_url, **HX)
+    assert r.status_code == 200 and not DiaryEntry.objects.filter(pk=e.pk).exists()

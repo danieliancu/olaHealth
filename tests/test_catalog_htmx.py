@@ -211,12 +211,35 @@ def test_saved_page_lists_favourites_recent_and_hidden(member_client, member, pr
     hist = html.split('id="hist-h"')[1].split('id="hidden-h"')[0]
     hidden = html.split('id="hidden-h"')[1]
     assert "Greek style yogurt" in fav and "Oat biscuits" in hist and "Rice cakes" in hidden
-    assert mark_url(a, "favorite") in fav and 'hx-swap="delete"' in fav
+    assert mark_url(a, "favorite") in fav and 'hx-target="#saved-lists"' in fav
+    # A product in Recently viewed has an outline heart that adds it to favourites.
+    assert mark_url(b, "favorite") in hist and "Add to favourites" in hist
     r = member_client.post(reverse("saved-clear", args=["history"]))
     assert r.status_code == 302 and not ProductVisit.objects.filter(user=member).exists()
     # Removing a favourite from the list (htmx) deletes the row.
     r = member_client.post(mark_url(a, "favorite"), {"ui": "row"}, **HX)
     assert r.status_code == 200 and not ProductMark.objects.filter(kind="favorite").exists()
+
+
+def test_saved_page_heart_moves_a_recent_product_up_to_favourites(member_client, member, products):
+    a = products[0]
+    member_client.get(reverse("product", args=[a.pk]))
+    hist = member_client.get(reverse("saved")).content.decode().split('id="hist-h"')[1]
+    assert "Greek style yogurt" in hist
+    r = member_client.post(mark_url(a, "favorite"), {"ui": "saved"}, **HX)
+    html = r.content.decode()
+    assert r.status_code == 200
+    fav, hist = html.split('id="fav-h"')[1].split('id="hist-h"')
+    assert (
+        'id="saved-lists"' in html
+        and "Greek style yogurt" in fav
+        and "Greek style yogurt" not in hist
+    )
+    assert ProductMark.objects.filter(user=member, product=a, kind="favorite").exists()
+    # Un-favouriting sends it back to Recently viewed.
+    html = member_client.post(mark_url(a, "favorite"), {"ui": "saved"}, **HX).content.decode()
+    fav, hist = html.split('id="fav-h"')[1].split('id="hist-h"')
+    assert "Greek style yogurt" not in fav and "Greek style yogurt" in hist
 
 
 def test_saved_page_asks_visitors_to_sign_in(client):
@@ -234,9 +257,9 @@ def test_for_you_uses_the_signed_in_profile(member_client, member, off_payload):
     assert 'class="rs rs-incompatible"><strong>Vegan: Not compatible. </strong>' in card
     assert "Peanuts:" in card
     assert "Checked for: Vegan, 1 allergy." in card
-    assert 'href="/my-ola/profile/#restrictions"' in card
+    assert 'href="/ask-foodo/profile/#restrictions"' in card
     assert "Never a guarantee" in card
-    assert 'hx-get="/my-ola/chat/' in html or "chat" in card  # Ask Foodo panel included
+    assert 'hx-get="/ask-foodo/chat/' in html or "chat" in card  # Ask Foodo panel included
 
 
 def test_for_you_without_preferences_and_for_visitors(member_client, product):
@@ -302,10 +325,10 @@ def test_lookup_accepts_camera_format_names(client, product):
         assert r.status_code == 302, fmt
 
 
-def test_home_carousel_is_css_only(client):
+def test_home_is_static_html(client):
     html = client.get(reverse("home")).content.decode()
-    assert 'aria-label="Example products"' in html and 'id="example-3"' in html
-    assert 'href="#example-2"' in html and "home.js" not in html
+    assert 'class="meal-tiles try-tiles stagger"' in html and 'href="/learn/"' in html
+    assert "home.js" not in html and 'style="' not in html
 
 
 def test_no_inline_scripts_styles_or_removed_js(member_client, products):

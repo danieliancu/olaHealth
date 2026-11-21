@@ -1,7 +1,7 @@
 {% load i18n ui %}{# Card actions behind a discreet arrow (<details>): Save, Compare, Remove from my list. #}
 {% with name=p.name|default:_("product") next=next_url|default:request.get_full_path %}
 <details class="card-actions" id="actions-{{ p.pk }}"{% if open %} open{% endif %}>
-  <summary class="btn btn-icon actions-toggle" title="{% translate 'Actions' %}"><span class="sr-only">{% blocktranslate with n=name %}Actions for {{ n }}{% endblocktranslate %}</span>{% icon "chevron-left" 20 %}</summary>
+  <summary class="btn btn-icon actions-toggle" title="{% translate 'Actions' %}"><span class="sr-only">{% blocktranslate with n=name %}Actions for {{ n }}{% endblocktranslate %}</span>{% icon "chevron-right" 20 %}</summary>
   <div class="card-actions-panel">
     {% if user.is_authenticated %}
     <form method="post" action="{% url 'product-mark' p.pk 'favorite' %}" hx-post="{% url 'product-mark' p.pk 'favorite' %}" hx-target="#actions-{{ p.pk }}" hx-swap="outerHTML" hx-disabled-elt="find button">

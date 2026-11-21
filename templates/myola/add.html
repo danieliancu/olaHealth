@@ -39,7 +39,7 @@
           {% for o in day_options %}
           <label><input type="radio" name="date" value="{{ o.value }}"{% if o.checked %} checked{% endif %}><span><strong>{{ o.label }}</strong><small>{{ o.sub }}</small></span></label>
           {% endfor %}
-          <label><input type="radio" name="date" value="other"{% if day_is_other %} checked{% endif %}><span>{% icon "calendar-days" 18 %}<small>{% translate "Other day" %}</small></span></label>
+          <label><input type="radio" name="date" value="other" aria-label="{% translate 'Other day' %}"{% if day_is_other %} checked{% endif %}><span><strong class="day-chip-icon">{% icon "calendar-days" 18 %}</strong><small>{% translate "Other" %}</small></span></label>
         </div>
         <div class="day-other">
           {% day_calendar day check=day_is_other %}

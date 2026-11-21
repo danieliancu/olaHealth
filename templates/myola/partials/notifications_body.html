@@ -1,0 +1,29 @@
+{% load i18n ui %}<div class="notifs" id="notifs">
+  <div class="page-head page-head-soft">
+    <span class="soft-icon">{% icon "bell" 20 %}</span>
+    <h1>{% translate "Notifications" %}</h1>
+    {% if has_unread %}<form class="notifs-read-all" method="post" action="{% url 'notifications-read-all' %}" hx-post="{% url 'notifications-read-all' %}" hx-target="#notifs" hx-swap="outerHTML">{% csrf_token %}<button type="submit" class="btn btn-link">{% translate "Mark all as read" %}</button></form>{% endif %}
+  </div>
+  {% if oob %}{% include "partials/notif_count.html" with oob=True %}{% endif %}
+  {% for key, items in groups %}
+  <section class="notif-group" aria-labelledby="notif-{{ key }}">
+    <h2 class="dash-title dash-title-sm" id="notif-{{ key }}">{% if key == "today" %}{% translate "Today" %}{% else %}{% translate "Earlier" %}{% endif %}</h2>
+    <ul class="notif-list card">
+      {% for n in items %}<li>
+        <a class="notif{% if not n.read_at %} is-unread{% endif %}" href="{% if n.url %}{{ n.url }}{% else %}{% url 'notification-open' n.pk %}{% endif %}"{% if not n.read_at %} data-notif-read="{% url 'notification-read' n.pk %}"{% endif %}>
+          <span class="soft-icon tone-{{ n.tone }}">{% icon n.icon|default:"bell" 18 %}</span>
+          <span class="notif-text">
+            <strong>{{ n.title }}</strong>
+            {% if n.body %}<span class="notif-body">{{ n.body }}</span>{% endif %}
+            <small>{% blocktranslate with t=n.created_at|timesince %}{{ t }} ago{% endblocktranslate %}</small>
+          </span>
+          {% if not n.read_at %}<span class="notif-dot"><span class="sr-only">{% translate "Unread" %}</span></span>{% endif %}
+        </a>
+      </li>{% endfor %}
+    </ul>
+  </section>
+  {% empty %}
+  {% translate "No notifications yet. Reminders, achievements and news will appear here." as t %}{% include "partials/empty.html" with icon="bell" text=t %}
+  {% endfor %}
+  <p class="notifs-settings"><a href="{% url 'settings-edit' %}#notifications">{% icon "settings" 16 %}<span>{% translate "Notification settings" %}</span></a></p>
+</div>

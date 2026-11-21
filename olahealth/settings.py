@@ -36,6 +36,9 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "")
 
 INSTALLED_APPS = [
+    # Admin theme (must come before django.contrib.admin).
+    "unfold",
+    "unfold.contrib.filters",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -44,6 +47,7 @@ INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",  # dev: WhiteNoise serves static with max-age=0
     "django.contrib.staticfiles",
     "django.contrib.postgres",
+    "django.contrib.sitemaps",
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",
@@ -147,7 +151,7 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 ACCOUNT_SESSION_REMEMBER = True
 ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE = False
-ACCOUNT_EMAIL_SUBJECT_PREFIX = "FoodoTrack · "
+ACCOUNT_EMAIL_SUBJECT_PREFIX = "AskFoodo · "
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http" if DEBUG else "https"
 # allauth's own limits (kept in the cache): login failures, signups, resets, emails.
 ACCOUNT_RATE_LIMITS = {
@@ -173,7 +177,7 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", False)
 EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", 10)
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "FoodoTrack <no-reply@localhost>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "AskFoodo <no-reply@localhost>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 LANGUAGE_CODE = "en"
@@ -208,7 +212,9 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
 UPLOAD_MAX_BYTES = env_int("UPLOAD_MAX_BYTES", 10 * 1024 * 1024)
 UPLOAD_MAX_PIXELS = env_int("UPLOAD_MAX_PIXELS", 40_000_000)
 UPLOAD_MIN_SIDE = env_int("UPLOAD_MIN_SIDE", 200)
-UPLOAD_STORED_MAX_SIDE = env_int("UPLOAD_STORED_MAX_SIDE", 3000)
+# Label photos are kept at the size text recognition reads (OCR_MAX_SIDE),
+# so small print stays legible.
+UPLOAD_STORED_MAX_SIDE = env_int("UPLOAD_STORED_MAX_SIDE", 2000)
 UPLOADS_PER_CONTRIBUTION = env_int("UPLOADS_PER_CONTRIBUTION", 6)
 
 # Open Food Facts ---------------------------------------------------------------
@@ -290,7 +296,7 @@ REST_FRAMEWORK = {
 
 # OpenAPI schema at /api/v1/schema/, Swagger UI at /api/v1/docs/ (assets served locally) ---
 SPECTACULAR_SETTINGS = {
-    "TITLE": "FoodoTrack API",
+    "TITLE": "AskFoodo API",
     "DESCRIPTION": (
         "Read-only catalogue API: barcode lookup, product search and details, comparison and "
         "suggestions. Product data from Open Food Facts (ODbL) plus moderated corrections."
@@ -349,7 +355,36 @@ if SENTRY_DSN and not env_bool("TESTING", False):
         env("SENTRY_RELEASE", ""),
     )
 
-SITE_NAME = "FoodoTrack"
+SITE_NAME = "AskFoodo"
 # Shown on /privacy/ and /terms/: set before launch.
-LEGAL_CONTROLLER = env("LEGAL_CONTROLLER", "the FoodoTrack operator (name to be completed)")
+LEGAL_CONTROLLER = env("LEGAL_CONTROLLER", "the AskFoodo operator (name to be completed)")
 LEGAL_CONTACT = env("LEGAL_CONTACT", "privacy@example.com")
+
+
+# Admin theme (django-unfold): AskFoodo greens, logo and a short sidebar.
+UNFOLD = {
+    "SITE_TITLE": "AskFoodo admin",
+    "SITE_HEADER": "AskFoodo",
+    "SITE_SUBHEADER": "Moderation and catalogue",
+    "SITE_URL": "/",
+    "SITE_SYMBOL": "nutrition",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "BORDER_RADIUS": "10px",
+    "COLORS": {
+        "primary": {
+            "50": "#f3faf6",
+            "100": "#e7f5ee",
+            "200": "#cfe9db",
+            "300": "#9fd3b9",
+            "400": "#4fae86",
+            "500": "#288563",
+            "600": "#1f7a59",
+            "700": "#17654a",
+            "800": "#0f4c37",
+            "900": "#0a3727",
+            "950": "#062418",
+        },
+    },
+    "SIDEBAR": {"show_search": True, "show_all_applications": True},
+}

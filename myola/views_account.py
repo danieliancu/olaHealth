@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import json
 
+from django import forms
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django.views.decorators.http import require_GET
 
 from core.coordination import rate_limited
@@ -77,6 +83,10 @@ def export_data(user) -> dict:
         "chat_messages": _rows(
             m.ChatMessage.objects.filter(user=user), ["context", "role", "text", "created_at"]
         ),
+        "notifications": _rows(
+            m.Notification.objects.filter(user=user),
+            ["kind", "title", "body", "url", "created_at", "read_at"],
+        ),
     }
     try:
         from ai.models import AIUsage
@@ -99,3 +109,26 @@ def download_my_data(request: HttpRequest) -> HttpResponse:
     response["Content-Disposition"] = f'attachment; filename="foodotrack-data-{stamp}.json"'
     response["Cache-Control"] = "no-store"
     return response
+
+
+class NameForm(forms.Form):
+    first_name = forms.CharField(
+        label=gettext_lazy("Your name"),
+        max_length=30,
+        required=False,
+        help_text=gettext_lazy("Used only to greet you, for example “Good afternoon, Ana”."),
+        widget=forms.TextInput(attrs={"autocomplete": "given-name", "maxlength": 30}),
+    )
+
+
+@login_required
+@rate_limited("personal_write")
+def account_name(request: HttpRequest) -> HttpResponse:
+    """The name Foodo greets you with (optional; empty removes it)."""
+    form = NameForm(request.POST or None, initial={"first_name": request.user.first_name})
+    if request.method == "POST" and form.is_valid():
+        request.user.first_name = " ".join(form.cleaned_data["first_name"].split())
+        request.user.save(update_fields=["first_name"])
+        messages.success(request, _("Name saved."))
+        return redirect(f"{reverse('ask-foodo')}?tab=account")
+    return render(request, "myola/account_name.html", {"form": form, "nav_active": "ask-foodo"})

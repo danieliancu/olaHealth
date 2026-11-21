@@ -2,53 +2,58 @@
 <html lang="{{ LANGUAGE_CODE|default:'en' }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#0b7a5e">
   <title>{% block title %}{{ SITE_NAME }}{% endblock %} · {{ SITE_NAME }}</title>
-  <meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"historyCacheSize":0,"selfRequestsOnly":true}'>
+  <meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"historyCacheSize":0,"selfRequestsOnly":true,"attributesToSettle":["class","width","height"]}'>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <link rel="stylesheet" href="{% static 'css/today.css' %}">
   <link rel="stylesheet" href="{% static 'css/profile.css' %}">
   <link rel="stylesheet" href="{% static 'css/mytrack.css' %}">
   <link rel="stylesheet" href="{% static 'css/catalog.css' %}">
+  <link rel="stylesheet" href="{% static 'css/soft.css' %}">
+  <link rel="preload" href="{% static 'fonts/nunito-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
   <script type="module" src="{% static 'js/chat.js' %}"></script>
   <link rel="icon" href="{% static 'img/icon.svg' %}" type="image/svg+xml">
   <script type="module" src="{% static 'js/dialog.js' %}"></script>
+  <script type="module" src="{% static 'js/tips.js' %}"></script>
+  <script type="module" src="{% static 'js/reveal.js' %}"></script>
+  <script type="module" src="{% static 'js/week-nav.js' %}"></script>
+  <script type="module" src="{% static 'js/keep-place.js' %}"></script>
   {% block head %}{% endblock %}
 </head>
-<body data-placeholder="{% asset 'img/placeholder' %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+<body class="{% block body_class %}{% endblock %}" data-placeholder="{% asset 'img/placeholder' %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
   <a class="skip-link" href="#main">{% translate "Skip to content" %}</a>
   <div class="shell">
     <header class="site-header">
-      <a class="brand" href="{% url 'home' %}"><span class="brand-ola">Foodo</span><span class="brand-health">Track</span></a>
+      {% include "partials/brand_logo.html" %}
       <div class="header-tools">
         <a class="icon-btn" href="{% url 'products' %}" aria-label="{% translate 'Search products' %}" title="{% translate 'Search products' %}">{% icon "search" 22 %}</a>
         <a class="icon-btn header-count" href="{% url 'saved' %}" aria-label="{% translate 'Favourites' %}" title="{% translate 'Favourites' %}">{% icon "heart" 22 %}{% include "partials/saved_count.html" %}</a>
         {% if user.is_staff %}<a class="icon-btn" href="{% url 'staff:dashboard' %}" aria-label="{% translate 'Staff panel' %}" title="{% translate 'Staff panel' %}">{% icon "settings" 22 %}</a>{% endif %}
-        <a class="icon-btn header-account" href="{% if user.is_authenticated %}{% url 'my-ola' %}?tab=account{% else %}{% url 'account_login' %}{% endif %}" aria-label="{% if user.is_authenticated %}{% translate 'Account (signed in)' %}{% else %}{% translate 'Sign in' %}{% endif %}" title="{% if user.is_authenticated %}{% translate 'Signed in' %}{% else %}{% translate 'Sign in' %}{% endif %}">{% if user.is_authenticated %}{% icon "lock" 22 "signed-in" %}{% else %}{% icon "user-round" 22 %}{% endif %}</a>
+        <a class="icon-btn header-account" href="{% if user.is_authenticated %}{% url 'ask-foodo' %}{% else %}{% url 'account_login' %}{% endif %}" aria-label="{% if user.is_authenticated %}{% translate 'Account (signed in)' %}{% else %}{% translate 'Sign in' %}{% endif %}" title="{% if user.is_authenticated %}{% translate 'Signed in' %}{% else %}{% translate 'Sign in' %}{% endif %}">{% if user.is_authenticated %}<span class="avatar-initial" aria-hidden="true">{{ user.first_name|default:user.email|first|upper }}</span>{% else %}{% icon "user-round" 22 %}{% endif %}</a>
       </div>
     </header>
     <main id="main" tabindex="-1">
       {% if MAINTENANCE_MESSAGE %}<p class="notice notice-warn" role="status">{% icon "info" 18 %}<span>{{ MAINTENANCE_MESSAGE }}</span></p>{% endif %}
       {% include "partials/messages.html" %}
       {% block content %}{% endblock %}
-      <footer class="site-footer">
-        <p>{% blocktranslate %}Product data and photos from <a href="https://world.openfoodfacts.org" rel="noopener">Open Food Facts</a> contributors (Open Database License; photos CC BY-SA), plus moderated corrections from FoodoTrack contributors.{% endblocktranslate %}</p>
-        <p><a href="{% url 'sources' %}">{% translate "Sources & methodology" %}</a> · <a href="{% url 'privacy' %}">{% translate "Privacy" %}</a> · <a href="{% url 'terms' %}">{% translate "Terms" %}</a> · <a href="{% url 'api-docs' %}">{% translate "API" %}</a> · {% translate "Information, not medical advice." %}</p>
-      </footer>
     </main>
-    {% url 'home' as home_url %}{% url 'scan' as scan_url %}{% url 'today' as today_url %}{% url 'progress' as progress_url %}{% url 'saved' as saved_url %}{% url 'my-ola' as myola_url %}
+    {% include "partials/site_footer.html" %}
+    {% url 'home' as home_url %}{% url 'scan' as scan_url %}{% url 'today' as today_url %}{% url 'progress' as progress_url %}{% url 'saved' as saved_url %}{% url 'ask-foodo' as askfoodo_url %}{% url 'chat' as chat_url %}{% url 'learn' as learn_url %}
     {% with p=request.path %}
     <nav class="tabbar" aria-label="{% translate 'Main' %}">
-      <a href="{{ today_url }}" {% if p == today_url or nav_active == "today" %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "calendar-days" 22 %}</span><span>{% translate "Today" %}</span></a>
+      <a href="{{ home_url }}" {% if p == home_url or p == today_url or nav_active == "today" %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "house" 22 %}</span><span>{% translate "Home" %}</span></a>
       <a href="{{ scan_url }}" {% if p == scan_url or nav_active == "scan" %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "scan-barcode" 22 %}</span><span>{% translate "Scan" %}</span></a>
+      <a href="{{ chat_url }}" {% if p == chat_url or nav_active == "assistant" %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "message-circle" 22 %}</span><span>{% translate "Ask Foodo" %}</span></a>
       <a href="{{ progress_url }}" {% if p == progress_url or nav_active == "progress" %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "chart-line" 22 %}</span><span>{% translate "Progress" %}</span></a>
-      <a href="{{ myola_url }}" {% if p == myola_url or p == saved_url or nav_active == "my-ola" %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "user-round" 22 %}</span><span>{% translate "My Track" %}</span></a>
+      <a href="{{ learn_url }}" {% if p == learn_url or nav_active == "learn" %}aria-current="page"{% endif %}><span class="tab-icon">{% icon "book-open" 22 %}</span><span>{% translate "Learn" %}</span></a>
     </nav>
     {% endwith %}
   </div>
+  {% include "partials/compare_bar.html" %}
   {% include "partials/dialog.html" %}
 </body>
 </html>

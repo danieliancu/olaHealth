@@ -8,7 +8,7 @@
    A soft moving background behind photos; the loaded image covers it. It stops after a few
    rounds so transparent images do not shimmer forever. */
 img.product-photo, img.thumb, .gallery img, .compare-head img, .suggest-thumb {
-  background: linear-gradient(90deg, #eef4f2 25%, #f8fbfa 50%, #eef4f2 75%);
+  background: linear-gradient(90deg, #f3f4f6 25%, #f8fbfa 50%, #f3f4f6 75%);
   background-size: 200% 100%; animation: shimmer 1.4s ease-in-out 5;
 }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
@@ -73,8 +73,8 @@ img.product-photo, img.thumb, .gallery img, .compare-head img, .suggest-thumb {
 
 /* ---------- Compare: server-drawn horizontal bars (SVG) ---------- */
 .hbars { display: block; height: auto; overflow: visible; }
-.hbar-label { font-size: 12px; fill: #4f625c; }
-.hbar-value { font-size: 12px; font-weight: 600; fill: #14211d; }
+.hbar-label { font-size: 12px; fill: #6b7280; }
+.hbar-value { font-size: 12px; font-weight: 600; fill: #1f2937; }
 .hbar-value.is-missing { fill: #7b8a85; font-weight: 400; }
 .hbar-axis { stroke: #c3cdc9; stroke-width: 1; }
 .hbar-s0 { fill: #2a78d6; }
@@ -83,7 +83,7 @@ img.product-photo, img.thumb, .gallery img, .compare-head img, .suggest-thumb {
 .compare-remove-form { margin: 0; }
 table.compare .compare-head button.compare-remove {
   position: absolute; top: .45rem; right: .45rem; margin: 0; padding: 0; width: 30px; height: 30px; display: grid; place-items: center;
-  border-radius: 50%; background: #fff; border: 1.5px solid #c3d3ce; color: var(--text); box-shadow: 0 1px 3px rgba(20, 33, 29, .12); cursor: pointer;
+  border-radius: 50%; background: #fff; border: 1.5px solid #d1d5db; color: var(--text); box-shadow: 0 1px 3px rgba(17, 24, 39, .12); cursor: pointer;
 }
 table.compare .compare-head button.compare-remove:hover { background: #fde3df; border-color: #f1b8b2; color: #9a1c12; }
 
@@ -120,7 +120,7 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 .diary-preview-card .dp-text > * { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .showcase-dots { display: flex; justify-content: center; gap: .25rem; margin-top: .6rem; }
 .showcase-dots a { width: 28px; height: 28px; display: grid; place-items: center; }
-.showcase-dots a::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: #c9d8d3; transition: width .3s, background .3s; }
+.showcase-dots a::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: #d1d5db; transition: width .3s, background .3s; }
 .showcase-dots a:hover::before { background: var(--accent); }
 /* The dot of the chosen slide (the first one until a dot is used). */
 .home-visual:has(#example-1:target) a[href="#example-1"]::before,
@@ -136,7 +136,7 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 @media (prefers-reduced-motion: reduce) { .showcase-track { scroll-behavior: auto; } }
 
 /* For you: the preference line directly under the title needs no separator. */
-.ola-card h2 + .ola-prefs-line { border-top: 0; padding-top: 0; margin-top: 0; }
+.foryou-card h2 + .foryou-prefs-line { border-top: 0; padding-top: 0; margin-top: 0; }
 
 /* Foodo Score and alternatives */
 .foodo-score .score-value { display: flex; align-items: baseline; gap: .25rem; margin: .25rem 0 .5rem; }
@@ -157,7 +157,7 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
   background: var(--surface); color: inherit; text-decoration: none; overflow: hidden;
 }
 .alt-card a:hover { border-color: var(--accent); }
-.alt-img { display: grid; place-items: center; aspect-ratio: 1; background: #f6f8f7; }
+.alt-img { display: grid; place-items: center; aspect-ratio: 1; background: #f7f8fa; }
 .alt-img img { width: 100%; height: 100%; object-fit: contain; padding: .5rem; }
 .alt-name {
   padding: .5rem .6rem 0; font-weight: 600; font-size: .88rem; line-height: 1.25;
@@ -168,7 +168,7 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 .alt-score { flex: none; display: grid; place-items: center; min-width: 34px; height: 26px; padding: 0 .4rem; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 700; font-size: .8rem; }
 
 /* Product page: a bit of room above "Ask Foodo about this product" */
-.ola-card .btn-ask { margin-top: 1.1rem; }
+.foryou-card .btn-ask { margin-top: 1.1rem; }
 
 /* Products: "N products hidden" then "Show them again" on its own line */
 .hidden-note { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; }
@@ -179,5 +179,15 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 @media (max-width: 400px) { .saved-nav a { font-size: .82rem; } }
 
 /* Alternatives: every photo the same size, cropped to fill (cover) */
-.alt-img { aspect-ratio: 1 / 1; width: 100%; overflow: hidden; background: #f6f8f7; display: block; }
+.alt-img { aspect-ratio: 1 / 1; width: 100%; overflow: hidden; background: #f7f8fa; display: block; }
 .alt-img img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; padding: 0; }
+
+/* Alternatives: every card exactly the same width, every photo the same square, whatever the
+   photo's own size (flex items may otherwise grow to an image's natural width). */
+.alt-card { flex: 0 0 150px; width: 150px; min-width: 0; max-width: 150px; }
+.alt-img { width: 150px; height: 150px; aspect-ratio: auto; flex: none; }
+.alt-img img { width: 150px; height: 150px; max-width: none; object-fit: cover; }
+@media (min-width: 768px) {
+  .alt-card { flex-basis: 160px; width: 160px; max-width: 160px; }
+  .alt-img, .alt-img img { width: 160px; height: 160px; }
+}

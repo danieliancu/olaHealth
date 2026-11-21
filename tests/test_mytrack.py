@@ -30,13 +30,13 @@ def yogurt(off_payload):
 
 
 def tab(client, name, **params):
-    return client.get(reverse("my-ola"), {"tab": name, **params}).content.decode()
+    return client.get(reverse("ask-foodo"), {"tab": name, **params}).content.decode()
 
 
 # ---------- Pages ----------
 @pytest.mark.django_db
 def test_login_required(client):
-    for name in ("my-ola", "chat", "notes-search"):
+    for name in ("ask-foodo", "chat", "notes-search"):
         r = client.get(reverse(name))
         assert r.status_code == 302 and "/accounts/login/" in r["Location"]
     for name in ("notes-create", "memory-add", "chat-send", "chat-clear", "scans-clear"):
@@ -48,8 +48,8 @@ def test_login_required(client):
 def test_tabs_render_with_aria_current(member_client):
     for name in ("overview", "profile", "notes", "saved", "account"):
         html = tab(member_client, name)
-        assert f'href="/my-ola/?tab={name}"' in html
-        current = re.findall(r'<a href="/my-ola/\?tab=(\w+)"[^>]*aria-current="page"', html)
+        assert f'href="/ask-foodo/?tab={name}"' in html
+        current = re.findall(r'<a href="/ask-foodo/\?tab=(\w+)"[^>]*aria-current="page"', html)
         assert current == [name]
         body = html.split("</head>")[1]
         assert "<script>" not in body and 'style="' not in body and "hx-on" not in body
@@ -66,7 +66,8 @@ def test_overview_counts_and_recent_scans(member_client, member, yogurt):
     assert "You scanned 1 product in the last 7 days (1 recorded in total)." in html
     assert re.search(r"<span>Favourites</span><strong>1</strong>", html)
     assert re.search(r"<span>Notes</span><strong>1</strong>", html)
-    assert 'id="ask-foodo"' in html and "context=personal" in html
+    # Ask Foodo: no button beside the title any more (tab bar + the overview button).
+    assert 'id="ask-foodo"' not in html and "context=personal" in html
     assert "this browser" not in html and "this device" not in html
 
 
@@ -120,7 +121,7 @@ def test_notes_crud(member_client, member, yogurt):
 
     # Without htmx the edit form is shown in the page
     html = tab(member_client, "notes", edit=note.pk)
-    assert f'action="/my-ola/notes/{note.pk}/edit/"' in html
+    assert f'action="/ask-foodo/notes/{note.pk}/edit/"' in html
 
     # Empty text is refused
     r = member_client.post(reverse("notes-create"), {"text": " ", "kind": "general"}, **HX)
@@ -142,7 +143,7 @@ def test_note_from_the_product_page_goes_back(member_client, member, yogurt):
     r = member_client.post(
         reverse("notes-create"), {"text": "x", "kind": "taste", "next": "https://evil.test/"}
     )
-    assert r["Location"] == "/my-ola/?tab=notes"
+    assert r["Location"] == "/ask-foodo/?tab=notes"
 
 
 @pytest.mark.django_db
@@ -222,7 +223,7 @@ def test_memory_suggestions_need_confirmation(member_client, member, yogurt):
     ProductMark.objects.create(user=member, product=yogurt, kind="avoid")
     keys = [k for k, _ in memories.suggestions(member)]
     assert keys == ["goal:eat_healthier", "diet:vegan", f"avoid:{yogurt.pk}"]
-    assert "Suggestion – not used until you confirm it." in tab(member_client, "notes")
+    assert "Not used until you confirm it." in tab(member_client, "notes")
     assert not Memory.objects.exists()
     member_client.post(reverse("memory-confirm"), {"key": "diet:vegan"}, **HX)
     m = Memory.objects.get(user=member)
@@ -268,9 +269,9 @@ def test_clear_scans_and_chats(member_client, member, other, yogurt):
     ChatMessage.objects.create(user=member, role="user", text="hi")
     ChatMessage.objects.create(user=other, role="user", text="hi")
     r = member_client.post(reverse("scans-clear"), {"tab": "profile"})
-    assert r.status_code == 302 and r["Location"] == "/my-ola/?tab=profile"
+    assert r.status_code == 302 and r["Location"] == "/ask-foodo/?tab=profile"
     r = member_client.post(reverse("chat-clear"), **HX)
-    assert r.status_code == 204 and r["HX-Redirect"] == "/my-ola/?tab=profile"
+    assert r.status_code == 204 and r["HX-Redirect"] == "/ask-foodo/?tab=profile"
     assert ProductVisit.objects.filter(user=member).count() == 0
     assert ChatMessage.objects.filter(user=member).count() == 0
     assert ProductVisit.objects.filter(user=other).count() == 1
@@ -391,7 +392,70 @@ def test_chat_partial_and_product_page(member_client, yogurt):
     r = member_client.get(reverse("chat"), {"context": f"product:{yogurt.pk}"}, **HX)
     body = r.content.decode()
     assert "<html" not in body and f'id="chat-log-product-{yogurt.pk}"' in body
-    assert 'hx-post="/my-ola/chat/send/"' in body and 'hx-swap="beforeend scroll:bottom"' in body
+    assert 'hx-post="/ask-foodo/chat/send/"' in body and 'hx-swap="beforeend scroll:bottom"' in body
     assert "Does it fit my restrictions?" in body
     html = member_client.get(reverse("product", args=[yogurt.pk])).content.decode()
     assert f"context=product%3A{yogurt.pk}" in html  # the includable panel
+
+
+def test_account_icon_reopens_the_last_tab(member_client):
+    html = member_client.get(reverse("ask-foodo")).content.decode()
+    assert 'href="/ask-foodo/?tab=overview"' in html and "Your stats" in html  # default: Overview
+    member_client.get(reverse("ask-foodo") + "?tab=notes")
+    html = member_client.get(reverse("ask-foodo")).content.decode()
+    assert re.search(r'href="/ask-foodo/\?tab=notes"[^>]*aria-current="page"', html)
+
+
+# ---------- Ask Foodo: product search (catalogue + Open Food Facts) ----------
+def test_chat_finds_products_in_our_catalogue(member_client, yogurt):
+    from myola.services import chat_products
+
+    reply = chat_products.answer("find greek yogurt")
+    assert yogurt.name in reply and f"/p/{yogurt.pk}/" in reply
+    assert chat_products.answer("what do you remember?") == ""
+
+
+def test_chat_searches_open_food_facts_when_needed(member, monkeypatch):
+    from myola.services import chat_products
+    from off.client import OFFClient
+
+    rows = [{"code": "3000000000012", "product_name": "Oat drink", "brands": "Oaty"}]
+    monkeypatch.setattr(OFFClient, "search_text", lambda self, q, page_size=3: rows)
+    reply = chat_products.answer("search for oat drink")
+    assert "Open Food Facts" in reply and "/lookup/?code=3000000000012" in reply
+
+
+def test_chat_barcode_and_clickable_links(member_client, member, yogurt):
+    code = yogurt.off_code
+    from myola.services import chat
+
+    _asked, answered = chat.send(member, chat.PERSONAL, f"what is {code}?")
+    assert f"/p/{yogurt.pk}/" in answered.text
+    html = member_client.get(reverse("chat")).content.decode()
+    assert f'<a href="/p/{yogurt.pk}/">' in html
+
+
+def test_chat_remembers_where_you_came_from(member_client, yogurt):
+    url = reverse("chat")
+    html = member_client.get(url, HTTP_REFERER=f"http://testserver/p/{yogurt.pk}/").content.decode()
+    assert f'href="/p/{yogurt.pk}/"' in html and f"Back to {yogurt.name}" in html
+    # still there after sending a message (no referer on the next visit)
+    html = member_client.get(url).content.decode()
+    assert f"Back to {yogurt.name}" in html
+    html = member_client.get(url, {"next": "/learn/nutri-score/"}).content.decode()
+    assert "Back to Nutri-Score, explained" in html
+    # other sites are ignored
+    html = member_client.get(url, {"next": "https://evil.test/x"}).content.decode()
+    assert "evil.test" not in html
+
+
+def test_account_name_sets_the_greeting(member_client, member):
+    from django.urls import reverse
+
+    html = member_client.get(reverse("ask-foodo") + "?tab=account").content.decode()
+    assert reverse("account-name") in html
+    r = member_client.post(reverse("account-name"), {"first_name": "  Ana   Maria "})
+    assert r.status_code == 302
+    member.refresh_from_db()
+    assert member.first_name == "Ana Maria"
+    assert member_client.post(reverse("account-name"), {"first_name": "x" * 31}).status_code == 200

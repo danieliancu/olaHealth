@@ -1,0 +1,3 @@
+{# The Model menu of the AI provider picked in Settings; the note under it is swapped out of band. #}
+<select name="ai_model" id="id_ai_model">{% for value, label in choices %}<option value="{{ value }}"{% if value == current %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+<span id="ai-model-note" hx-swap-oob="true">{{ note }}</span>

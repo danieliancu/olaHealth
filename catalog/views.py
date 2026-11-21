@@ -28,7 +28,7 @@ from catalog.services.search import SearchParams, facets, search_products, tag_n
 from core.barcodes import decode_product_barcodes
 from core.coordination import check_request_limit, rate_limited
 from core.images import ImageRejected, validate_and_reencode
-from myola import diary_target
+from myola import diary_target, views_today
 from myola import preferences as P
 from myola.models import LIMITS, Note, ProductMark, ProductVisit, Profile
 from myola.page import facts_from_product
@@ -67,7 +67,7 @@ STATUS_TEXT = {
     "contains": gettext_lazy("Contains"),
     "not_declared": gettext_lazy("Not declared"),
 }
-PROFILE_RESTRICTIONS_URL = "/my-ola/profile/#restrictions"
+PROFILE_RESTRICTIONS_URL = "/ask-foodo/profile/#restrictions"
 
 
 def _country(request: HttpRequest) -> str:
@@ -120,7 +120,9 @@ def _save_compare(request: HttpRequest, ids: list[str]) -> None:
 
 @require_GET
 def home(request: HttpRequest) -> HttpResponse:
-    """The homepage, for everyone (the logo links here); signed-in users get "Open Today"."""
+    """Home. Signed-in users get the Today dashboard here; visitors a public version of it."""
+    if request.user.is_authenticated:
+        return views_today.today(request)
     return render(request, "catalog/home.html")
 
 
@@ -443,6 +445,10 @@ def _ui_response(request: HttpRequest, product: Product, *, compare: bool = Fals
         ctx["more_open"] = request.POST.get("more") == "1"
         ctx["next_url"] = next_url
         body = render_to_string("partials/product_actions.html", ctx, request=request)
+    elif ui == "saved":  # Saved page hearts: both lists, so the product changes list at once
+        body = render_to_string(
+            "catalog/partials/saved_lists.html", _saved_lists(request.user), request=request
+        )
     else:  # "row", "hide": the row is removed by the swap (hx-swap="delete")
         body = ""
     return HttpResponse(body + _oob(request, compare=compare))
@@ -752,18 +758,27 @@ def compare(request: HttpRequest) -> HttpResponse:
 def saved(request: HttpRequest) -> HttpResponse:
     if not request.user.is_authenticated:
         return render(request, "catalog/saved.html", {"login_url": _login_url(reverse("saved"))})
-    user = request.user
-    marks = ProductMark.objects.filter(
-        user=user, kind__in=[ProductMark.Kind.FAVORITE, ProductMark.Kind.HIDDEN]
-    ).select_related("product")
-    favourites = [m.product for m in marks if m.kind == ProductMark.Kind.FAVORITE]
-    hidden = [m.product for m in marks if m.kind == ProductMark.Kind.HIDDEN]
-    recent = [v.product for v in lists.recent(user, limit=30)]
-    return render(
-        request,
-        "catalog/saved.html",
-        {"favourites": favourites, "recent": recent, "hidden": hidden},
-    )
+    hidden = [
+        m.product
+        for m in ProductMark.objects.filter(
+            user=request.user, kind=ProductMark.Kind.HIDDEN
+        ).select_related("product")
+    ]
+    return render(request, "catalog/saved.html", {**_saved_lists(request.user), "hidden": hidden})
+
+
+def _saved_lists(user) -> dict:
+    """Favourites + Recently viewed for the Saved page. A favourite is not repeated in
+    Recently viewed: tapping the heart there moves the product up to Favourites."""
+    favourites = [
+        m.product
+        for m in ProductMark.objects.filter(
+            user=user, kind=ProductMark.Kind.FAVORITE
+        ).select_related("product")
+    ]
+    fav_ids = {p.pk for p in favourites}
+    recent = [v.product for v in lists.recent(user, limit=30) if v.product_id not in fav_ids]
+    return {"favourites": favourites, "recent": recent}
 
 
 @require_POST
@@ -834,7 +849,7 @@ def off_image(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
             response["Cache-Control"] = "no-store"
             return response
         raise Http404
-    response = FileResponse(default_storage.open(name, "rb"), content_type="image/jpeg")
+    response = FileResponse(default_storage.open(name, "rb"), content_type="image/webp")
     response["Cache-Control"] = "public, max-age=604800"
     return response
 

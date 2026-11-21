@@ -10,15 +10,31 @@ from .base import ProviderError, Reply
 class FakeProvider:
     name = "fake"
 
-    def __init__(self, model: str = "", *, fail: bool = False):
+    def __init__(self, model: str = "", *, fail: bool = False, empty: int = 0):
         self.model = model or "fake-1"
         self.fail = fail
+        self.empty = empty  # how many calls answer with no text (to test the retry)
         self.calls: list[dict] = []
 
-    def reply(self, system: str, messages: list[dict[str, str]], max_tokens: int) -> Reply:
-        self.calls.append({"system": system, "messages": messages, "max_tokens": max_tokens})
+    def reply(
+        self,
+        system: str,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        *,
+        short_thinking: bool = False,
+    ) -> Reply:
+        self.calls.append(
+            {"system": system, "messages": messages, "max_tokens": max_tokens,
+             "short_thinking": short_thinking}
+        )  # fmt: skip
         if self.fail:
             raise ProviderError("fake: failure")
+        if self.empty > 0:
+            self.empty -= 1
+            raise ProviderError(
+                "fake: empty answer", empty=True, input_tokens=10, output_tokens=max_tokens
+            )
         last = messages[-1]["content"] if messages else ""
         facts = last.split("FACTS:", 1)[-1].split("QUESTION:", 1)[0].strip()
         try:

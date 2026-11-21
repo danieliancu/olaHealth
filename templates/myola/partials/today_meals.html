@@ -1,0 +1,12 @@
+{% load i18n ui %}<section class="dash-section" aria-labelledby="meals-h">
+  <h2 class="dash-title" id="meals-h">{% if is_today %}{% translate "What did you eat today?" %}{% else %}{% translate "What you ate" %}{% endif %}</h2>
+  <ul class="meal-tiles stagger">
+    {% for g in groups %}<li>
+      <a class="meal-tile{% if g.entries %} has-food{% endif %}" href="#meal-{{ g.key }}">
+        <span class="meal-tile-icon">{% icon g.icon 22 %}</span>
+        <span class="meal-tile-label">{{ g.label }}</span>
+        <span class="meal-tile-sub">{% if g.entries %}{% if show_energy %}{{ g.kcal_display }} kcal{% else %}{% blocktranslate count n=g.entries|length %}{{ n }} food{% plural %}{{ n }} foods{% endblocktranslate %}{% endif %}{% else %}{% translate "Add" %}{% endif %}</span>
+      </a>
+    </li>{% endfor %}
+  </ul>
+</section>

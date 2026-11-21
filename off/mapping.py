@@ -11,6 +11,7 @@ The canonical data is plain JSON (stored in immutable revisions). Rules:
 
 from __future__ import annotations
 
+import html
 import re
 from typing import Any
 from urllib.parse import urlsplit
@@ -39,7 +40,8 @@ _SOLID = re.compile(r"\b\d+(?:[.,]\d+)?\s*(g|kg|mg|oz|lb)\b", re.IGNORECASE)
 def _text(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
-    value = " ".join(value.split())
+    # OFF sometimes stores HTML entities (Biscuits &quot;lotus&quot;): keep the real characters.
+    value = " ".join(html.unescape(value).split())
     return value or None
 
 

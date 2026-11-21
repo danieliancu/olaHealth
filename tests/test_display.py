@@ -108,9 +108,9 @@ def test_off_photos_are_cached_and_served_locally(client, off_payload, settings)
     assert cache_product_images(p.pk) == 1  # already cached, no new download
     assert route.call_count == 1
     r = client.get(p.front_image_url)
-    assert r.status_code == 200 and r["Content-Type"] == "image/jpeg"
+    assert r.status_code == 200 and r["Content-Type"] == "image/webp"
     with Image.open(io.BytesIO(b"".join(r.streaming_content))) as served:
-        assert max(served.size) == 800  # resized
+        assert served.format == "WEBP" and served.width == 480  # never wider than shown
 
 
 def test_disallowed_host_is_never_fetched(off_payload):

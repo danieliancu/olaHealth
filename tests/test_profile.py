@@ -107,12 +107,23 @@ def test_onboarding_restrictions_step(member_client, member):
         seafood_types=["en:fish"],  # seafood not chosen: dropped
         religious_note="Halal",
         other_note="ignored",
+        consent="1",
     )
     assert r["Location"] == "/start/?step=4"
     p = profile_of(member)
     assert p.restrictions == ["vegan", "nuts", "religious"]
     assert p.nut_types == ["en:peanuts"] and p.seafood_types == []
     assert p.religious_note == "Halal" and p.other_note == ""
+    assert p.restrictions_consent_at is not None
+
+
+def test_restrictions_need_consent(member_client, member):
+    r = start_post(member_client, 3, restrictions=["nuts"])
+    assert r.status_code == 200 and "Tick the box" in r.content.decode()
+    assert profile_of(member).restrictions == []
+    # "None" is not sensitive: no consent needed, and an earlier consent is cleared.
+    assert start_post(member_client, 3, restrictions=["none"]).status_code == 302
+    assert profile_of(member).restrictions_consent_at is None
 
 
 def test_none_is_exclusive(member_client, member):
@@ -181,7 +192,7 @@ def test_profile_edit_sections(member_client, member):
         reverse("profile-edit"),
         {"section": "about", "goal": "", "gender": "female", "age": "30", "weight": "70.25"},
     )
-    assert r["Location"] == "/my-ola/profile/#about"
+    assert r["Location"] == "/ask-foodo/profile/#about"
     p = profile_of(member)
     assert (p.gender, p.age, p.weight, p.goal) == ("female", 30, Decimal("70.2"), "")
 
@@ -193,17 +204,29 @@ def test_profile_edit_sections(member_client, member):
 def test_profile_restrictions_with_next_and_htmx(member_client, member):
     r = member_client.post(
         reverse("profile-edit"),
-        {"section": "restrictions", "restrictions": ["gluten_free"], "next": "/products/"},
+        {
+            "section": "restrictions",
+            "restrictions": ["gluten_free"],
+            "next": "/products/",
+            "consent": "1",
+        },
     )
     assert r["Location"] == "/products/"
     assert profile_of(member).restrictions == ["gluten_free"]
     r = member_client.post(
         reverse("profile-edit"),
-        {"section": "restrictions", "restrictions": ["vegan"], "next": "https://evil.test/"},
+        {
+            "section": "restrictions",
+            "restrictions": ["vegan"],
+            "next": "https://evil.test/",
+            "consent": "1",
+        },
     )
-    assert r["Location"] == "/my-ola/profile/#restrictions"
+    assert r["Location"] == "/ask-foodo/profile/#restrictions"
     r = member_client.post(
-        reverse("profile-edit"), {"section": "restrictions", "restrictions": ["lactose"]}, **HX
+        reverse("profile-edit"),
+        {"section": "restrictions", "restrictions": ["lactose"], "consent": "1"},
+        **HX,
     )
     html = r.content.decode()
     assert r.status_code == 200 and html.lstrip().startswith('<form id="restrictions"')
@@ -230,7 +253,7 @@ def test_profile_conditions_consent_and_clear(member_client, member):
         {"section": "conditions", "conditions": ["diabetes"], "consent": "1"},
     )
     r = member_client.post(reverse("profile-clear-health"))
-    assert r["Location"] == "/my-ola/profile/#conditions"
+    assert r["Location"] == "/ask-foodo/profile/#conditions"
     p = profile_of(member)
     assert p.conditions == [] and p.health_consent_at is None
     assert member_client.get(reverse("profile-clear-health")).status_code == 405
@@ -365,3 +388,12 @@ def test_weight_save_replace_and_delete(member_client, member, django_user_model
     r = member_client.post(reverse("progress-weight-delete", args=[entry.pk]), **HX)
     assert r.status_code == 200 and "No weight logged in this period." in r.content.decode()
     assert not WeightEntry.objects.filter(user=member).exists()
+
+
+def test_restrictions_consent_ticked_alone_stays_ticked(member_client, member):
+    r = member_client.post(
+        reverse("profile-edit"), {"section": "restrictions", "consent": "1"}, HTTP_HX_REQUEST="true"
+    )
+    assert r.status_code == 200
+    assert profile_of(member).restrictions_consent_at is not None
+    assert 'name="consent" value="1" checked' in r.content.decode()

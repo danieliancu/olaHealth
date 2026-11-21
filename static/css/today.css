@@ -2,7 +2,7 @@
 
 /* Day picker: days are links; future days and "next week" are inert spans. */
 a.day { text-decoration: none; }
-.day.is-future { color: #a9bdb7; cursor: default; }
+.day.is-future { color: #c5cad3; cursor: default; }
 .day-band .day.is-future, .day-band .day.is-future .day-name { color: rgba(255, 255, 255, .45); }
 .day-strip .icon-btn.is-disabled { opacity: .4; cursor: default; }
 .day-strip a.icon-btn { text-decoration: none; }
@@ -36,7 +36,7 @@ a.entry { text-decoration: none; }
 .quick-add > summary::-webkit-details-marker { display: none; }
 .quick-add > summary:hover { background: var(--accent-soft); }
 .quick-add[open] > summary .icon { transform: rotate(45deg); }
-.quick-form { display: flex; flex-direction: column; gap: .35rem; padding: .7rem .75rem; margin-top: .3rem; border-radius: 12px; background: #f7faf9; }
+.quick-form { display: flex; flex-direction: column; gap: .35rem; padding: .7rem .75rem; margin-top: .3rem; border-radius: 12px; background: #f9fafb; }
 .quick-form label { margin: 0; }
 .quick-form .btn { margin-top: .4rem; align-self: flex-start; }
 .quick-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem .5rem; border: 0; padding: 0; margin: .3rem 0 0; }
@@ -130,30 +130,30 @@ a.chip-btn { display: inline-flex; align-items: center; text-decoration: none; c
 .day-drop-panel {
   position: absolute; z-index: 20; right: 0; top: calc(100% + .35rem); width: min(320px, calc(100vw - 2rem));
   padding: .6rem; border-radius: 14px; background: var(--surface); border: 1px solid var(--line);
-  box-shadow: 0 12px 30px rgba(16, 40, 32, .18);
+  box-shadow: 0 12px 30px rgba(17, 24, 39, .18);
 }
 
 /* ---------- Food diary (mock-up, Nov 2026): meal header, grouped entries, Quick add ---------- */
 .t-diary { padding: 1.1rem 1.1rem .6rem; }
 .t-diary .t-card-head h2 { font-size: 1.35rem; }
 .t-diary .meal { padding: .9rem 0 .6rem; }
-.t-diary .meal + .meal { border-top: 1.5px solid #e3efeb; }
+.t-diary .meal + .meal { border-top: 1.5px solid #f3f4f6; }
 .t-diary .meal-head { gap: .75rem; }
-.t-diary .meal-icon { width: 44px; height: 44px; border-radius: 13px; background: #eef6f3; color: var(--accent-strong); flex: none; }
+.t-diary .meal-icon { width: 44px; height: 44px; border-radius: 13px; background: #e7f5ee; color: var(--accent-strong); flex: none; }
 .t-diary .meal-head h3 { font-size: 1.08rem; font-weight: 600; }
 .t-diary .meal-entries-head h3, .t-diary .meal-head:has(.meal-kcal) h3 { font-weight: 700; }
 .t-diary .meal-kcal {
-  margin-left: .1rem; padding: .2rem .65rem; border-radius: 999px; background: #dff1ea; color: var(--accent-strong);
+  margin-left: .1rem; padding: .2rem .65rem; border-radius: 999px; background: #e7f5ee; color: var(--accent-strong);
   font-size: .85rem; font-weight: 500; white-space: nowrap;
 }
 .t-diary .meal-tools { gap: .35rem; }
-.t-diary .meal-add { color: #4b5c57; width: 40px; height: 40px; }
+.t-diary .meal-add { color: #4b5563; width: 40px; height: 40px; }
 .t-diary .meal-add:hover { color: var(--accent-strong); }
 
 .t-diary .entry-list {
-  margin: .7rem 0 .2rem; padding: .15rem .9rem; gap: 0; border-radius: 14px; background: #f1f6f4;
+  margin: .7rem 0 .2rem; padding: .15rem .9rem; gap: 0; border-radius: 14px; background: #f9fafb;
 }
-.t-diary .entry-list > li + li { border-top: 1px solid #dce8e4; }
+.t-diary .entry-list > li + li { border-top: 1px solid #eef0f3; }
 .t-diary a.entry {
   display: flex; align-items: center; gap: .6rem; padding: .7rem 0; border-radius: 0; background: none; color: var(--text);
 }
@@ -162,8 +162,8 @@ a.chip-btn { display: inline-flex; align-items: center; text-decoration: none; c
 .t-diary .entry-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .t-diary .entry-name { font-size: 1rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .t-diary .entry-amount { font-size: .88rem; color: var(--muted); margin-top: .1rem; }
-.t-diary .entry-kcal { flex: none; color: #4b5c57; font-size: .92rem; font-variant-numeric: tabular-nums; }
-.t-diary a.entry .icon { margin-left: 0; color: #8fa49e; }
+.t-diary .entry-kcal { flex: none; color: #4b5563; font-size: .92rem; font-variant-numeric: tabular-nums; }
+.t-diary a.entry .icon { margin-left: 0; color: #9ca3af; }
 .t-diary .entry-list > li > .entry-edit { margin: .5rem -.4rem; }
 
 .t-diary .quick-add > summary {

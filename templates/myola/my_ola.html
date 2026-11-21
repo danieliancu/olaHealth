@@ -4,29 +4,54 @@
 {% block content %}
 <div id="mytrack">
 <div class="page-head">
-  <h1>{% translate "My Track" %}</h1>
-  <a class="btn btn-primary btn-small btn-ask" id="ask-foodo" href="{% url 'chat' %}?context=personal" data-chat-open="chat-dialog-personal">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo" %}</span></a>
+  <div class="page-head-soft"><span class="soft-icon">{% icon "user-round" 20 %}</span><h1>{% translate "My Track" %}</h1></div>
 </div>
 {% include "myola/partials/mytrack_messages.html" %}
 
+<section class="card id-card" aria-label="{% translate 'Your profile' %}">
+  <span class="avatar-lg" aria-hidden="true">{{ user.first_name|default:user.email|first|upper }}</span>
+  <div class="id-text">
+    <p class="id-name">{{ user.first_name|default:user.email }}</p>
+    <p class="id-since">{% blocktranslate with month=user.date_joined|date:"F Y" %}Member since {{ month }}{% endblocktranslate %}</p>
+  </div>
+  <div class="id-complete">
+    <div class="id-complete-row"><span>{% translate "Profile complete" %}</span><strong>{{ profile_complete }}%</strong></div>
+    <svg class="meter" viewBox="0 0 100 6" preserveAspectRatio="none" width="100" height="6" aria-hidden="true"><rect class="meter-track" x="0" y="0" width="100" height="6"/><rect class="meter-fill" x="0" y="0" width="{{ profile_complete }}" height="6"/></svg>
+  </div>
+</section>
+
 <nav class="segmented seg-5 mytrack-tabs" aria-label="{% translate 'My Track sections' %}">
   {% for key, label in tabs %}
-  <a href="{% url 'my-ola' %}?tab={{ key }}" hx-get="{% url 'my-ola' %}?tab={{ key }}" hx-target="#mytrack" hx-select="#mytrack" hx-swap="outerHTML" hx-push-url="true"{% if key == tab %} aria-current="page"{% endif %}>{{ label }}</a>
+  <a href="{% url 'ask-foodo' %}?tab={{ key }}" hx-get="{% url 'ask-foodo' %}?tab={{ key }}" hx-target="#mytrack" hx-select="#mytrack" hx-swap="outerHTML" hx-push-url="true"{% if key == tab %} aria-current="page"{% endif %}>{{ label }}</a>
   {% endfor %}
 </nav>
 
 {% if tab == "overview" %}
 {# ---------- Overview ---------- #}
-<section class="myola-grid" aria-label="{% translate 'Overview' %}">
+<section class="stats-section" aria-labelledby="stats-h">
+  <h2 class="dash-title" id="stats-h">{% translate "Your stats" %}</h2>
+  <ul class="stat-grid stagger">
+    {% for s in stats %}<li class="stat-card"><span class="soft-icon tone-{{ s.tone }}">{% icon s.icon 18 %}</span><strong class="stat-value">{{ s.value }}</strong><span class="stat-label">{{ s.label }}</span></li>{% endfor %}
+  </ul>
+</section>
+{% if achievements %}<section class="stats-section ach-section" aria-labelledby="ach-h">
+  <h2 class="dash-title" id="ach-h">{% translate "Achievements" %}</h2>
+  {% if achievements|length > ach_shown %}<input type="checkbox" id="ach-more" class="ach-more-toggle sr-only">{% endif %}
+  <ul class="achievement-list stagger">
+    {% for a in achievements %}<li class="achievement{% if forloop.counter > ach_shown %} ach-extra{% endif %}"><span class="soft-icon soft-icon-lg ach-{{ a.key }}">{% icon a.icon 22 %}</span><div><strong>{{ a.title }}</strong><p>{{ a.text }}</p><small>{{ a.on|date:"j M Y" }}</small></div></li>{% endfor %}
+  </ul>
+  {% if achievements|length > ach_shown %}<label class="ach-more" for="ach-more">{% translate "See more" %}</label>{% endif %}
+</section>{% endif %}
+<section class="mytrack-grid" aria-label="{% translate 'Overview' %}">
   <div class="card">
-    <div class="section-head"><h2>{% translate "Your profile" %}</h2><a class="btn btn-link" href="{% url 'my-ola' %}?tab=profile">{% translate "Edit" %}</a></div>
+    <div class="section-head"><h2>{% translate "Your profile" %}</h2><a class="btn btn-link" href="{% url 'ask-foodo' %}?tab=profile">{% translate "Edit" %}</a></div>
     <div class="mytrack-chips">
       {% if chips %}<ul class="chips">{% for c in chips %}<li>{{ c }}</li>{% endfor %}</ul>
       {% else %}<p class="caption">{% translate "Nothing set yet. Add your goal, diet and allergies in Profile." %}</p>{% endif %}
     </div>
   </div>
   <div class="card">
-    <div class="section-head"><h2>{% translate "Recent scans" %}</h2><a class="btn btn-link" href="{% url 'my-ola' %}?tab=saved">{% translate "All" %}</a></div>
+    <div class="section-head"><h2>{% translate "Recent scans" %}</h2><a class="btn btn-link" href="{% url 'ask-foodo' %}?tab=saved">{% translate "All" %}</a></div>
     <p class="caption">{% if scans_total %}{% blocktranslate count n=scans_week with total=scans_total %}You scanned {{ n }} product in the last 7 days ({{ total }} recorded in total).{% plural %}You scanned {{ n }} products in the last 7 days ({{ total }} recorded in total).{% endblocktranslate %}{% else %}{% translate "No scans recorded yet." %}{% endif %}</p>
     <ul class="product-list compact">
       {% for row in recent_scans %}{% include "myola/partials/mytrack_product_row.html" with row=row meta_scanned=True %}{% endfor %}
@@ -44,11 +69,13 @@
       <li><a href="{% url 'today' %}">{% icon "calendar-days" 18 %}<span>{% translate "Food diary" %}</span>{% icon "chevron-right" 16 %}</a></li>
       <li><a href="{% url 'progress' %}">{% icon "chart-line" 18 %}<span>{% translate "Progress" %}</span>{% icon "chevron-right" 16 %}</a></li>
       <li><a href="{% url 'scan' %}">{% icon "scan-barcode" 18 %}<span>{% translate "Scan a product" %}</span>{% icon "chevron-right" 16 %}</a></li>
-      <li><a href="{% url 'saved' %}">{% icon "heart" 18 %}<span>{% translate "Favourites and recently viewed" %}</span>{% icon "chevron-right" 16 %}</a></li>
+      <li><a href="{% url 'saved' %}">{% icon "heart" 18 %}<span>{% translate "Favourites & recently viewed" %}</span>{% icon "chevron-right" 16 %}</a></li>
+      <li><a href="{% url 'learn' %}">{% icon "book-open" 18 %}<span>{% translate "Learn: reading food labels" %}</span>{% icon "chevron-right" 16 %}</a></li>
+      <li><a href="{% url 'sources' %}">{% icon "info" 18 %}<span>{% translate "Sources & methodology" %}</span>{% icon "chevron-right" 16 %}</a></li>
     </ul>
   </div>
 </section>
-<a class="btn btn-primary btn-block btn-ask" href="{% url 'chat' %}?context=personal" data-chat-open="chat-dialog-personal">{% icon "sparkles" 18 %}<span>{% translate "Ask Foodo about your lists" %}</span></a>
+<a class="btn btn-primary btn-block btn-ask" href="{% url 'chat' %}?context=personal" data-chat-open="chat-dialog-personal">{% icon "message-circle" 18 %}<span>{% translate "Ask Foodo about your lists" %}</span></a>
 
 {% elif tab == "profile" %}
 {# ---------- Profile ---------- #}
@@ -97,12 +124,11 @@
     {% endif %}
 
     <div class="row profile-actions">
-      {% if profile_edit_url %}<a class="btn btn-primary" href="{{ profile_edit_url }}">{% icon "pencil" 18 %}<span>{% translate "Edit profile" %}</span></a>{% endif %}
       <a class="btn btn-link" href="{% url 'start' %}">{% icon "refresh-cw" 16 %} {% translate "Go through the questions again" %}</a>
     </div>
   </div>
   <div class="card profile-card">
-    <div class="section-head profile-section-head"><h2>{% icon "chart-line" 20 %}<span>{% translate "Daily targets and display" %}</span></h2>{% if settings_edit_url %}<a class="btn btn-link" href="{{ settings_edit_url }}">{% translate "Edit" %}</a>{% endif %}</div>
+    <div class="section-head profile-section-head"><h2>{% icon "chart-line" 20 %}<span>{% translate "Daily targets" %}</span></h2>{% if settings_edit_url %}<a class="btn btn-link" href="{{ settings_edit_url }}#targets">{% translate "Edit" %}</a>{% endif %}</div>
     {% if summary.targets %}
     <ul class="profile-tiles">
       {% for label, value, unit, icon in summary.targets %}
@@ -115,7 +141,6 @@
       <li class="{% if profile.track_weight %}on{% else %}off{% endif %}">{% if profile.track_weight %}{% icon "scale" 16 %}{% translate "Weight tracked in Progress" %}{% else %}{% icon "circle-off" 16 %}{% translate "Weight not tracked" %}{% endif %}</li>
       <li class="{% if profile.use_notes %}on{% else %}off{% endif %}">{% if profile.use_notes %}{% icon "notebook-pen" 16 %}{% translate "Notes used in Foodo’s replies" %}{% else %}{% icon "circle-off" 16 %}{% translate "Notes not used in Foodo’s replies" %}{% endif %}</li>
     </ul>
-    {% if settings_edit_url %}<a class="btn btn-outline" href="{{ settings_edit_url }}">{% icon "settings" 18 %}<span>{% translate "Settings" %}</span></a>{% endif %}
   </div>
   <div class="card stack">
     <h2>{% translate "Conversation history" %}</h2>
@@ -132,7 +157,7 @@
       {% csrf_token %}<input type="hidden" name="tab" value="profile">
       <button type="submit" class="btn btn-outline">{% icon "history" 18 %}<span>{% translate "Clear scans" %}</span></button>
     </form>
-    <a class="btn btn-danger" href="{% url 'delete-account' %}">{% icon "trash-2" 18 %}<span>{% translate "Delete my account and all its data" %}</span></a>
+    <a class="btn btn-danger btn-nowrap" href="{% url 'delete-account' %}">{% icon "trash-2" 18 %}<span>{% translate "Delete account and data" %}</span></a>
   </div>
 </section>
 
@@ -140,6 +165,7 @@
 {# ---------- Notes and memories ---------- #}
 <section aria-label="{% translate 'Notes' %}">
   {% include "myola/partials/mytrack_notes.html" %}
+  {% include "myola/partials/mytrack_notes_replies.html" %}
   {% include "myola/partials/mytrack_memories.html" %}
 </section>
 
@@ -153,36 +179,21 @@
 
 {% else %}
 {# ---------- Account ---------- #}
-<section aria-label="{% translate 'Account' %}">
-  <div class="card stack">
-    <h2>{% translate "Your account" %}</h2>
-    <p class="meta">{% icon "mail" 18 %} <span>{{ user.email }}</span></p>
-    <a class="btn btn-outline" href="{% url 'account_email' %}">{% icon "mail" 18 %}<span>{% translate "Change email" %}</span></a>
-  </div>
-  <div class="card stack">
-    <h2>{% translate "Password" %}</h2>
-    <a class="btn btn-outline" href="{% url 'account_change_password' %}">{% icon "key-round" 18 %}<span>{% translate "Change password" %}</span></a>
-  </div>
-  <form class="card stack" method="post" action="{% url 'account_logout' %}">
+<section aria-label="{% translate 'Account' %}" class="info-section">
+  <ul class="info-list card">
+    <li><a href="{% url 'account-name' %}"><span class="soft-icon">{% icon "user-round" 18 %}</span><span class="info-text"><strong>{% translate "Name" %}</strong><small>{% if user.first_name %}{{ user.first_name }}{% else %}{% translate "Add the name Foodo greets you with" %}{% endif %}</small></span>{% icon "chevron-right" 16 %}</a></li>
+    <li><a href="{% url 'account_email' %}"><span class="soft-icon">{% icon "mail" 18 %}</span><span class="info-text"><strong>{% translate "Email" %}</strong><small>{{ user.email }}</small></span>{% icon "chevron-right" 16 %}</a></li>
+    <li><a href="{% url 'account_change_password' %}"><span class="soft-icon">{% icon "key-round" 18 %}</span><span class="info-text"><strong>{% translate "Password" %}</strong><small>{% translate "Change password" %}</small></span>{% icon "chevron-right" 16 %}</a></li>
+    <li><a href="{% url 'download-my-data' %}"><span class="soft-icon">{% icon "arrow-right" 18 %}</span><span class="info-text"><strong>{% translate "Your data" %}</strong><small>{% translate "Download my data (JSON)" %}</small></span>{% icon "chevron-right" 16 %}</a></li>
+    <li><span class="info-row"><span class="soft-icon">{% icon "circle-check" 18 %}</span><span class="info-text"><strong>{% translate "Subscription" %}</strong><small>{% translate "No subscription. AskFoodo is free to use." %}</small></span></span></li>
+  </ul>
+  <form class="info-list card" method="post" action="{% url 'account_logout' %}">
     {% csrf_token %}
-    <h2>{% translate "Sign out" %}</h2>
-    <button type="submit" class="btn btn-outline">{% icon "log-out" 18 %}<span>{% translate "Sign out" %}</span></button>
+    <button type="submit"><span class="soft-icon">{% icon "log-out" 18 %}</span><span class="info-text"><strong>{% translate "Sign out" %}</strong><small>{% translate "On this device" %}</small></span>{% icon "chevron-right" 16 %}</button>
   </form>
-  <div class="card stack">
-    <h2>{% translate "Your data" %}</h2>
-    <p class="caption">{% translate "Download a copy of everything stored with your account (JSON). See the" %} <a href="{% url 'privacy' %}">{% translate "privacy notice" %}</a>.</p>
-    <a class="btn btn-outline" href="{% url 'download-my-data' %}">{% icon "arrow-right" 18 %}<span>{% translate "Download my data" %}</span></a>
-  </div>
-  <div class="card stack">
-    <h2>{% translate "Delete account" %}</h2>
-    <p class="caption">{% translate "Deletes your account and everything stored with it. This cannot be undone." %}</p>
-    <a class="btn btn-danger" href="{% url 'delete-account' %}">{% icon "trash-2" 18 %}<span>{% translate "Delete my account" %}</span></a>
-  </div>
-  <div class="card stack">
-    <h2>{% translate "Subscription" %}</h2>
-    <p class="caption">{% translate "No subscription. FoodoTrack is free to use." %}</p>
-    <button type="button" class="btn btn-outline" disabled>{% translate "Manage subscription" %}</button>
-  </div>
+  <ul class="info-list card is-danger">
+    <li><a href="{% url 'delete-account' %}"><span class="soft-icon">{% icon "trash-2" 18 %}</span><span class="info-text"><strong>{% translate "Delete account" %}</strong><small>{% translate "Deletes everything stored with it. This cannot be undone." %}</small></span>{% icon "chevron-right" 16 %}</a></li>
+  </ul>
 </section>
 {% endif %}
 </div>

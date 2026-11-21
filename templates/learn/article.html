@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load i18n ui static %}
+{% block title %}{{ article.page_title }}{% endblock %}
+{% block head %}
+  <meta name="description" content="{{ article.description }}">
+  <link rel="canonical" href="{{ canonical }}">
+  {% if article.noindex or not article.published %}<meta name="robots" content="noindex">{% endif %}
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="{{ article.page_title }}">
+  <meta property="og:description" content="{{ article.description }}">
+  <meta property="og:url" content="{{ canonical }}">
+  {% if article.image_url %}<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ article.image_url }}">{% endif %}
+  <meta name="twitter:card" content="summary_large_image">
+{% endblock %}
+{% block content %}
+<article class="learn-article">
+  <p class="back"><a href="{% url 'learn-topic' topic.key %}">{% icon "chevron-left" 18 %}<span>{{ topic.title }}</span></a></p>
+  <header class="article-head">
+    <img class="article-hero" src="{{ article.image_url }}" alt="{{ article.image_alt }}" width="720" height="540" decoding="async">
+    <div class="article-meta"><span class="pill">{{ topic.title }}</span><time class="article-date" datetime="{{ article.published_at|date:'Y-m-d' }}">{{ article.published_at|date:"j F Y" }}</time><span class="read-time">{% icon "clock" 14 %}{% blocktranslate with n=article.minutes %}{{ n }} min read{% endblocktranslate %}</span></div>
+    <h1>{{ article.title }}</h1>
+    <p class="page-sub">{{ article.summary }}</p>
+  </header>
+  <div class="card article-layout">
+    <div class="article-main prose">
+      {% if article.pull_quote and not products %}{{ body_parts.0 }}
+      <figure class="pull-quote pq-inline" aria-hidden="true"><blockquote><p>{{ article.pull_quote }}</p></blockquote></figure>
+      {{ body_parts.1 }}{% else %}{{ body }}{% endif %}
+    </div>
+    <div class="article-side">
+    {% if article.pull_quote and not products %}<figure class="pull-quote pq-side">
+      <blockquote><p>{{ article.pull_quote }}</p></blockquote>
+    </figure>{% endif %}
+    {% if products %}<aside class="article-products" aria-labelledby="products-h">
+      <h2 class="article-products-title" id="products-h">{% icon "shopping-basket" 18 %}<span>{% translate "Products in this article" %}</span></h2>
+      <ul class="ap-list">
+        {% for p in products %}<li><a class="ap-card" href="{% url 'product' p.pk %}">
+          {% if p.front_image_url %}<img class="ap-img" src="{{ p.front_image_url|img }}" alt="" width="64" height="64" loading="lazy">{% else %}<span class="ap-img">{% icon "cuboid" 22 %}</span>{% endif %}
+          <span class="ap-text">
+            <strong>{{ p.name|default:_("Unnamed product") }}</strong>
+            {% if p.brand %}<small>{{ p.brand }}</small>{% endif %}
+            {% if p.nutriscore_grade %}<span class="ap-grade grade grade-sm grade-{{ p.nutriscore_grade }}" title="Nutri-Score {{ p.nutriscore_grade|upper }}">{{ p.nutriscore_grade|upper }}</span>{% endif %}
+          </span>
+        </a>
+        <a class="ap-ask" href="{% url 'chat' %}?context=product:{{ p.pk }}" aria-label="{% blocktranslate with name=p.name|default:_('this product') %}Ask Foodo about {{ name }}{% endblocktranslate %}" title="{% translate 'Ask Foodo about this product' %}">{% icon "message-circle" 18 %}</a></li>{% endfor %}
+      </ul>
+    </aside>{% endif %}
+    </div>
+  </div>
+  <p class="notice">{% icon "info" 18 %}<span>{% translate "Information, not medical advice. The label on the package is always the reference." %} <a href="{% url 'sources' %}">{% translate "Sources & methodology" %}</a></span></p>
+  {% if related %}<section aria-labelledby="related-h">
+    <h2 class="dash-title dash-title-sm" id="related-h">{% translate "More on this topic" %}</h2>
+    <ul class="article-list stagger">{% for a in related %}<li>{% include "learn/article_card.html" %}</li>{% endfor %}</ul>
+  </section>{% endif %}
+</article>
+{% endblock %}

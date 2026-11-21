@@ -10,6 +10,7 @@ Read only: this module never writes to Open Food Facts.
 
 from __future__ import annotations
 
+import html
 import logging
 import time
 from collections.abc import Callable
@@ -137,6 +138,34 @@ class OFFClient:
             if not isinstance(products, list):
                 raise OFFError("invalid_response", "missing products list")
             return [p for p in products if isinstance(p, dict)]
+
+        return self._with_retries(attempt)
+
+    def search_text(self, terms: str, page_size: int = 10) -> list[dict[str, Any]]:
+        """Products matching free text (OFF legacy search). Used by staff only, to find a
+        product to link in a Learn article; only the typed words are sent."""
+        params = {
+            "search_terms": terms[:100],
+            "search_simple": "1",
+            "action": "process",
+            "json": "1",
+            "page_size": str(max(1, min(int(page_size), 24))),
+            "fields": "code,product_name,brands,quantity,image_front_small_url",
+        }
+
+        def attempt(client: httpx.Client) -> list[dict[str, Any]]:
+            status, payload = self._get_json(client, "/cgi/search.pl", params, self.search_gate)
+            if status != 200:
+                raise OFFError("invalid_response", f"HTTP {status}")
+            products = payload.get("products")
+            if not isinstance(products, list):
+                raise OFFError("invalid_response", "missing products list")
+            rows = [p for p in products if isinstance(p, dict) and str(p.get("code", "")).isdigit()]
+            for row in rows:  # OFF may send HTML entities in text (&quot;): show real characters
+                for key in ("product_name", "brands", "quantity"):
+                    if isinstance(row.get(key), str):
+                        row[key] = html.unescape(row[key])
+            return rows
 
         return self._with_retries(attempt)
 

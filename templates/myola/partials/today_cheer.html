@@ -1,0 +1,23 @@
+{% load i18n ui %}{% comment %}
+Six short tips that rotate on their own: one visible on phones, two on tablets, three on
+desktop. static/js/tips.js adds the arrows and the timer; without it a CSS animation rotates them. The set is rendered twice so the loop is seamless; the copy is hidden
+from assistive technology. Hover or focus pauses it; reduced motion turns it into a swipe row.
+Every tip: a 3-word title and a 12-word text.
+{% endcomment %}<section class="tips" aria-labelledby="tips-h" aria-roledescription="carousel" data-tips>
+  <h2 class="sr-only" id="tips-h">{% translate "Tips" %}</h2>
+  <button type="button" class="tips-arrow tips-prev" data-tips-prev aria-label="{% translate 'Previous tip' %}" hidden>{% icon "chevron-left" 22 %}</button>
+  <div class="tips-viewport">
+    <ul class="tips-track">
+      {% for copy in "12" %}
+      <li class="tip"{% if copy == "2" %} aria-hidden="true"{% endif %}><div class="cheer"><span class="cheer-icon">{% icon "leaf" 18 %}</span><div><p class="cheer-title">{% translate "Consistency, not pressure" %}</p><p>{% translate "A missed day changes nothing. Just pick up where you are today." %}</p></div></div></li>
+      <li class="tip"{% if copy == "2" %} aria-hidden="true"{% endif %}><div class="cheer"><span class="cheer-icon">{% icon "book-open" 18 %}</span><div><p class="cheer-title">{% translate "Labels teach you" %}</p><p>{% translate "Every label you check teaches you something new about what you eat." %}</p></div></div></li>
+      <li class="tip"{% if copy == "2" %} aria-hidden="true"{% endif %}><div class="cheer"><span class="cheer-icon">{% icon "git-compare-arrows" 18 %}</span><div><p class="cheer-title">{% translate "Compare fairly, always" %}</p><p>{% translate "Compare products per 100 g, never per portion. Portions differ between brands." %}</p></div></div></li>
+      <li class="tip"{% if copy == "2" %} aria-hidden="true"{% endif %}><div class="cheer"><span class="cheer-icon">{% icon "glass-water" 18 %}</span><div><p class="cheer-title">{% translate "Water counts too" %}</p><p>{% translate "A glass of water is a win. Log it with one tap." %}</p></div></div></li>
+      <li class="tip"{% if copy == "2" %} aria-hidden="true"{% endif %}><div class="cheer"><span class="cheer-icon">{% icon "circle-check" 18 %}</span><div><p class="cheer-title">{% translate "Trust the package" %}</p><p>{% translate "When the app and the label disagree, always trust the physical package." %}</p></div></div></li>
+      <li class="tip"{% if copy == "2" %} aria-hidden="true"{% endif %}><div class="cheer"><span class="cheer-icon">{% icon "footprints" 18 %}</span><div><p class="cheer-title">{% translate "Small steps matter" %}</p><p>{% translate "Scanning one product each day slowly builds a calm and lasting habit." %}</p></div></div></li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="tips-dots" data-tips-dots hidden>{% for n in "123456" %}<button type="button" class="tips-dot" data-tips-dot="{{ forloop.counter0 }}" aria-label="{% blocktranslate with n=n %}Tip {{ n }}{% endblocktranslate %}"></button>{% endfor %}</div>
+  <button type="button" class="tips-arrow tips-next" data-tips-next aria-label="{% translate 'Next tip' %}" hidden>{% icon "chevron-right" 22 %}</button>
+</section>

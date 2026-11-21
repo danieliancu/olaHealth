@@ -12,7 +12,7 @@
   <ul class="product-list compact">{% for row in list.rows %}{% include "myola/partials/mytrack_product_row.html" with row=row remove_kind="buy_often" remove_label=remove_label %}{% endfor %}</ul>
   {% if not list.rows %}<p class="empty">{% translate "Nothing marked “Buy often”." %}</p>{% endif %}
   {% else %}
-  <h2>{% icon "ban" 20 %} {% translate "Avoid" %}</h2>
+  <h2 class="avoid-head">{% icon "ban" 20 %} {% translate "Avoid" %}</h2>
   {% translate "Avoid" as remove_label %}
   <ul class="product-list compact">{% for row in list.rows %}{% include "myola/partials/mytrack_product_row.html" with row=row remove_kind="avoid" remove_label=remove_label %}{% endfor %}</ul>
   {% if not list.rows %}<p class="empty">{% translate "Nothing marked “Avoid”." %}</p>{% endif %}

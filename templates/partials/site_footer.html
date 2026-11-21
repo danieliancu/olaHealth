@@ -1,0 +1,39 @@
+{% load i18n ui %}<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      {% include "partials/brand_logo.html" %}
+      <p>{% translate "Scan food. Keep track." %}</p>
+    </div>
+    <nav class="footer-cols" aria-label="{% translate 'Footer' %}">
+      <div>
+        <h2>{% translate "App" %}</h2>
+        <ul>
+          <li><a href="{% url 'home' %}">{% translate "Home" %}</a></li>
+          <li><a href="{% url 'scan' %}">{% translate "Scan" %}</a></li>
+          <li><a href="{% url 'products' %}">{% translate "Search products" %}</a></li>
+          <li><a href="{% url 'compare' %}">{% translate "Compare" %}</a></li>
+          <li><a href="{% url 'progress' %}">{% translate "Progress" %}</a></li>
+          <li><a href="{% url 'api-docs' %}">{% translate "API" %}</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>{% translate "Learn" %}</h2>
+        <ul>
+          {% for key, title in learn_topics %}<li><a href="{% url 'learn-topic' key %}">{{ title }}</a></li>
+          {% empty %}<li><a href="{% url 'learn' %}">{% translate "Reading labels" %}</a></li>{% endfor %}
+        </ul>
+      </div>
+      <div>
+        <h2>{% translate "Legal" %}</h2>
+        <ul>
+          <li><a href="{% url 'sources' %}">{% translate "Sources & methodology" %}</a></li>
+          <li><a href="{% url 'privacy' %}">{% translate "Privacy" %}</a></li>
+          <li><a href="{% url 'terms' %}">{% translate "Terms" %}</a></li>
+        </ul>
+      </div>
+    </nav>
+  </div>
+  <div class="footer-bottom">
+    <p>{% blocktranslate %}Product data and photos from <a href="https://world.openfoodfacts.org" rel="noopener">Open Food Facts</a> contributors (Open Database License; photos CC BY-SA), plus moderated corrections from AskFoodo contributors.{% endblocktranslate %} <span class="footer-note">{% translate "Information, not medical advice." %}</span></p>
+  </div>
+</footer>

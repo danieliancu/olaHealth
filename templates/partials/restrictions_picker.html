@@ -13,7 +13,7 @@ Contract:
         {% include "partials/restrictions_picker.html" with form=restrictions_form %}
         <button type="submit" class="btn btn-primary">…</button>
       </form>
-    A plain POST redirects to `next` (or /my-ola/profile/#restrictions) with a message.
+    A plain POST redirects to `next` (or /ask-foodo/profile/#restrictions) with a message.
     With htmx (hx-post to the same URL) the response is myola/partials/profile_restrictions.html.
   * Sub-panels (nut types, seafood types, notes) open with CSS :has(input:checked): no JS.
 {% endcomment %}
@@ -43,4 +43,6 @@ Contract:
     {% for e in form.other_note.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
   </div>
   <p class="caption">{% translate "Notes are kept for you only; they never mark a product as suitable." %}</p>
+  <label class="check consent" for="{{ form.consent.id_for_label }}"><input type="checkbox" id="{{ form.consent.id_for_label }}" name="consent" value="1"{% if form.consent.value %} checked{% endif %}> <span>{{ form.consent.label }}</span></label>
+  {% for e in form.consent.errors %}<p class="field-error" role="alert">{{ e }}</p>{% endfor %}
 </div>

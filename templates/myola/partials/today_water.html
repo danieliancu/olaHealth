@@ -6,12 +6,15 @@
     <button type="submit" class="btn btn-outline" name="ml" value="250">{% icon "plus" 18 %}<span>250 ml</span></button>
     <button type="submit" class="btn btn-outline" name="ml" value="500">{% icon "plus" 18 %}<span>500 ml</span></button>
   </form>
+  <details class="log-more"{% if water_form.errors %} open{% endif %}>
+  <summary>{% icon "plus" 16 %}<span>{% translate "Other amount" %}</span></summary>
   <form class="inline-form" method="post" action="{{ add_url }}" hx-post="{{ add_url }}" hx-target="#today" hx-swap="outerHTML" data-no-busy novalidate>
     {% csrf_token %}<input type="hidden" name="date" value="{{ day_iso }}">
     <label for="{{ water_form.ml.id_for_label }}" class="sr-only">{% translate "Other amount in ml" %}</label>
     <div class="unit-input">{{ water_form.ml }}<span>ml</span></div>
     <button type="submit" class="btn btn-outline">{% translate "Add" %}</button>
   </form>
+  </details>
   {% for err in water_form.non_field_errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}{% for err in water_form.ml.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
   {% if water %}<ul class="log-list">
     {% for w in water %}<li><span>{{ w.ml }} ml</span><span class="caption">{{ w.created_at|timezone:tzname|time:"H:i" }}</span>{% url 'today-water-delete' w.pk as del_url %}<form method="post" action="{{ del_url }}" hx-post="{{ del_url }}" hx-target="#today" hx-swap="outerHTML" data-no-busy>{% csrf_token %}<button type="submit" class="log-remove" aria-label="{% blocktranslate with ml=w.ml %}Remove {{ ml }} ml{% endblocktranslate %}">{% icon "x" 16 %}</button></form></li>{% endfor %}

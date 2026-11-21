@@ -1,0 +1,39 @@
+{% extends "staff/layout.html" %}{% load ui %}
+{% block staff_title %}Learn articles{% endblock %}
+{% block staff_content %}
+<div class="cms-head">
+  <h1>Learn articles</h1>
+  <div class="row">
+    <a class="btn btn-outline btn-small" href="{% url 'staff:learn-topics' %}">{% icon "settings" 16 %}<span>Topics</span></a>
+    <a class="btn btn-primary btn-small" href="{% url 'staff:learn-new' %}">{% icon "plus" 16 %}<span>New article</span></a>
+  </div>
+</div>
+<form class="cms-filters" method="get" action="{% url 'staff:learn' %}">
+  <label class="sr-only" for="cms-q">Search</label>
+  <input id="cms-q" type="search" name="q" value="{{ q }}" placeholder="Search title, summary or address">
+  <label class="sr-only" for="cms-topic">Topic</label>
+  <select id="cms-topic" name="topic"><option value="">All topics</option>{% for t in topics %}<option value="{{ t.key }}"{% if t.key == topic %} selected{% endif %}>{{ t.title }}</option>{% endfor %}</select>
+  <label class="sr-only" for="cms-status">Status</label>
+  <select id="cms-status" name="status"><option value="">All</option><option value="published"{% if status == "published" %} selected{% endif %}>Published</option><option value="draft"{% if status == "draft" %} selected{% endif %}>Hidden</option></select>
+  <button class="btn btn-outline btn-small" type="submit">Filter</button>
+</form>
+{% if articles %}
+<ul class="cms-list card">
+  {% for a in articles %}<li>
+    <a class="cms-row" href="{% url 'staff:learn-article' a.pk %}">
+      {% if a.image_url %}<img class="cms-thumb" src="{{ a.image_url }}" alt="" width="56" height="56" loading="lazy">{% else %}<span class="cms-thumb">{% icon a.icon 20 %}</span>{% endif %}
+      <span class="cms-text">
+        <strong>{{ a.title }}</strong>
+        <small>{{ a.topic.title }} · /learn/{{ a.slug }}/ · {{ a.minutes }} min · updated {{ a.updated_at|date:"j M Y" }}</small>
+      </span>
+      <span class="cms-badges">
+        {% if a.published %}<span class="cms-badge is-on">Published</span>{% else %}<span class="cms-badge">Hidden</span>{% endif %}
+        {% if a.featured %}<span class="cms-badge is-feat">Featured</span>{% endif %}
+        {% if a.n_products %}<span class="cms-badge is-products">{% icon "cuboid" 13 %}{{ a.n_products }} product{{ a.n_products|pluralize }}</span>{% endif %}
+        {% if a.noindex %}<span class="cms-badge">noindex</span>{% endif %}
+      </span>
+    </a>
+  </li>{% endfor %}
+</ul>
+{% else %}<p class="hint">No articles match.</p>{% endif %}
+{% endblock %}

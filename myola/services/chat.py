@@ -16,9 +16,11 @@ from __future__ import annotations
 
 import re
 import uuid
+from datetime import timedelta
 from typing import Any
 
 from django.db import transaction
+from django.utils import timezone
 from django.utils.formats import date_format
 
 from myola import preferences as P
@@ -45,8 +47,8 @@ SUGGESTIONS: dict[str, list[tuple[str, str]]] = {
 }
 INTENTS = ("values", "indicators", "restrictions", "remember", "avoid", "scans", "prefs")
 LIMIT_TEXT = (
-    "I can't answer that yet: I only use the facts shown in the app and what you saved in "
-    "your account. Try: "
+    "I can't answer that yet: I only use the facts shown in the app, Open Food Facts and what "
+    "you saved in your account. You can also ask me to find a product by name or barcode. Try: "
 )
 STATUS_TEXT = {
     "compatible": "Confirmed by the source",
@@ -77,7 +79,18 @@ _RULES = [
     ("remember", re.compile(r"remember|memor")),
     ("avoid", re.compile(r"avoid")),
     ("scans", re.compile(r"scan")),
-    ("restrictions", re.compile(r"allerg|vegan|vegetarian|gluten|lactose|pork|restriction|fit")),
+    # Allergy and diet questions are always answered by the rules, never by the AI provider,
+    # whatever the language: English plus Romanian, French, Spanish, Italian, German, Portuguese
+    # and Polish stems (alergie, allergène, alérgeno, Allergie, alergia, orzechy...).
+    (
+        "restrictions",
+        re.compile(
+            r"allerg|alerg|alérg|vegan|vegetar|végé|gluten|glutine|glúten|lactos|lactoz|"
+            r"laktos|lattos|pork|porc|cerdo|maiale|schwein|wieprz|halal|kosher|cușer|celiac|"
+            r"coeliac|zöliak|intoleran|unverträg|nietoleran|nut|nuci|arahid|peanut|cacahu|"
+            r"arachid|erdnuss|orzech|amendo|restriction|restricți|fit"
+        ),
+    ),
     ("prefs", re.compile(r"preference|goal")),
 ]
 
@@ -280,48 +293,207 @@ def rule_answer(intent: str | None, facts: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def answer(user, context: str, text: str, product=None) -> str:
-    """The rule-based answer, rephrased by the AI provider when it is enabled and within limits.
+# Intents answered only by the rules, never by the AI provider: allergen/diet checks (a
+# product name or ingredient list must never be able to talk the model into "safe") and
+# everything about the user's own data (lists, scans, memories, preferences).
+RULE_ONLY_INTENTS = frozenset({"restrictions", "remember", "avoid", "scans", "prefs"})
 
-    Python decides every fact (values, restriction states, score); the model only phrases them.
-    Any AI problem (off, limits, errors) silently falls back to the rule-based answer.
-    """
-    facts = build_facts(user, context, product, question=text)
-    baseline = rule_answer(detect_intent(text), facts)
-    from ai.service import phrase
 
-    ai_facts = {**facts, "baseline_answer": baseline}
+MAX_INGREDIENTS_CHARS = 1500  # long lists are cut (about 400 tokens at most)
+
+
+def _ingredient_facts(product) -> dict[str, Any]:
+    """Richer answers: the source's ingredient text and the additives identified in it."""
+    from catalog.presenters import additive_label
+
+    revision = product.current_revision
+    text = (((revision.data or {}).get("ingredients") or {}).get("text") or "").strip()
+    additives = next(
+        (
+            s
+            for s in revision.assessments.all()
+            if s.indicator == "additives"
+            and s.origin == "off_computed"
+            and s.data_status == "available"
+        ),
+        None,
+    )
+    tags = ((additives.value or {}).get("tags") or []) if additives else None
+    return {
+        "ingredients": text[:MAX_INGREDIENTS_CHARS] if text else "unknown",
+        "additives": [additive_label(t) for t in tags] if tags is not None else "unknown",
+    }
+
+
+def _levels(product) -> dict[str, str]:
+    """UK front-of-pack levels (low / moderate / high per 100 g or ml) from the source, as the
+    product page shows them."""
+    snap = next(
+        (
+            s
+            for s in product.current_revision.assessments.all()
+            if s.indicator == "nutrient_levels"
+            and s.data_status == "available"
+            and not s.invalidated_by_local_change
+        ),
+        None,
+    )
+    levels = ((snap.value or {}).get("levels") or {}) if snap else {}
+    return {k: v for k, v in levels.items() if v in ("low", "moderate", "high")}
+
+
+def ai_facts_for(
+    facts: dict[str, Any], product, *, with_preferences: bool, with_ingredients: bool = False
+) -> dict[str, Any]:
+    """The allow-list of what may reach the AI provider: label facts of the product, its score,
+    and (only with the user's opt-in) the names of their diets and allergies."""
+    p = facts.get("product") or {}
+    values = dict((p.get("facts") or {}).get("values") or {})
+    if not facts.get("energy_visible", True):
+        values.pop("energy-kcal", None)
+    out: dict[str, Any] = {
+        "product": {
+            "name": (p.get("product") or {}).get("name", ""),
+            "brand": (p.get("product") or {}).get("brand", ""),
+            "quantity": (p.get("product") or {}).get("quantity", ""),
+            "basis": (p.get("facts") or {}).get("basis_label", ""),
+            "values": {k: v.get("display") for k, v in values.items()},
+            "nutriscore": p.get("nutriscore", ""),
+            "nova": p.get("nova"),
+        }
+    }
+    if p.get("nova") in PROCESSING:
+        out["product"]["processing"] = PROCESSING[p["nova"]]
     if product is not None:
         from assessments.score import score_for_product
 
-        ai_facts["foodo_score"] = score_for_product(product)
-    recent = [
-        {"role": "user" if m.role == ChatMessage.Role.USER else "assistant", "content": m.text}
-        for m in history(user, context).order_by("-created_at", "-pk")[:6]
-    ][::-1]
-    return phrase(user, ai_facts, text, recent) or baseline
+        levels = _levels(product)
+        if levels:
+            out["product"]["levels"] = levels
+        score = score_for_product(product)
+        out["foodo_score"] = {k: score.get(k) for k in ("status", "score", "points")}
+        if with_ingredients:
+            out["product"].update(_ingredient_facts(product))
+    if with_preferences:
+        out["diets"] = [label for _, label in facts.get("diets", [])]
+        out["allergies"] = [label for _, label in facts.get("allergens", [])]
+    return out
+
+
+# The very last fallback: shown only if every other answer came back blank.
+NO_ANSWER = (
+    "Sorry, I couldn't put an answer together just now. The label details are on the product "
+    "page; you can also ask about its sugar, salt, fat, Nutri-Score or processing."
+)
+
+
+def answer(user, context: str, text: str, product=None) -> str:
+    """Never blank: the AI answer, else the rule-based one, else ``NO_ANSWER``."""
+    return reply(user, context, text, product)[0]
+
+
+def reply(user, context: str, text: str, product=None):
+    """``(answer, AIAnswer or None)``: the answer is never blank."""
+    out, log = _answer(user, context, text, product)
+    return ((out or "").strip() or NO_ANSWER), log
+
+
+# Follow-up questions ("and salt?"): the last AI answers of the same chat go with the question
+# (only questions and AI answers, which never contain notes or memories).
+FOLLOWUP_PAIRS = 2
+FOLLOWUP_MINUTES = 30
+
+
+def _followups(user, context: str) -> list[dict[str, str]]:
+    from ai.models import AIAnswer
+
+    rows = list(
+        AIAnswer.objects.filter(
+            user=user,
+            context=context,
+            outcome=AIAnswer.Outcome.ANSWERED,
+            created_at__gte=timezone.now() - timedelta(minutes=FOLLOWUP_MINUTES),
+        ).order_by("-created_at")[:FOLLOWUP_PAIRS]
+    )
+    turns: list[dict[str, str]] = []
+    for row in reversed(rows):
+        turns += [
+            {"role": "user", "content": row.question},
+            {"role": "assistant", "content": row.answer},
+        ]
+    return turns
+
+
+def _answer(user, context: str, text: str, product=None):
+    """``(answer, AIAnswer or None)``. The rule-based answer; for questions about a product's
+    label (and general food questions in the general chat) the AI provider may answer from an
+    allow-list of facts (see ``ai_facts_for``). Any AI problem (off, limits, errors, a blocked
+    answer) silently falls back to the rule-based answer, and the model may hand a question
+    about allergies, diets or the user's own data back to the rules."""
+    from myola.services import chat_products
+
+    found = chat_products.answer(text)
+    if found:
+        return found, None  # product search: facts only, never phrased by the AI provider
+    intent = detect_intent(text)
+    facts = build_facts(user, context, product, question=text)
+    baseline = rule_answer(intent, facts)
+    if intent in RULE_ONLY_INTENTS:
+        return baseline, None
+    from ai.service import ask
+    from staff.models import SiteSettings
+
+    profile = get_profile(user)
+    site = SiteSettings.load()
+    if product is None:
+        # General chat: general food and nutrition questions may go to the AI (only the
+        # question is sent). Not for people who told us about an eating disorder.
+        if not site.ai_general_questions or profile.eating_disorder:
+            return baseline, None
+        result = ask(user, {}, text, _followups(user, context), general=True, context=context)
+    else:
+        ai_facts = ai_facts_for(
+            facts,
+            product,
+            with_preferences=profile.ai_use_preferences,
+            with_ingredients=site.ai_send_ingredients,
+        )
+        # Rule answers never go out: they can contain notes and memories.
+        result = ask(user, ai_facts, text, _followups(user, context), context=context)
+    if result.route:
+        return rule_answer(result.route, facts), result.log
+    return (result.text or baseline), result.log
 
 
 # ---------- History ----------
 def history(user, context: str):
-    return ChatMessage.objects.filter(user=user, context=context).order_by("created_at", "pk")
+    return (
+        ChatMessage.objects.filter(user=user, context=context)
+        .select_related("ai_answer")
+        .order_by("created_at", "pk")
+    )
 
 
 def send(user, context: str, text: str, product=None) -> tuple[ChatMessage, ChatMessage]:
     """Answer a question and keep both messages (the oldest beyond the limit are dropped).
     The answer (possibly a network call to the AI provider) is made outside the transaction."""
     text = (text or "").strip()[:300]
-    reply = answer(user, context, text, product)
-    return _store(user, context, text, reply)
+    out, log = reply(user, context, text, product)
+    return _store(user, context, text, out, log)
 
 
 @transaction.atomic
-def _store(user, context: str, text: str, reply: str) -> tuple[ChatMessage, ChatMessage]:
+def _store(user, context: str, text: str, out: str, log=None) -> tuple[ChatMessage, ChatMessage]:
     asked = ChatMessage.objects.create(
         user=user, context=context, role=ChatMessage.Role.USER, text=text
     )
     answered = ChatMessage.objects.create(
-        user=user, context=context, role=ChatMessage.Role.OLA, text=reply
+        user=user,
+        context=context,
+        role=ChatMessage.Role.OLA,
+        text=out,
+        # Helpful / not helpful buttons only under answers the AI wrote.
+        ai_answer=log if log is not None and log.outcome == log.Outcome.ANSWERED else None,
     )
     stale = list(
         ChatMessage.objects.filter(user=user, context=context)

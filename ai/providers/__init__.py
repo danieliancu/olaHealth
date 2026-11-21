@@ -22,6 +22,12 @@ def get_provider(name: str, model: str = "") -> ChatProvider | None:
             from .openai import OpenAIProvider
 
             return OpenAIProvider(model)
+        from .catalog import PROVIDERS
+
+        if name in PROVIDERS:  # Gemini, Groq, OpenRouter, Qwen, Ollama: OpenAI-compatible APIs
+            from .openai import CompatibleProvider
+
+            return CompatibleProvider(name, model)
         if name == "fake":
             from .fake import FakeProvider
 

@@ -1,0 +1,5 @@
+{% load ui %}<div class="empty-card">
+  <span class="soft-icon soft-icon-lg">{% icon icon 22 %}</span>
+  <p>{{ text }}</p>
+  {% if url %}<a class="btn btn-outline btn-small" href="{{ url }}">{{ action }}</a>{% endif %}
+</div>

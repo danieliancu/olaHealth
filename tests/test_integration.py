@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
 from catalog.services.importer import import_off_product
 
@@ -37,35 +38,82 @@ def test_alternatives_fragment_shows_the_score_or_why_not(client, off_payload, m
 
 
 @pytest.mark.django_db
-def test_ask_foodo_uses_the_ai_layer_and_falls_back(member, monkeypatch):
+def test_ask_foodo_uses_the_ai_only_for_product_label_questions(member, off_payload, monkeypatch):
+    from ai.service import AIResult
     from myola.services import chat
 
-    monkeypatch.setattr("ai.service.phrase", lambda *a, **k: "AI phrased answer")
-    _, reply = chat.send(member, "personal", "What did I scan?")
+    p = import_off_product(off_payload())
+    monkeypatch.setattr("ai.service.ask", lambda *a, **k: AIResult(text="AI phrased answer"))
+    _, reply = chat.send(member, f"product:{p.pk}", "How much sugar?", product=p)
     assert reply.text == "AI phrased answer"
-    monkeypatch.setattr("ai.service.phrase", lambda *a, **k: None)
+    # Personal questions and allergen/diet checks never go to the AI.
     _, reply = chat.send(member, "personal", "What did I scan?")
+    assert reply.text != "AI phrased answer"
+    _, reply = chat.send(member, f"product:{p.pk}", "Is it okay for my allergies?", product=p)
+    assert reply.text != "AI phrased answer"
+    # Any AI problem falls back to the rule-based answer.
+    monkeypatch.setattr("ai.service.ask", lambda *a, **k: AIResult())
+    _, reply = chat.send(member, f"product:{p.pk}", "How much sugar?", product=p)
     assert reply.text and reply.text != "AI phrased answer"
 
 
+def _capture(monkeypatch):
+    seen = {}
+
+    from ai.service import AIResult
+
+    def fake_ask(user, facts, question, history, **kwargs):
+        seen.update(facts=facts, history=history)
+        return AIResult()
+
+    monkeypatch.setattr("ai.service.ask", fake_ask)
+    return seen
+
+
 @pytest.mark.django_db
-def test_ai_never_receives_health_conditions(member, monkeypatch):
+def test_ai_gets_only_the_allow_list(member, off_payload, monkeypatch):
+    from myola.models import Memory, Note, Profile
+    from myola.services import chat
+
+    p = import_off_product(off_payload())
+    Profile.objects.create(
+        user=member,
+        conditions=["diabetes"],
+        conditions_note="type 2",
+        restrictions=["nuts"],
+        religious_note="Halal",
+        use_notes=True,
+    )
+    Note.objects.create(user=member, text="SECRET NOTE about sugar", product=p)
+    Memory.objects.create(user=member, text="SECRET MEMORY", confirmed_at=timezone.now())
+    seen = _capture(monkeypatch)
+    chat.send(member, f"product:{p.pk}", "How much sugar?", product=p)
+    text = repr(seen["facts"])
+    for secret in (
+        "diabetes",
+        "type 2",
+        "Halal",
+        "SECRET NOTE",
+        "SECRET MEMORY",
+        member.email,
+        "Peanuts",
+        "allerg",
+    ):
+        assert secret not in text, secret
+    assert seen["history"] == []
+    assert set(seen["facts"]) <= {"product", "foodo_score"}
+
+
+@pytest.mark.django_db
+def test_ai_gets_diets_and_allergies_only_with_the_opt_in(member, off_payload, monkeypatch):
     from myola.models import Profile
     from myola.services import chat
 
-    Profile.objects.create(user=member, conditions=["diabetes"], conditions_note="type 2")
-    seen = {}
-
-    def fake_phrase(user, facts, question, history):
-        from ai.service import strip_private
-
-        seen["facts"] = strip_private(facts)
-        return None
-
-    monkeypatch.setattr("ai.service.phrase", fake_phrase)
-    chat.send(member, "personal", "What are my preferences?")
-    text = repr(seen["facts"])
-    assert "diabetes" not in text and "type 2" not in text and member.email not in text
+    p = import_off_product(off_payload())
+    Profile.objects.create(user=member, restrictions=["nuts"], ai_use_preferences=True)
+    seen = _capture(monkeypatch)
+    chat.send(member, f"product:{p.pk}", "How much sugar?", product=p)
+    assert "Peanuts" in repr(seen["facts"]["allergies"])
 
 
 @pytest.mark.django_db

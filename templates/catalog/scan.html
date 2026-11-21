@@ -4,7 +4,7 @@
 {% block head %}<script type="module" src="{% static 'js/scanner.js' %}"></script>{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h1>{% translate "Scan a barcode" %}</h1>
+  <div class="page-head-soft"><span class="soft-icon">{% icon "scan-barcode" 20 %}</span><h1>{% translate "Scan a barcode" %}</h1></div>
   <a class="icon-btn" href="{% if diary_back_url %}{{ diary_back_url }}{% else %}{% url 'home' %}{% endif %}" aria-label="{% translate 'Close scanner' %}" title="{% translate 'Close' %}">{% icon "x" 22 %}</a>
 </div>
 

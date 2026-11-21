@@ -23,7 +23,8 @@ def site(db):
     s.ai_provider = "anthropic"
     s.ai_model = "claude-haiku-5-5"
     s.ai_daily_messages_per_user = 3
-    s.ai_monthly_budget_usd = Decimal("20.00")
+    s.ai_monthly_budget_gbp = Decimal("15.00")
+    s.usd_to_gbp = Decimal("0.75")
     s.save()
     return s
 
@@ -71,15 +72,22 @@ def test_daily_limit(site, fake, member):
 
 def test_monthly_budget_counts_all_users(site, fake, member, django_user_model):
     other = django_user_model.objects.create_user(username="other", password="x-long-pass-1")
-    AIUsage.objects.create(user=other, day=timezone.localdate(), cost_usd=Decimal("20.00"))
+    # $19.99 is £14.99 at 0.75: still under the £15 budget.
+    row = AIUsage.objects.create(user=other, day=timezone.localdate(), cost_usd=Decimal("19.99"))
+    assert service.phrase(member, FACTS, "Is it sugary?", []) is not None
+    row.cost_usd = Decimal("20.00")  # £15.00: the budget is reached
+    row.save()
+    fake.calls.clear()
     assert service.phrase(member, FACTS, "Is it sugary?", []) is None
     assert fake.calls == []
 
 
-def test_provider_error_returns_none_and_records_nothing(site, fake, member):
+def test_provider_error_returns_none_and_counts_the_message(site, fake, member):
     fake.fail = True
     assert service.phrase(member, FACTS, "Is it sugary?", []) is None
-    assert not AIUsage.objects.exists()
+    # The message slot was reserved before the call (no tokens reported by this error).
+    row = AIUsage.objects.get()
+    assert row.messages == 1 and row.input_tokens == 0
 
 
 def test_unconfigured_provider_returns_none(site, member, monkeypatch):
@@ -173,7 +181,7 @@ def test_anthropic_request_shape(monkeypatch):
     assert sent["max_tokens"] == 400 and sent["system"] == "SYS"
     assert sent["output_config"] == {"effort": "low"}
     assert not {"temperature", "top_p", "top_k"} & set(sent)
-    assert calls["client"]["max_retries"] == 1 and calls["client"]["timeout"] <= 30
+    assert calls["client"]["max_retries"] == 0 and calls["client"]["timeout"] <= 10
 
 
 def test_anthropic_refusal_and_api_error(monkeypatch):
@@ -185,7 +193,312 @@ def test_anthropic_refusal_and_api_error(monkeypatch):
         get_provider("anthropic").reply("SYS", [{"role": "user", "content": "hi"}], 400)
 
 
-def test_refusal_through_service_returns_none(site, member, monkeypatch):
+def test_refusal_through_service_returns_none_but_is_counted(site, member, monkeypatch):
+    """A refusal used tokens: it counts against the daily limit and the monthly budget."""
     _fake_anthropic(monkeypatch, _response(stop_reason="refusal"))
     assert service.phrase(member, FACTS, "Is it sugary?", []) is None
-    assert not AIUsage.objects.exists()
+    row = AIUsage.objects.get()
+    assert row.messages == 1 and row.input_tokens > 0 and row.cost_usd > 0
+
+
+def test_empty_answer_is_retried_once_with_room_and_minimal_thinking(site, fake, member):
+    fake.empty = 1  # the first call answers with no text (thinking used the allowance)
+    text = service.phrase(member, FACTS, "Is it sugary?", [])
+    assert text.startswith("Based on the facts:")
+    assert [c["max_tokens"] for c in fake.calls] == [400, 1200]
+    assert [c["short_thinking"] for c in fake.calls] == [False, True]
+    row = AIUsage.objects.get(user=member)
+    assert row.messages == 1  # one question, even with the retry
+    assert row.output_tokens >= 400  # the empty call is paid for and counted
+
+
+def test_still_empty_or_refused_falls_back_without_more_calls(site, fake, member):
+    fake.empty = 2
+    assert service.phrase(member, FACTS, "Is it sugary?", []) is None
+    assert len(fake.calls) == 2  # never more than one retry
+    fake.calls.clear()
+    fake.empty, fake.fail = 0, True  # a refusal/API error is not retried
+    assert service.phrase(member, FACTS, "And salt?", []) is None
+    assert len(fake.calls) == 1
+
+
+def test_chat_answer_is_never_blank(member, monkeypatch):
+    from myola.services import chat
+
+    monkeypatch.setattr(chat, "_answer", lambda *a, **k: ("  ", None))
+    assert chat.answer(member, "personal", "anything") == chat.NO_ANSWER
+
+
+def test_openai_retry_asks_for_minimal_reasoning(monkeypatch):
+    from ai.providers.openai import MINIMAL_EFFORT
+
+    assert MINIMAL_EFFORT.match("gpt-5-nano") and MINIMAL_EFFORT.match("gpt-5-mini-2025-08-07")
+    assert not MINIMAL_EFFORT.match("gpt-5.1") and not MINIMAL_EFFORT.match("o4-mini")
+
+
+def test_richer_answers_send_ingredients_and_additives_only_when_on(
+    site, fake, member, off_payload
+):
+    from catalog.services.importer import import_off_product
+    from myola.services import chat
+
+    product = import_off_product(
+        off_payload(ingredients_text="Milk, sugar, emulsifier (E471).", additives_tags=["en:e471"])
+    )
+    site.ai_send_ingredients = False
+    site.save()
+    chat.answer(member, f"product:{product.pk}", "What is in it?", product)
+    sent = fake.calls[-1]["messages"][-1]["content"]
+    assert "Milk, sugar" not in sent and "additives" not in sent
+    site.ai_send_ingredients = True
+    site.save()
+    chat.answer(member, f"product:{product.pk}", "What is in it?", product)
+    sent = fake.calls[-1]["messages"][-1]["content"]
+    assert "Milk, sugar, emulsifier (E471)." in sent
+    # Allergy questions stay rule-based: never sent to the provider, ingredients or not.
+    n = len(fake.calls)
+    chat.answer(member, f"product:{product.pk}", "Is it gluten free?", product)
+    assert len(fake.calls) == n
+
+
+def test_answers_follow_the_question_language_but_allergy_stays_rule_based(site, fake, member):
+    from ai.service import SYSTEM_PROMPT
+    from myola.services import chat
+
+    assert "language of the user's question" in SYSTEM_PROMPT
+    questions = [
+        "Are alergeni?",
+        "E potrivit pentru intoleranța la lactoză?",
+        "¿Tiene alérgenos?",
+        "Contient-il des allergènes ?",
+        "Ist das glutenfrei?",
+        "Czy zawiera orzechy?",
+    ]
+    for q in questions:
+        assert chat.detect_intent(q) == "restrictions", q
+
+
+def test_general_questions_in_the_general_chat(site, fake, member):
+    from ai.service import GENERAL_SYSTEM_PROMPT
+    from myola.services import chat
+
+    reply = chat.answer(member, "personal", "Are carbohydrates good for you?")
+    call = fake.calls[-1]
+    assert call["system"].startswith(GENERAL_SYSTEM_PROMPT) and "NHS 111" in GENERAL_SYSTEM_PROMPT
+    assert call["system"].endswith(
+        "The question is in British English: write the whole answer in it."
+    )
+    # Only the question goes out: no facts, no user data.
+    assert call["messages"] == [{"role": "user", "content": "Are carbohydrates good for you?"}]
+    assert reply.startswith("Based on the facts")
+    # Lists, scans and allergies stay rule-based in the general chat too.
+    n = len(fake.calls)
+    chat.answer(member, "personal", "What did I scan recently?")
+    chat.answer(member, "personal", "Are alergeni in lapte?")
+    assert len(fake.calls) == n
+    # Switched off: the rule-based "I can't answer that yet".
+    site.ai_general_questions = False
+    site.save()
+    assert chat.answer(member, "personal", "Is bread healthy?").startswith(chat.LIMIT_TEXT)
+    assert len(fake.calls) == n
+
+
+def test_no_general_ai_for_people_with_an_eating_disorder(site, fake, member, monkeypatch):
+    from myola.models import Profile
+    from myola.services import chat
+
+    monkeypatch.setattr(Profile, "eating_disorder", property(lambda self: True))
+    chat.answer(member, "personal", "Are carbohydrates good for you?")
+    assert fake.calls == []
+
+
+# ---------- Quality and safety: log, guard, hand-back to the rules, follow-ups ----------
+
+
+def test_every_provider_call_is_logged_with_cost(site, fake, member):
+    from ai.models import AIAnswer
+
+    result = service.ask(member, FACTS, "Is it sugary?", [], context="product:x")
+    log = AIAnswer.objects.get()
+    assert result.log == log and result.text == log.answer
+    assert log.outcome == "answered" and log.kind == "product" and log.context == "product:x"
+    assert log.question == "Is it sugary?" and log.cost_usd > 0 and log.input_tokens > 0
+
+
+def test_no_log_when_no_call_is_made(site, fake, member):
+    from ai.models import AIAnswer
+
+    site.ai_enabled = False
+    site.save()
+    assert service.ask(member, FACTS, "Is it sugary?", []).log is None
+    assert not AIAnswer.objects.exists()
+
+
+def test_failed_calls_are_logged(site, fake, member):
+    fake.fail = True
+    result = service.ask(member, FACTS, "Is it sugary?", [])
+    assert result.text is None and result.log.outcome == "failed"
+    assert result.log.reason == "provider error"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Yes, it is safe for people with a nut allergy.",
+        "This yogurt is gluten-free.",
+        "Este sigur pentru alergici.",
+        "Produsul este fără gluten.",
+        "You should eat 1,500 kcal a day.",
+        "Aim to lose 1 kg a week.",
+    ],
+)
+def test_guard_blocks_unsafe_claims(text):
+    assert service.guard(text, general=False)
+
+
+def test_guard_blocks_doses_only_in_general_answers():
+    assert service.guard("Take 1000 mg of vitamin C.", general=True) == "dose"
+    assert service.guard("It has 400 mg of calcium per 100 g.", general=False) == ""
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "It is not safe for people with a milk allergy: it contains milk.",
+        "I can't say whether it is gluten-free; check the label.",
+        "Adults need around 2,000 kcal a day on average.",
+        "Sugars 3.6 g per 100 g, which is low.",
+        "Nu pot spune dacă este sigur pentru alergici.",
+    ],
+)
+def test_guard_lets_safe_answers_through(text):
+    assert service.guard(text, general=False) == ""
+
+
+def test_blocked_answer_falls_back_to_the_rules(site, fake, member, monkeypatch):
+    from ai.models import AIAnswer
+    from ai.providers.base import Reply
+
+    monkeypatch.setattr(
+        fake, "reply", lambda *a, **k: Reply("It is safe for your allergy.", 10, 10, "fake-1")
+    )
+    result = service.ask(member, FACTS, "What is in it?", [])
+    assert result.text is None
+    log = AIAnswer.objects.get()
+    assert log.outcome == "blocked" and log.reason == "allergy safety claim"
+    assert log.answer == "It is safe for your allergy."
+
+
+def test_model_can_hand_a_question_back_to_the_rules(site, fake, member, monkeypatch):
+    from ai.providers.base import Reply
+    from ai.service import GENERAL_SYSTEM_PROMPT, SYSTEM_PROMPT
+    from myola.services import chat
+
+    assert "ROUTE:restrictions" in SYSTEM_PROMPT and "ROUTE:scans" in GENERAL_SYSTEM_PROMPT
+    monkeypatch.setattr(fake, "reply", lambda *a, **k: Reply("ROUTE:scans", 10, 2, "fake-1"))
+    out, log = chat.reply(member, "personal", "Ce produse am verificat ieri, te rog?")
+    assert out == chat.rule_answer("scans", chat.build_facts(member, "personal"))
+    assert log.outcome == "routed" and log.reason == "scans"
+
+
+def test_follow_up_questions_get_the_last_ai_answers(site, fake, member):
+    from myola.services import chat
+
+    chat.send(member, "personal", "Is bread healthy?")
+    chat.send(member, "personal", "And rice?")
+    sent = fake.calls[-1]["messages"]
+    assert [m["role"] for m in sent] == ["user", "assistant", "user"]
+    assert sent[0]["content"] == "Is bread healthy?" and sent[-1]["content"] == "And rice?"
+    # Another chat starts fresh.
+    chat.send(member, "product:other", "Hello there")
+    assert len(fake.calls[-1]["messages"]) == 1
+
+
+def test_only_ai_answers_can_be_rated(site, fake, member, member_client):
+    from myola.services import chat
+
+    _, ai_msg = chat.send(member, "personal", "Is bread healthy?")
+    _, rule_msg = chat.send(member, "personal", "What did I scan recently?")
+    assert ai_msg.ai_answer_id and rule_msg.ai_answer_id is None
+    from django.urls import reverse
+
+    url = reverse("chat-rate", args=[ai_msg.ai_answer_id])
+    r = member_client.post(url, {"value": "up"}, HTTP_HX_REQUEST="true")
+    assert r.status_code == 200 and 'aria-pressed="true"' in r.content.decode()
+    ai_msg.ai_answer.refresh_from_db()
+    assert ai_msg.ai_answer.rating == 1
+    member_client.post(url, {"value": "up"}, HTTP_HX_REQUEST="true")  # pressed again: cleared
+    ai_msg.ai_answer.refresh_from_db()
+    assert ai_msg.ai_answer.rating is None
+    page = member_client.get(reverse("chat") + "?context=personal").content.decode()
+    assert page.count('class="chat-rate"') == 1
+
+
+def test_nobody_rates_someone_elses_answer(site, fake, member, client, django_user_model):
+    from django.urls import reverse
+
+    from myola.services import chat
+
+    _, msg = chat.send(member, "personal", "Is bread healthy?")
+    other = django_user_model.objects.create_user(username="o", password="x-long-pass-1")
+    client.force_login(other)
+    r = client.post(reverse("chat-rate", args=[msg.ai_answer_id]), {"value": "down"})
+    assert r.status_code == 404
+
+
+def test_staff_ai_answers_page_hides_who_asked(site, fake, member, client, django_user_model):
+    from django.urls import reverse
+
+    from myola.services import chat
+
+    chat.send(member, "personal", "Is bread healthy?")
+    admin = django_user_model.objects.create_superuser(
+        username="boss", email="boss@example.com", password="x-long-pass-1"
+    )
+    client.force_login(admin)
+    html = client.get(reverse("staff:ai-answers")).content.decode()
+    assert "Is bread healthy?" in html and "Answered by the AI" in html
+    assert member.email not in html and member.username not in html
+    filtered = client.get(reverse("staff:ai-answers") + "?outcome=blocked").content.decode()
+    assert "Is bread healthy?" not in filtered
+
+
+def test_old_ai_answers_are_deleted(site, fake, member):
+    from datetime import timedelta
+
+    from ai.models import AIAnswer
+    from ai.tasks import purge_old_ai_answers
+
+    service.ask(member, FACTS, "Is it sugary?", [])
+    service.ask(member, FACTS, "And salt?", [])
+    old = AIAnswer.objects.first()
+    AIAnswer.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=31))
+    assert purge_old_ai_answers() == 1 and AIAnswer.objects.count() == 1
+
+
+def test_one_language_only_in_the_general_information_line():
+    from ai.language import strip_english, with_disclaimer
+
+    seen = (
+        "Ouăle pot face parte dintr-o dietă echilibrată. Acesta este un ghid general, nu un "
+        "sfat personal. this is general information, not personal advice."
+    )
+    out = with_disclaimer(seen, "ro")
+    assert "general information" not in out and out.count("ghid general") == 1
+    assert "Acestea sunt informații generale" not in out  # no second Romanian line
+    # Question language unknown: the answer's own language decides.
+    assert "general information" not in with_disclaimer(seen, "")
+    own_line = (
+        "Da, sunt buni pentru sănătate.\n\n- This is general information, not personal advice."
+    )
+    out = with_disclaimer(own_line, "ro")
+    assert out.startswith("Da, sunt buni") and "general information" not in out
+    assert out.endswith("Acestea sunt informații generale, nu sfaturi personalizate.")
+    english = "Eggs are fine for most people. This is general information, not personal advice."
+    assert with_disclaimer(english, "en") == english and strip_english(english) == english
+    assert (
+        strip_english(
+            "Are 5,1 g de proteine la 100 g. This is general information, not personal advice."
+        )
+        == "Are 5,1 g de proteine la 100 g."
+    )

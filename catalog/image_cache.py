@@ -9,16 +9,13 @@ Attribution and licence stay on the ``ProductImage`` row and are shown with the 
 
 from __future__ import annotations
 
-import io
 import logging
-import warnings
 from urllib.parse import urlsplit
 
 import httpx
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from PIL import Image, UnidentifiedImageError
 
 from catalog.models import ProductImage
 from core.coordination import acquire_lease, release_lease
@@ -30,7 +27,7 @@ MAX_SIDE = 800
 
 
 def cache_name(image: ProductImage) -> str:
-    return f"offcache/{image.pk}.jpg"
+    return f"offcache/{image.pk}.webp"
 
 
 def allowed(url: str) -> bool:
@@ -74,28 +71,14 @@ def _download(url: str) -> bytes | None:
 
 
 def _reencode(data: bytes) -> bytes | None:
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", Image.DecompressionBombWarning)
-        try:
-            with Image.open(io.BytesIO(data)) as img:
-                if img.format not in ("JPEG", "PNG", "WEBP"):
-                    return None
-                if img.width * img.height > settings.UPLOAD_MAX_PIXELS:
-                    return None
-                img.load()
-                rgb = img.convert("RGB")
-        except (
-            UnidentifiedImageError,
-            OSError,
-            ValueError,
-            Image.DecompressionBombWarning,
-            Image.DecompressionBombError,
-        ):
-            return None
-    rgb.thumbnail((MAX_SIDE, MAX_SIDE), Image.Resampling.LANCZOS)
-    out = io.BytesIO()
-    rgb.save(out, format="JPEG", quality=85, optimize=True)
-    return out.getvalue()
+    """Validated, metadata-free WebP no wider than product photos are ever shown."""
+    from core.images import PRODUCT_MAX_WIDTH, ImageRejected, decode, web_webp
+
+    try:
+        rgb, _fmt = decode(data)
+    except ImageRejected:
+        return None
+    return web_webp(rgb, PRODUCT_MAX_WIDTH)
 
 
 def cached(image: ProductImage) -> str | None:

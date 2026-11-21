@@ -13,18 +13,27 @@ class SiteSettings(models.Model):
     """A single row (pk=1). Read with ``SiteSettings.load()``."""
 
     ai_enabled = models.BooleanField(default=False)
-    ai_provider = models.CharField(
-        max_length=20,
-        choices=[("anthropic", "Anthropic (Claude)"), ("openai", "OpenAI")],
-        default="anthropic",
-    )
+    # Choices come from ai.providers.catalog (each provider with its own key and models).
+    ai_provider = models.CharField(max_length=20, default="anthropic")
     ai_model = models.CharField(max_length=80, default="claude-haiku-5-5")
     ai_daily_messages_per_user = models.PositiveIntegerField(
         default=30, validators=[MinValueValidator(0), MaxValueValidator(1000)]
     )
-    ai_monthly_budget_usd = models.DecimalField(
-        max_digits=8, decimal_places=2, default=Decimal("20.00")
+    # Costs are shown and set in pounds. Providers bill in US dollars: usage is counted in
+    # dollars (ai.AIUsage.cost_usd) and converted with the rate below.
+    ai_monthly_budget_gbp = models.DecimalField(
+        max_digits=8, decimal_places=2, default=Decimal("15.00")
     )
+    usd_to_gbp = models.DecimalField(
+        max_digits=6, decimal_places=4, default=Decimal("0.7500"),
+        validators=[MinValueValidator(Decimal("0.0001"))],
+    )  # fmt: skip
+    # Richer answers: the product's ingredient list and additives also go to the AI provider
+    # (allergen and diet checks stay rule-based either way).
+    ai_send_ingredients = models.BooleanField(default=True)
+    # General food and nutrition questions in the general Ask Foodo chat (not on product pages),
+    # answered by the AI from general knowledge, with strict rules for health questions.
+    ai_general_questions = models.BooleanField(default=True)
     maintenance_message = models.CharField(max_length=300, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
@@ -44,6 +53,10 @@ class SiteSettings(models.Model):
         from core.context_processors import _MAINTENANCE
 
         _MAINTENANCE["at"] = 0.0  # show a changed banner at once in this process
+
+    def to_gbp(self, usd: Decimal) -> Decimal:
+        """A dollar amount (provider bills) in pounds, at the rate set in Settings."""
+        return (Decimal(usd or 0) * self.usd_to_gbp).quantize(Decimal("0.000001"))
 
     @classmethod
     def load(cls) -> SiteSettings:
@@ -74,3 +87,21 @@ class StaffAction(models.Model):
 
     def __str__(self) -> str:
         return f"{self.action} {self.target}".strip()
+
+
+class Announcement(models.Model):
+    """A message from the team, delivered as an in-app notification to every opted-in user."""
+
+    title = models.CharField(max_length=160)
+    body = models.CharField(max_length=500, blank=True)
+    url = models.CharField(max_length=300, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return self.title

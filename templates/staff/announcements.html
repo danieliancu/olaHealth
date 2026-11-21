@@ -1,0 +1,18 @@
+{% extends "staff/layout.html" %}{% load ui %}
+{% block staff_title %}Announcements{% endblock %}
+{% block staff_content %}
+<h1>Announcements</h1>
+<p class="hint">Sent as an in-app notification (the bell) to every active user who keeps “News from AskFoodo” switched on. No emails.</p>
+<form method="post" action="{% url 'staff:announcements' %}" class="card staff-form" novalidate>{% csrf_token %}
+  {% include "partials/form_fields.html" %}
+  <div class="row">
+    <button class="btn btn-primary" type="submit">{% icon "send" 18 %}<span>Send announcement</span></button>
+  </div>
+</form>
+<h2>Sent</h2>
+{% if recent %}
+<ul class="plain-list">
+  {% for a in recent %}<li><strong>{{ a.title }}</strong> <span class="hint">· {{ a.created_at|date:"j M Y H:i" }}{% if a.created_by %} · {{ a.created_by.email|default:a.created_by }}{% endif %}</span>{% if a.body %}<br><span class="hint">{{ a.body }}</span>{% endif %}</li>{% endfor %}
+</ul>
+{% else %}<p class="hint">Nothing sent yet.</p>{% endif %}
+{% endblock %}

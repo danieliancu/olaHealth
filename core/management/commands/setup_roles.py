@@ -14,13 +14,18 @@ VIEW = [
     "view_reviewflag",
 ]
 MODERATE = [*VIEW, "moderate_contribution"]
+EDIT_LEARN = [
+    "view_learnarticle", "add_learnarticle", "change_learnarticle", "delete_learnarticle",
+    "view_learntopic", "add_learntopic", "change_learntopic", "delete_learntopic",
+]  # fmt: skip
 
 
 class Command(BaseCommand):
-    help = "Create 'Reviewers' (read only) and 'Moderators' (approve/reject) groups."
+    help = "Create 'Reviewers', 'Moderators' (approve/reject) and 'Editors' (Learn) groups."
 
     def handle(self, *args, **options) -> None:
-        for name, codenames in (("Reviewers", VIEW), ("Moderators", MODERATE)):
+        groups = (("Reviewers", VIEW), ("Moderators", MODERATE), ("Editors", EDIT_LEARN))
+        for name, codenames in groups:
             group, _ = Group.objects.get_or_create(name=name)
             perms = Permission.objects.filter(codename__in=codenames)
             group.permissions.set(perms)

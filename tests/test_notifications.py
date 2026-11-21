@@ -1,0 +1,277 @@
+"""In-app notifications: the service, the four sources, the page, the bell and the settings."""
+
+from __future__ import annotations
+
+import datetime as dt
+
+import pytest
+from django.contrib.auth import get_user_model
+from django.urls import reverse
+from django.utils import timezone
+
+from catalog.services.importer import import_off_product
+from contributions.services import drafts, moderation
+from myola import tasks
+from myola.models import Notification, ProductVisit
+from myola.services import notifications as notes
+from myola.services.profiles import get_profile, local_today
+from staff.models import Announcement
+from tests.test_today import make_entry
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture
+def product(off_payload):
+    return import_off_product(off_payload())
+
+
+def onboard(user, **fields):
+    profile = get_profile(user)
+    profile.onboarded = True
+    for k, v in fields.items():
+        setattr(profile, k, v)
+    profile.save()
+    return profile
+
+
+# ---------- Service ----------
+def test_notify_is_unique_per_key_and_honours_the_switch(member):
+    n = notes.notify(member, "reminder", "k1", "Hello", url="/learn/")
+    assert n and n.url == "/learn/" and n.icon == "bell"
+    assert notes.notify(member, "reminder", "k1", "Hello again") is None  # same key
+    onboard(member, notify_reminders=False)
+    assert notes.notify(member, "reminder", "k2", "Muted") is None
+    assert Notification.objects.filter(user=member).count() == 1
+
+
+def test_safe_url_keeps_only_internal_paths():
+    assert notes.safe_url("/p/abc/") == "/p/abc/"
+    for bad in ("https://evil.test/", "//evil.test/x", "javascript:alert(1)", "p/abc"):
+        assert notes.safe_url(bad) == ""
+
+
+def test_unread_mark_read_and_mark_all(member):
+    a = notes.notify(member, "reminder", "a", "A")
+    notes.notify(member, "reminder", "b", "B")
+    assert notes.unread_count(member) == 2
+    notes.mark_read(member, a.pk)
+    assert notes.unread_count(member) == 1
+    notes.mark_all_read(member)
+    assert notes.unread_count(member) == 0
+
+
+def test_purge_old(member):
+    old = notes.notify(member, "reminder", "old", "Old", read=True)
+    Notification.objects.filter(pk=old.pk).update(
+        created_at=timezone.now() - dt.timedelta(days=120)
+    )
+    notes.notify(member, "reminder", "new", "New")
+    assert notes.purge_old() == 1 and Notification.objects.filter(user=member).count() == 1
+
+
+# ---------- Reminders ----------
+def test_reminder_uses_local_time_and_at_most_two_a_day(member):
+    profile = onboard(member, timezone="Europe/London")
+    today = local_today(profile)
+    noon = timezone.make_aware(
+        dt.datetime.combine(today, dt.time(12, 30)), timezone.get_current_timezone()
+    )
+    first = tasks.reminder_for(member, profile, now=noon)
+    assert first and first.kind == "reminder" and first.key.startswith(f"reminder:{today}:")
+    assert "kcal" not in first.body.lower()
+    assert tasks.reminder_for(member, profile, now=noon) is None  # same nudge, same key
+    make_entry(member, day=today, meal="breakfast")
+    second = tasks.reminder_for(member, profile, now=noon.replace(hour=16))
+    assert second is not None
+    assert tasks.reminder_for(member, profile, now=noon.replace(hour=22)) is None  # daily cap
+
+
+def test_no_reminders_when_switched_off_or_not_onboarded(member):
+    profile = get_profile(member)
+    assert tasks.reminder_for(member, profile) is None  # not onboarded yet
+    profile = onboard(member, notify_reminders=False)
+    assert tasks.reminder_for(member, profile) is None
+
+
+# ---------- Achievements ----------
+def test_achievements_old_ones_arrive_read(member, product):
+    onboard(member)
+    visit = ProductVisit.objects.create(user=member, product=product, code="123")
+    ProductVisit.objects.filter(pk=visit.pk).update(
+        created_at=timezone.now() - dt.timedelta(days=10)
+    )
+    make_entry(member)  # today: a new achievement
+    assert tasks.sync_achievements(member) >= 2
+    first_scan = Notification.objects.get(user=member, key="achievement:first-scan")
+    first_day = Notification.objects.get(user=member, key="achievement:first-day")
+    assert first_scan.read_at is not None and first_day.read_at is None
+    assert first_scan.icon == "scan-barcode"
+    assert tasks.sync_achievements(member) == 0  # nothing new
+
+
+def test_no_logging_achievements_with_an_eating_disorder_answer(member):
+    onboard(member, conditions=["eating_disorder"])
+    make_entry(member)
+    tasks.sync_achievements(member)
+    assert not Notification.objects.filter(user=member, key="achievement:first-day").exists()
+
+
+# ---------- Contributions ----------
+def _submitted(product, user=None):
+    c = drafts.create_draft(
+        session_key="s", problem_type="incorrect_data", product=product, user=user
+    )
+    drafts.save_proposal(c, {"brand": "Corrected"}, "")
+    assert drafts.submit(c, consent=True) == []
+    return c
+
+
+def test_moderation_notifies_signed_in_contributors_only(
+    member, product, admin_user, django_capture_on_commit_callbacks
+):
+    mine = _submitted(product, user=member)
+    anonymous = _submitted(product)
+    with django_capture_on_commit_callbacks(execute=True):
+        moderation.approve(mine.pk, admin_user, "ok")
+    n = Notification.objects.get(user=member)
+    assert (
+        n.kind == "contribution"
+        and "accepted" in n.title
+        and n.url == reverse("product", args=[product.pk])
+    )
+    with django_capture_on_commit_callbacks(execute=True):
+        moderation.reject(anonymous.pk, admin_user, "blurry")
+    assert Notification.objects.count() == 1
+
+
+def test_rejection_includes_the_reason(
+    member, product, admin_user, django_capture_on_commit_callbacks
+):
+    c = _submitted(product, user=member)
+    with django_capture_on_commit_callbacks(execute=True):
+        moderation.reject(c.pk, admin_user, "The photo is blurry")
+    n = Notification.objects.get(user=member)
+    assert "not accepted" in n.title and n.body == "The photo is blurry"
+
+
+# ---------- Announcements ----------
+def test_announcement_reaches_opted_in_active_users(member, admin_user):
+    other = get_user_model().objects.create_user("o", "o@example.com", "x-password-123")
+    onboard(other, notify_announcements=False)
+    gone = get_user_model().objects.create_user(
+        "g", "g@example.com", "x-password-123", is_active=False
+    )
+    a = Announcement.objects.create(title="New: Learn", url="/learn/")
+    tasks.fan_out_announcement(a.pk)
+    tasks.fan_out_announcement(a.pk)  # re-run is harmless
+    keys = set(Notification.objects.values_list("user__username", flat=True))
+    assert "member" in keys and "o" not in keys and gone.username not in keys
+    assert Notification.objects.filter(user=member).count() == 1
+
+
+def test_staff_can_send_an_announcement(client, admin_user, queued_tasks):
+    client.force_login(admin_user)
+    r = client.post(
+        reverse("staff:announcements"), {"title": "Hello", "body": "", "url": "/learn/"}
+    )
+    assert r.status_code == 302 and Announcement.objects.filter(title="Hello").exists()
+    assert queued_tasks[-1][0] == "myola.tasks.fan_out_announcement"
+    r = client.post(reverse("staff:announcements"), {"title": "Bad", "url": "https://evil.test/"})
+    assert r.status_code == 200 and not Announcement.objects.filter(title="Bad").exists()
+
+
+# ---------- Pages ----------
+def test_pages_need_an_account(client):
+    assert client.get(reverse("notifications")).status_code == 302
+
+
+def test_notifications_page_open_and_read_all(member_client, member):
+    a = notes.notify(member, "reminder", "a", "Add lunch?", url="/learn/")
+    notes.notify(member, "announcement", "b", "News")
+    html = member_client.get(reverse("notifications")).content.decode()
+    assert "Add lunch?" in html and "News" in html and "Mark all as read" in html
+    assert 'style="' not in html and "<script" not in html.split("</head>")[1]
+    r = member_client.get(reverse("notification-open", args=[a.pk]))
+    assert r.status_code == 302 and r["Location"] == "/learn/"
+    a.refresh_from_db()
+    assert a.read_at is not None
+    r = member_client.post(reverse("notifications-read-all"), HTTP_HX_REQUEST="true")
+    assert r.status_code == 200 and 'id="notif-count"' in r.content.decode()
+    assert notes.unread_count(member) == 0
+
+
+def test_bell_on_home_shows_the_unread_count(member_client, member):
+    html = member_client.get(reverse("home")).content.decode()
+    assert 'href="/notifications/"' in html and 'id="notif-count" hidden' in html
+    notes.notify(member, "reminder", "a", "A")
+    html = member_client.get(reverse("home")).content.decode()
+    assert '<span class="count" id="notif-count">1</span>' in html
+
+
+def test_settings_switches(member_client, member):
+    html = member_client.get(reverse("settings-edit")).content.decode()
+    assert 'name="notify_reminders"' in html and 'name="notify_announcements"' in html
+
+
+def test_links_go_straight_to_the_target_and_mark_read_in_the_background(member_client, member):
+    n = notes.notify(member, "announcement", "x", "New in Learn", url="/learn/")
+    html = member_client.get(reverse("notifications")).content.decode()
+    assert f'href="/learn/" data-notif-read="/notifications/{n.pk}/read/"' in html
+    assert member_client.post(reverse("notification-read", args=[n.pk])).status_code == 204
+    n.refresh_from_db()
+    assert n.read_at is not None
+
+
+# ---------- Water, weigh-in, profile ----------
+def _local(profile, hour, day=None):
+    from myola.services.profiles import user_tz
+
+    d = day or local_today(profile)
+    return dt.datetime.combine(d, dt.time(hour, 5), tzinfo=user_tz(profile))
+
+
+def test_water_reminders_follow_a_gentle_pace(member):
+    from myola.models import WaterEntry
+
+    profile = onboard(member)
+    today = local_today(profile)
+    assert tasks.water_reminder_for(member, profile, now=_local(profile, 10)) is None  # too early
+    n = tasks.water_reminder_for(member, profile, now=_local(profile, 11))
+    assert n and n.key.endswith("water-11") and "No water logged yet" in n.body
+    WaterEntry.objects.create(user=member, date=today, ml=1000)
+    assert tasks.water_reminder_for(member, profile, now=_local(profile, 14)) is None  # on pace
+    n = tasks.water_reminder_for(member, profile, now=_local(profile, 17))
+    assert n and n.key.endswith("water-17") and "1000 ml" in n.body
+    profile.notify_water = False
+    profile.save()
+    WaterEntry.objects.all().delete()
+    assert tasks.water_reminder_for(member, profile, now=_local(profile, 18)) is None
+
+
+def test_weigh_in_only_on_the_chosen_day_and_never_with_ed(member):
+    profile = onboard(member, track_weight=True)
+    today = local_today(profile)
+    profile.weigh_day = today.weekday()
+    profile.save()
+    n = tasks.weigh_in_for(member, profile, now=_local(profile, 9))
+    assert n and n.icon == "scale" and n.url.endswith("#weight")
+    assert tasks.weigh_in_for(member, profile, now=_local(profile, 10)) is None  # once a week
+    other = get_user_model().objects.create_user("w", "w@example.com", "x-password-123")
+    p2 = onboard(
+        other, track_weight=True, conditions=["eating_disorder"], weigh_day=today.weekday()
+    )
+    assert tasks.weigh_in_for(other, p2, now=_local(p2, 9)) is None
+
+
+def test_incomplete_profile_reminder_only_once(member):
+    from django.utils import timezone as tz
+
+    get_user_model().objects.filter(pk=member.pk).update(
+        date_joined=tz.now() - dt.timedelta(days=3)
+    )
+    member.refresh_from_db()
+    profile = onboard(member)
+    n = tasks.profile_nudge_for(member, profile)
+    assert n and n.url == reverse("profile-edit")
+    assert tasks.profile_nudge_for(member, profile) is None

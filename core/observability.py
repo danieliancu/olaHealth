@@ -17,7 +17,7 @@ import uuid
 
 _request_id: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
 _SAFE_ID = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
-PERSONAL_PREFIXES = ("/today", "/progress", "/my-ola", "/start", "/accounts", "/staff", "/saved")
+PERSONAL_PREFIXES = ("/today", "/progress", "/ask-foodo", "/start", "/accounts", "/staff", "/saved")
 
 
 class RequestIdMiddleware:

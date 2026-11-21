@@ -30,6 +30,14 @@ class Contribution(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     access_token = models.CharField(max_length=64, unique=True, default=new_token, editable=False)
     session_key = models.CharField(max_length=40, blank=True)
+    # The signed-in contributor, if any: only used to tell them the moderation outcome.
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="contributions",
+    )
     product = models.ForeignKey(
         "catalog.Product",
         null=True,

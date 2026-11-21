@@ -1,0 +1,17 @@
+{% extends "staff/layout.html" %}{% load ui %}
+{% block staff_title %}Learn topics{% endblock %}
+{% block staff_content %}
+<p class="back"><a href="{% url 'staff:learn' %}">{% icon "chevron-left" 18 %}<span>All articles</span></a></p>
+<h1>Learn topics</h1>
+<ul class="cms-list card">
+  {% for t in topics %}<li><a class="cms-row" href="{% url 'staff:learn-topic' t.pk %}"><span class="cms-thumb">{% icon t.icon 20 %}</span><span class="cms-text"><strong>{{ t.title }}</strong><small>/learn/topic/{{ t.key }}/ · {{ t.n }} article{{ t.n|pluralize }} · order {{ t.order }}</small></span></a></li>{% endfor %}
+</ul>
+<h2>{% if topic %}Edit “{{ topic.title }}”{% else %}New topic{% endif %}</h2>
+<form method="post" class="card staff-form" novalidate>{% csrf_token %}
+  {% include "partials/form_fields.html" %}
+  <div class="row">
+    <button class="btn btn-primary" type="submit">{% icon "check" 18 %}<span>Save topic</span></button>
+    {% if topic %}<a class="btn btn-link" href="{% url 'staff:learn-topics' %}">New topic instead</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

@@ -1,10 +1,11 @@
 {% load i18n ui %}{% url 'settings-edit' as settings_url %}
 <form id="settings" class="profile-section" method="post" action="{{ settings_url }}" hx-post="{{ settings_url }}" hx-target="this" hx-swap="outerHTML" novalidate>
   {% csrf_token %}
-  {% if form.errors %}<p class="msg msg-error" role="alert">{% icon "triangle-alert" 18 %}<span>{% translate "Check the highlighted values." %}</span></p>{% endif %}
+  {% if form.errors %}<div {% if request.META.HTTP_HX_REQUEST %}id="messages" hx-swap-oob="true" {% endif %}class="messages" role="alert"><p class="msg msg-error">{% icon "triangle-alert" 18 %}<span>{% translate "Check the highlighted values." %}</span></p></div>{% endif %}
   <fieldset class="card stack" id="targets">
     <legend class="settings-legend">{% translate "Daily targets" %}</legend>
     <p class="caption">{% translate "Optional and set by you. Without a target, Today shows totals only." %}</p>
+    {% if not profile.eating_disorder %}{% url 'targets-calculate' as calc_url %}<a class="btn btn-outline btn-small btn-nowrap targets-calc-btn" href="{{ calc_url }}" data-targets-open="{{ calc_url }}">{% icon "calculator" 18 %}<span>{% translate "Calculate automatically" %}</span></a>{% endif %}
     <div class="grid-2">
       {% include "myola/partials/profile_target_field.html" with field=form.target_kcal unit="kcal" %}
       {% include "myola/partials/profile_target_field.html" with field=form.target_protein unit="g" %}
@@ -19,11 +20,29 @@
     {% if profile.eating_disorder %}<p class="hint">{% translate "Calories stay hidden everywhere (Today, Progress and Foodo’s answers) because of your health answers. To change this, update your health answers in Profile." %}</p>{% endif %}
     {% include "myola/partials/profile_switch.html" with field=form.show_targets %}
     {% include "myola/partials/profile_switch.html" with field=form.track_weight %}
+    {% if profile.track_weight and not profile.eating_disorder %}<div class="field">
+      <label for="{{ form.weigh_day.id_for_label }}">{{ form.weigh_day.label }}</label>
+      <select id="{{ form.weigh_day.id_for_label }}" name="weigh_day">{% for value, label in form.fields.weigh_day.choices %}<option value="{{ value }}"{% if value|stringformat:"s" == form.weigh_day.value|stringformat:"s" %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    </div>{% else %}<input type="hidden" name="weigh_day" value="{{ form.weigh_day.value|default:0 }}">{% endif %}
   </fieldset>
   <fieldset class="card stack" id="notes">
     <legend class="settings-legend">{% translate "Notes in replies" %}</legend>
     {% include "myola/partials/profile_switch.html" with field=form.use_notes %}
-    <p class="caption">{% translate "Off by default. When on, Foodo uses only the notes relevant to the current conversation (the same product, or matching words)." %}</p>
+    <p class="caption">{% translate "Off by default. When on, Foodo uses only the notes relevant to the current conversation (the same product, or matching words). Notes are never sent to the AI provider." %}</p>
+  </fieldset>
+  <fieldset class="card stack" id="ai">
+    <legend class="settings-legend">{% translate "AI answers" %}</legend>
+    {% include "myola/partials/profile_switch.html" with field=form.ai_use_preferences %}
+    <p class="caption">{% translate "Off by default. When Foodo uses an AI model, it receives only the facts of the product and your question. When this is on, it also receives the names of your diets and allergies (never your health conditions, notes, lists or account details). Allergen and diet checks are always worked out by AskFoodo itself, not by the AI." %}</p>
+  </fieldset>
+  <fieldset class="card stack" id="notifications">
+    <legend class="settings-legend">{% translate "Notifications" %}</legend>
+    <p class="caption">{% translate "Shown in the app only (the bell at the top). No emails, no push messages." %}</p>
+    {% include "myola/partials/profile_switch.html" with field=form.notify_reminders %}
+    {% include "myola/partials/profile_switch.html" with field=form.notify_water %}
+    {% include "myola/partials/profile_switch.html" with field=form.notify_achievements %}
+    {% include "myola/partials/profile_switch.html" with field=form.notify_contributions %}
+    {% include "myola/partials/profile_switch.html" with field=form.notify_announcements %}
   </fieldset>
   <fieldset class="card stack" id="timezone">
     <legend class="settings-legend">{% translate "Time zone" %}</legend>

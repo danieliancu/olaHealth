@@ -1,5 +1,5 @@
 {% load i18n ui %}{% url 'today-entry-add' as add_url %}
-<details class="quick-add"{% if g.quick_open %} open{% endif %}>
+<details class="quick-add" id="quick-{{ g.key }}"{% if g.quick_open %} open{% endif %}>
   <summary>{% icon "plus" 16 %}<span>{% translate "Quick add" %}</span></summary>
   <form class="quick-form" method="post" action="{{ add_url }}" hx-post="{{ add_url }}" hx-target="#today" hx-swap="outerHTML" data-no-busy novalidate>
     {% csrf_token %}<input type="hidden" name="quick" value="{{ g.key }}">{{ f.date }}{{ f.meal }}

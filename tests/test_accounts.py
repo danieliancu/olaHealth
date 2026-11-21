@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.urls import reverse
 
-PERSONAL_PAGES = ("start", "today", "progress", "my-ola", "delete-account")
+PERSONAL_PAGES = ("start", "today", "progress", "ask-foodo", "delete-account")
 PUBLIC_PAGES = ("home", "scan", "products", "compare", "sources")
 
 
@@ -26,11 +26,11 @@ def test_scan_and_catalogue_stay_public(client, name):
 
 
 @pytest.mark.django_db
-def test_signed_in_home_is_the_homepage_with_open_today(member_client):
+def test_signed_in_home_is_the_today_dashboard(member_client):
     r = member_client.get(reverse("home"))
     html = r.content.decode()
-    assert r.status_code == 200 and "Open Today" in html and 'href="/today/"' in html
-    assert "Get started" not in html
+    assert r.status_code == 200 and ">Today</h1>" in html and 'class="meal-tiles' in html
+    assert "Welcome to AskFoodo" not in html
 
 
 @pytest.mark.django_db
@@ -85,7 +85,7 @@ def test_auth_pages_use_the_app_shell_without_inline_scripts(client):
 
 @pytest.mark.django_db
 def test_account_tab_shows_the_email_and_real_actions(member_client):
-    html = member_client.get(reverse("my-ola") + "?tab=account").content.decode()
+    html = member_client.get(reverse("ask-foodo") + "?tab=account").content.decode()
     assert "member@example.com" in html
     assert reverse("account_change_password") in html and reverse("delete-account") in html
     assert "coming soon" not in html.lower()

@@ -1,0 +1,1469 @@
+/* ==========================================================================
+   Soft theme: the delicate look (pale tinted cards, icon circles, light type, gentle motion),
+   in AskFoodo greens. Loaded last, so it refines app.css without rewriting it.
+   Contrast checked for AA: fill #1f7a59 + white 5.3:1 · accent #0b7a5e on tint 4.7:1 ·
+   muted #6b7280 on white 4.8:1 · tone texts on their tints ≥ 4.9:1.
+   ========================================================================== */
+
+/* ---------- Nunito (OFL, self-hosted: CSP allows fonts from 'self' only) ---------- */
+@font-face {
+  font-family: "Nunito"; font-style: normal; font-weight: 200 1000; font-display: swap;
+  src: url("../fonts/nunito-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Nunito"; font-style: normal; font-weight: 200 1000; font-display: swap;
+  src: url("../fonts/nunito-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ---------- Tokens ---------- */
+:root {
+  --bg: #f9fafb;
+  --text: #1f2937;
+  --text-soft: #4b5563;
+  --muted: #6b7280;
+  --line: #f0f1f3;
+  --line-strong: #e5e7eb;
+  --accent-soft: #e7f5ee;
+  --accent-fill: #288563;      /* softer fill, white text 4.5:1 */
+  --accent-fill-hover: #1f7a59;
+  --accent-tint: #e7f5ee;
+  --accent-tint-2: #f3faf6;
+  --accent-line: #bfe0cf;
+  --radius-lg: 16px;
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-pill: 999px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .05);
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .04);
+  --fs-xs: .75rem;      /* 12px: tab labels, pills, dates */
+  --fs-sm: .875rem;     /* 14px: subtitles, captions */
+  --fs-md: 1rem;        /* 16px: body and card titles */
+  --fs-lg: 1.125rem;    /* 18px: section titles */
+  --fs-xl: 1.25rem;     /* 20px: page titles */
+  --gutter: 1.25rem;    /* 20px page padding */
+  --font-body: "Nunito", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-body);
+  --ease-out: cubic-bezier(.22, .8, .32, 1);
+  font-family: var(--font-body);
+}
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+/* ---------- Type: Nunito everywhere, Tailwind scale (16 body · 14 secondary · 12 small) ---------- */
+body { font-size: var(--fs-md); line-height: 1.5; color: var(--text); }
+h1 { font-size: var(--fs-xl); font-weight: 600; letter-spacing: 0; }
+h2 { font-size: var(--fs-lg); font-weight: 600; }
+h3 { font-size: var(--fs-md); font-weight: 600; }
+.caption, .hint, .meta { font-size: var(--fs-sm); color: var(--muted); }
+.eyebrow { font-size: var(--fs-sm); color: var(--muted); font-weight: 400; }
+.page-sub { margin: .15rem 0 0; color: var(--muted); font-size: var(--fs-sm); font-weight: 400; }
+main { padding-left: var(--gutter); padding-right: var(--gutter); }
+
+/* ---------- Header: airy, icon buttons in tinted circles ---------- */
+.site-header { border-bottom: 0; box-shadow: 0 1px 0 var(--line); padding: .55rem 1rem; }
+.brand { font-weight: 800; font-size: var(--fs-xl); letter-spacing: 0; }
+.header-tools { display: flex; gap: .3rem; }
+.header-tools .icon-btn { position: relative; width: 40px; height: 40px; margin: 2px; background: var(--accent-tint); color: var(--accent); }
+.header-tools .icon-btn:hover { background: #d7eee2; }
+.header-tools .icon-btn .icon { width: 19px; height: 19px; }
+
+/* Logo (image): 24px tall in the header, 26px on desktop, 24px in the footer. */
+.brand-logo { display: inline-flex; align-items: center; min-height: 44px; }
+.brand-logo img { display: block; width: auto; height: 24px; }
+@media (min-width: 768px) { .site-header .brand-logo img { height: 26px; } }
+.footer-brand .brand-logo { min-height: 0; }
+.footer-brand .brand-logo img { height: 22px; }
+
+/* ---------- Tab bar: five tabs, quiet active state ---------- */
+.tabbar {
+  grid-template-columns: repeat(5, 1fr); border-top: 0;
+  box-shadow: 0 -1px 0 var(--line), 0 -6px 18px rgba(17, 24, 39, .04);
+}
+.tabbar a { font-size: var(--fs-xs); color: var(--muted); transition: color .2s var(--ease-out); }
+.tab-icon { width: 44px; height: 30px; transition: background-color .2s var(--ease-out), color .2s var(--ease-out); }
+.tabbar a[aria-current="page"] { color: var(--accent); font-weight: 600; }
+.tabbar a[aria-current="page"] .tab-icon { background: var(--accent-tint); color: var(--accent); }
+.tabbar a:hover .tab-icon { background: var(--accent-tint-2); }
+@media (max-width: 359px) { .tabbar a { font-size: .6875rem; } }
+
+/* ---------- Cards, buttons, fields, pills ---------- */
+.card { border-color: var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); padding: 1.1rem; }
+.tile { border-color: var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); }
+.btn { border-radius: var(--radius-sm); border-width: 1px; border-color: var(--accent-line); font-weight: 500; transition: background-color .2s, border-color .2s, color .2s; }
+.btn:hover { border-color: var(--accent); background: var(--accent-tint-2); }
+.btn-primary, .btn-ask, .btn-ask:visited { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
+.btn-primary:hover, .btn-ask:hover { background: var(--accent-fill-hover); border-color: var(--accent-fill-hover); color: #fff; }
+.btn-outline { border-color: var(--accent-line); color: var(--accent-strong); background: var(--surface); }
+.btn-link:hover { background: none; }
+input[type="text"], input[type="search"], input[type="number"], input[type="email"], input[type="password"],
+input[type="url"], input:not([type]), select, textarea {
+  border: 1px solid #cfdfd8; border-radius: var(--radius-sm); background: var(--surface);
+  transition: border-color .2s, box-shadow .2s;
+}
+/* Form fields: a green ring on focus (no orange frame); the green border + ring stays clearly visible. */
+input:focus, select:focus, textarea:focus,
+input:focus-visible, select:focus-visible, textarea:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(11, 122, 94, .22); outline: none; }
+.chip, .chips li { background: var(--accent-tint); color: var(--accent-strong); border-radius: var(--radius-pill); }
+.chip-btn { border-radius: var(--radius-pill); border-color: var(--accent-line); }
+.notice, .msg { background: var(--accent-tint-2); border-color: var(--line); border-radius: var(--radius); }
+.notice-ok, .msg-success { background: var(--accent-tint); border-color: var(--accent-line); }
+.segmented { background: #edf3f0; border-radius: 14px; }
+.segmented a, .segmented button { border-radius: 10px; transition: background-color .2s, color .2s; }
+span.pill {
+  display: inline-flex; align-items: center; min-height: 20px; padding: 0 .55rem; border-radius: var(--radius-pill);
+  background: var(--accent-tint); color: var(--accent-strong); font-size: var(--fs-xs); font-weight: 400;
+}
+.read-time { display: inline-flex; align-items: center; gap: .25rem; color: var(--muted); font-size: var(--fs-xs); }
+
+/* Soft icon circles (tinted background, accent stroke) */
+.soft-icon {
+  display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--accent-tint); color: var(--accent);
+}
+.soft-icon-lg { width: 48px; height: 48px; }
+.soft-icon.tone-green { background: var(--accent-tint); color: var(--accent); }
+.soft-icon.tone-blue { background: #e8f0fb; color: #2563a8; }
+.soft-icon.tone-amber { background: #fdf3e1; color: #9a5b00; }
+.soft-icon.tone-violet { background: #f1ecfb; color: #6b4fb0; }
+
+.page-head-soft { display: flex; align-items: center; gap: .75rem; justify-content: flex-start; margin-bottom: 1rem; }
+.page-head-soft h1 { margin: 0; }
+
+/* Day band: the full-width green band becomes a pale tinted strip */
+.day-band { background: var(--accent-tint); box-shadow: 0 0 0 100vmax var(--accent-tint); color: var(--text); margin: .75rem 0 1.1rem; }
+.day-band .icon-btn { color: var(--accent); }
+.day-band .icon-btn:hover { background: rgba(11, 122, 94, .08); }
+.day-band .day { color: var(--text); border-radius: 14px; transition: background-color .2s; }
+.day-band .day-name { color: var(--muted); }
+.day-band .day.is-today .day-num { color: var(--accent-strong); }
+.day-band .day-dot.is-on { background: #7cc3a5; }
+.day-band .day.is-today:not(.is-selected) .day-dot { background: var(--accent); }
+.day-band .day:not(:disabled):hover { background: rgba(255, 255, 255, .7); }
+.day-band .day.is-selected { background: var(--accent-fill); color: #fff; box-shadow: 0 4px 12px rgba(31, 122, 89, .25); }
+.day-band .day.is-selected .day-name, .day-band .day.is-selected .day-num { color: #fff; }
+.day-band .day.is-selected .day-dot.is-on { background: #fff; }
+/* Hover on the selected day: the green turns white, so the text turns green. */
+.day-band .day.is-selected:not(:disabled):hover { background: #fff; box-shadow: 0 0 0 1px var(--accent-line), 0 4px 12px rgba(31, 122, 89, .18); }
+.day-band .day.is-selected:hover .day-name, .day-band .day.is-selected:hover .day-num { color: var(--accent-strong); }
+.day-band .day.is-selected:hover .day-dot.is-on { background: var(--accent); }
+/* Week arrows: the days slide in from the side they come from (static/js/week-nav.js). */
+@keyframes days-from-right { from { opacity: 0; transform: translateX(28%); } to { opacity: 1; transform: none; } }
+@keyframes days-from-left { from { opacity: 0; transform: translateX(-28%); } to { opacity: 1; transform: none; } }
+.day-strip { overflow: clip; overflow-clip-margin: 14px; } /* clip the slide, keep shadows and focus rings */
+.days.slide-from-right { animation: days-from-right .38s var(--ease-spring) both; }
+.days.slide-from-left { animation: days-from-left .38s var(--ease-spring) both; }
+.day-band .day.is-future, .day-band .day.is-future .day-name { color: #a9bab4; }
+.day-band :focus-visible { outline-color: #f59e0b; }
+
+/* Day band: one week on phones, two weeks (previous + current) on wide screens. */
+.days.two-weeks { grid-template-columns: repeat(7, 1fr); }
+.days > .is-earlier { display: none; }
+@media (min-width: 1024px) {
+  .days.two-weeks { grid-template-columns: repeat(14, 1fr); }
+  .days > .is-earlier { display: grid; }
+  .day-band .day-strip { max-width: 1040px; }
+}
+
+/* ---------- Today / Home: dashboard (measured on the Figma Home screen) ---------- */
+.today-head { align-items: flex-start; margin: .25rem 0 1.25rem; }
+.greet { margin: 0; font-size: var(--fs-md); font-weight: 400; line-height: 1.5; color: var(--text); }
+.today-head h1 { font-size: var(--fs-xl); margin: 0; }
+.today-head .eyebrow { margin: .25rem 0 0; font-size: var(--fs-sm); line-height: 1.43; }
+.head-tool { background: var(--accent-tint); color: var(--accent); width: 40px; height: 40px; }
+.head-tool:hover { background: #d7eee2; }
+
+.dash-section { margin: 0 0 1.5rem; }
+.dash-title { font-size: var(--fs-lg); font-weight: 600; line-height: 1.55; margin: 0 0 .75rem; color: var(--text); }
+.dash-title-sm { font-size: var(--fs-md); font-weight: 400; line-height: 1.5; color: var(--text-soft); }
+
+/* Reminder card: tinted, 16px radius, 20px padding, 40px icon circle, 16/24 text. */
+.nudge {
+  display: flex; gap: 1rem; align-items: flex-start; margin: 0 0 1.5rem; padding: 1.25rem;
+  background: var(--accent-tint); border: 1px solid #cfe9db; border-radius: var(--radius); box-shadow: var(--shadow-soft);
+}
+.nudge-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: #c6e7d6; color: var(--accent-strong); }
+.nudge h2 { font-size: var(--fs-md); font-weight: 600; line-height: 1.5; margin: 0 0 .25rem; }
+.nudge p { margin: 0; font-size: var(--fs-md); line-height: 1.5; color: var(--text-soft); }
+.nudge-link { display: inline-flex; align-items: center; gap: .15rem; margin-top: .5rem; min-height: 32px; font-size: var(--fs-sm); font-weight: 600; color: var(--accent-strong); text-decoration: none; }
+.nudge-link:hover { text-decoration: underline; }
+
+/* Four square tiles (the "How are you feeling" row): white, 16px radius, 12px gap, 14px label. */
+.meal-tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.meal-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .375rem; min-height: 92px; padding: 1rem .25rem;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-soft);
+  text-decoration: none; color: var(--text); text-align: center;
+  transition: transform .2s var(--ease-out), border-color .2s, box-shadow .2s;
+}
+.meal-tile:hover { border-color: var(--accent-line); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, .06); }
+.meal-tile-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent-tint-2); color: var(--accent); }
+.meal-tile.has-food .meal-tile-icon { background: var(--accent-tint); }
+.meal-tile-label { font-size: var(--fs-sm); font-weight: 600; line-height: 1.43; }
+.meal-tile-sub { font-size: var(--fs-xs); color: var(--muted); line-height: 1.33; font-variant-numeric: tabular-nums; }
+.meal-tile:not(.has-food) .meal-tile-sub { color: var(--accent-strong); }
+@media (max-width: 359px) { .meal-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Desktop: no cards, big soft icon circles (the four meals as a row of large badges). */
+@media (min-width: 1024px) {
+  .meal-tiles { gap: 1.5rem; margin-top: .25rem; }
+  .meal-tile, .meal-tile:hover { min-height: 0; padding: .25rem 0; gap: .5rem; background: none; border: 0; box-shadow: none; }
+  .meal-tile:hover { transform: none; }
+  .meal-tile-icon {
+    width: 96px; height: 96px; margin-bottom: .25rem;
+    background: radial-gradient(circle at 30% 25%, #ffffff 0%, #eef8f3 45%, #dcf0e5 100%);
+    box-shadow: 0 10px 24px rgba(31, 122, 89, .12), inset 0 0 0 1px rgba(31, 122, 89, .06);
+    transition: box-shadow .25s var(--ease-out), transform .25s var(--ease-out);
+  }
+  .meal-tile-icon .icon { width: 42px; height: 42px; stroke-width: 1.25; position: relative; z-index: 1; transition: color .5s ease, stroke-width .5s ease; }
+  /* Hover: no growth - the circle floods with green from its centre and the icon fades to white. */
+  .meal-tile-icon { position: relative; overflow: hidden; isolation: isolate; }
+  .meal-tile-icon::before {
+    content: ""; position: absolute; inset: 0; border-radius: 50%; z-index: 0;
+    background: radial-gradient(circle at 30% 25%, #4fb488 0%, #2f9a6f 45%, #1f7a59 100%);
+    opacity: 0;
+    transition: opacity .6s ease;
+  }
+  .meal-tile-label { transition: color .5s ease; }
+  .meal-tile:hover .meal-tile-icon::before, .meal-tile:focus-visible .meal-tile-icon::before { opacity: 1; }
+  .meal-tile:hover .meal-tile-icon .icon, .meal-tile:focus-visible .meal-tile-icon .icon { color: #fff; stroke-width: 1.5; }
+  .meal-tile:hover .meal-tile-label, .meal-tile:focus-visible .meal-tile-label { color: var(--accent-fill); }
+  .meal-tile:hover .meal-tile-icon, .meal-tile:focus-visible .meal-tile-icon { box-shadow: 0 16px 34px rgba(31, 122, 89, .28), inset 0 0 0 1px rgba(31, 122, 89, .1); }
+  .meal-tile.has-food:hover .meal-tile-icon { box-shadow: 0 16px 34px rgba(31, 122, 89, .28), 0 0 0 3px #fff, 0 0 0 5px #9fd3b9; }
+  .meal-tile.has-food .meal-tile-icon {
+    background: radial-gradient(circle at 30% 25%, #f3fbf7 0%, #d9f0e4 55%, #c4e7d4 100%);
+    box-shadow: 0 10px 24px rgba(31, 122, 89, .16), 0 0 0 3px #fff, 0 0 0 5px #9fd3b9;
+  }
+  .meal-tile-label { font-size: var(--fs-md); font-weight: 600; }
+  .meal-tile-sub { font-size: var(--fs-sm); }
+}
+
+/* Quick actions: 16px radius, 16px padding, 40px icon circle, 16px title + 14px subtitle, 12px gap. */
+.quick-actions { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.qa {
+  display: flex; align-items: center; gap: 1rem; min-height: 76px; padding: 1rem;
+  background: var(--surface); border: 1px solid var(--accent-line); border-radius: var(--radius); box-shadow: var(--shadow-soft);
+  text-decoration: none; color: var(--text); transition: background-color .2s, border-color .2s, transform .2s var(--ease-out);
+}
+.qa:hover { background: var(--accent-tint-2); border-color: var(--accent); }
+.qa:active { transform: scale(.99); }
+.qa-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); }
+.qa-text { display: grid; gap: 0; min-width: 0; }
+.qa-text strong { font-size: var(--fs-md); font-weight: 400; line-height: 1.5; }
+.qa-text small { font-size: var(--fs-sm); color: var(--muted); line-height: 1.43; }
+/* The first action is filled; both lines 14px semibold, white, compact (as in Figma). */
+.qa-primary { min-height: 72px; gap: .75rem; padding: 1rem; background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
+.qa-primary:hover { background: var(--accent-fill-hover); border-color: var(--accent-fill-hover); }
+.qa-primary .qa-icon { width: 20px; height: 20px; background: none; color: #fff; }
+.qa-primary .qa-text strong, .qa-primary .qa-text small { font-size: var(--fs-sm); font-weight: 600; color: #fff; line-height: 1.43; }
+@media (min-width: 768px) and (max-width: 1023px) { .quick-actions { grid-template-columns: 1fr 1fr; } }
+/* Desktop: the four actions on one row, icon above the text. */
+@media (min-width: 1024px) {
+  .quick-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .quick-actions > li { display: flex; }
+  .quick-actions .qa { width: 100%; }
+  .qa, .qa-primary { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .75rem; min-height: 132px; padding: 1.125rem 1rem; }
+  .qa-primary .qa-icon { width: 40px; height: 40px; background: rgba(255, 255, 255, .16); border-radius: 50%; }
+  .qa-primary .qa-text strong { font-size: var(--fs-md); }
+  .qa-primary .qa-text small { font-weight: 400; color: #e3f4ec; }
+}
+
+/* Encouragement: palest tint, 16px radius, 20px padding, 40px filled icon circle. */
+.cheer {
+  display: flex; gap: 1rem; align-items: flex-start; margin: .5rem 0 1rem; padding: 1.25rem;
+  background: var(--accent-tint-2); border: 1px solid #e3f1ea; border-radius: var(--radius); box-shadow: var(--shadow-soft);
+}
+.cheer-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--accent-fill); color: #fff; }
+.cheer-title { margin: 0 0 .25rem; font-weight: 600; font-size: var(--fs-md); line-height: 1.5; }
+.cheer p:not(.cheer-title) { margin: 0; font-size: var(--fs-sm); color: var(--text-soft); line-height: 1.6; }
+
+/* Tips carousel: 6 tips, the set twice (seamless loop). One visible on phones, two on tablets,
+   three on desktop (--visible). With static/js/tips.js: arrows + timer (--tip-i); without it,
+   a CSS animation steps through the tips. A step is 1/12 of the track. */
+.tips { --visible: 1; position: relative; margin: .5rem 0 1rem; display: grid; grid-template-columns: 1fr auto auto; gap: .5rem; align-items: center; }
+.tips-viewport { grid-column: 1 / -1; grid-row: 1; overflow: hidden; margin: 0; padding: .25rem 0 .5rem; }
+.tips-track {
+  list-style: none; margin: 0; padding: 0; display: flex; width: calc(100% * 12 / var(--visible));
+  animation: tips-step 30s cubic-bezier(.65, 0, .35, 1) infinite;
+}
+.tips-js .tips-track { animation: none; transform: translateX(calc(var(--tip-i, 0) * -100% / 12)); transition: transform .6s cubic-bezier(.65, 0, .35, 1); }
+.tips-js .tips-track.no-anim { transition: none; }
+.tip { flex: 0 0 calc(100% / 12); padding: 0 .375rem; display: flex; }
+.tip .cheer { margin: 0; width: 100%; min-height: 100%; }
+.tips:not(.tips-js):hover .tips-track, .tips:not(.tips-js):focus-within .tips-track { animation-play-state: paused; }
+/* Arrows: clear round buttons. Phones: under the card, on the right. */
+.tips-arrow {
+  grid-row: 2; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--line-strong); background: #fff; color: var(--accent-strong); cursor: pointer;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, .08); transition: background-color .2s, border-color .2s, transform .2s var(--ease-out);
+}
+.tips-arrow:hover { background: var(--accent-tint); border-color: #9fd3b9; }
+.tips-arrow:active { transform: scale(.95); }
+.tips-prev { grid-column: 2; }
+.tips-next { grid-column: 3; }
+@keyframes tips-step {
+  0%, 15% { transform: translateX(0); }
+  16.667%, 31.667% { transform: translateX(-8.3333%); }
+  33.333%, 48.333% { transform: translateX(-16.6667%); }
+  50%, 65% { transform: translateX(-25%); }
+  66.667%, 81.667% { transform: translateX(-33.3333%); }
+  83.333%, 98.333% { transform: translateX(-41.6667%); }
+  100% { transform: translateX(-50%); }
+}
+/* Phones: no arrows (swipe or wait for the next tip). */
+@media (max-width: 767px) { .tips { display: block; } .tips-arrow { display: none !important; } }
+@media (min-width: 640px) { .tips { --visible: 2; } }
+@media (min-width: 768px) {
+  /* The carousel keeps the full content width; the arrows sit outside it, vertically centred. */
+  .tips { display: block; }
+  .tips-arrow { position: absolute; top: 50%; transform: translateY(-50%); margin-top: -.125rem; }
+  .tips-arrow:active { transform: translateY(-50%) scale(.95); }
+  .tips-prev { left: -60px; }
+  .tips-next { right: -60px; }
+}
+/* Not enough room outside the content: tuck the arrows just inside the edges. */
+@media (min-width: 768px) and (max-width: 1159px) {
+  .tips-prev { left: -10px; }
+  .tips-next { right: -10px; }
+}
+@media (min-width: 1024px) {
+  .tips { --visible: 3; }
+  .tip .cheer { flex-direction: column; gap: .75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tips-track, .tips-js .tips-track { animation: none !important; transition: none !important; }
+}
+
+/* Today cards */
+.t-card-head h2 { font-size: var(--fs-lg); font-weight: 600; }
+.meal-icon { background: var(--accent-tint); color: var(--accent); border-radius: 50%; }
+.meal { scroll-margin-top: 80px; }
+
+/* ---------- Learn ---------- */
+.topic-grid { list-style: none; margin: 0 0 1.4rem; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.topic-card {
+  display: grid; align-content: start; gap: .45rem; height: 100%; min-height: 120px; padding: 1rem;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft);
+  text-decoration: none; color: var(--text); transition: border-color .2s, transform .2s var(--ease-out);
+}
+.topic-card:hover { border-color: var(--accent-line); transform: translateY(-1px); }
+.topic-card.is-current { border-color: var(--accent); background: var(--accent-tint-2); }
+.topic-card strong { font-size: var(--fs-md); font-weight: 500; line-height: 1.3; margin-top: .2rem; }
+.topic-card small { font-size: var(--fs-xs); color: var(--muted); }
+.article-list { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .75rem; }
+.article-list > li { display: flex; }
+@media (min-width: 768px) { .article-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; } }
+.article-card {
+  width: 100%; display: flex; gap: 1rem; align-items: center; padding: 1rem; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 1px 2px rgba(0, 0, 0, .04);
+  text-decoration: none; color: var(--text); transition: box-shadow .2s, transform .2s var(--ease-out);
+}
+.article-card:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, .08); }
+.article-thumb { flex: none; width: 88px; height: 88px; border-radius: 12px; object-fit: cover; background: var(--accent-tint); }
+.article-hero {
+  display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius);
+  background: var(--accent-tint); margin-bottom: .5rem; box-shadow: var(--shadow-soft); justify-self: stretch; max-height: 340px;
+}
+.article-text { display: grid; gap: .375rem; min-width: 0; align-content: center; }
+.article-text strong { font-size: var(--fs-lg); font-weight: 700; line-height: 1.4; color: var(--text); }
+.article-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.article-meta .pill { min-height: 22px; padding: 0 .625rem; font-size: var(--fs-xs); font-weight: 400; background: var(--accent-tint); color: var(--accent); }
+.article-meta .read-time { font-size: var(--fs-xs); color: var(--muted); }
+.read-more { display: inline-flex; align-items: center; gap: .25rem; font-size: var(--fs-sm); font-weight: 400; color: var(--accent); }
+.read-more .icon { width: 14px; height: 14px; }
+.article-head { margin-bottom: 1rem; display: grid; gap: .55rem; justify-items: start; }
+.article-head h1 { margin: 0; font-size: 1.5rem; line-height: 1.33; }
+.prose { line-height: 1.65; font-size: var(--fs-md); }
+.prose h2 { font-size: var(--fs-lg); margin: 1.2rem 0 .4rem; }
+.prose h2:first-child { margin-top: 0; }
+.prose ul, .prose ol { padding-left: 1.2rem; margin: 0 0 .8rem; }
+.prose li { margin-bottom: .3rem; }
+
+/* ---------- My Track: stats and achievements ---------- */
+.stats-section { margin: 0 0 1.25rem; scroll-margin-top: 80px; }
+#ach-h { scroll-margin-top: 90px; }
+.stat-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.stat-card {
+  display: grid; gap: .25rem; padding: 1rem; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-soft);
+}
+.stat-card .soft-icon { width: 34px; height: 34px; margin-bottom: .35rem; }
+.stat-value { font-size: 1.5rem; font-weight: 400; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat-label { font-size: var(--fs-xs); color: var(--muted); line-height: 1.35; }
+.achievement-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.achievement {
+  display: flex; gap: .85rem; align-items: flex-start; padding: 1rem; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft);
+}
+.achievement strong { display: block; font-size: var(--fs-md); font-weight: 500; }
+.achievement p { margin: .15rem 0 .3rem; font-size: var(--fs-sm); color: var(--text-soft); }
+.achievement small { font-size: var(--fs-xs); color: var(--muted); }
+@media (min-width: 768px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } .achievement-list { grid-template-columns: 1fr 1fr; } }
+.mytrack-links a { border-radius: 12px; transition: background-color .2s; }
+.mytrack-links a:hover { background: var(--accent-tint-2); }
+
+/* ---------- Ask Foodo ---------- */
+.chat-page-head .soft-icon { width: 44px; height: 44px; }
+.chat-card { padding: .9rem; }
+.chat-note { background: var(--accent-tint-2); border-radius: 12px; font-size: var(--fs-xs); }
+.chat-log { gap: .7rem; }
+.chat-msg { display: flex; gap: .55rem; align-items: flex-end; max-width: 90%; padding: 0; background: none; border-radius: 0; }
+.chat-msg p { padding: .65rem .85rem; border-radius: 18px; font-size: var(--fs-sm); line-height: 1.43; box-shadow: 0 1px 2px rgba(17, 24, 39, .05); }
+.chat-foodo { align-self: flex-start; background: none; }
+.chat-welcome { display: flex; gap: .55rem; align-items: flex-end; max-width: 90%; align-self: flex-start; animation: rise-in .3s var(--ease-out) both; }
+.chat-welcome p { margin: 0; padding: .65rem .85rem; border-radius: 18px; border-bottom-left-radius: 6px; background: var(--surface); border: 1px solid var(--line); font-size: var(--fs-sm); line-height: 1.43; box-shadow: 0 1px 2px rgba(17, 24, 39, .05); }
+.chat-foodo p { background: var(--surface); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+.chat-user { align-self: flex-end; background: none; color: var(--text); }
+.chat-user p { background: var(--accent-tint); border: 1px solid #d3ebdf; border-bottom-right-radius: 6px; color: var(--text); }
+.chat-avatar { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-fill); color: #fff; }
+.chat-suggest { flex-wrap: nowrap; overflow-x: auto; padding: .15rem .05rem .35rem; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.chat-suggest .chip-btn {
+  flex: none; display: inline-flex; align-items: center; min-height: 38px; padding: 0 .9rem; white-space: nowrap;
+  background: var(--surface); border: 1px solid var(--accent-line); border-radius: var(--radius-pill);
+  color: var(--accent-strong); font-size: var(--fs-sm); transition: background-color .2s, border-color .2s;
+}
+.chat-suggest .chip-btn:hover { background: var(--accent-tint-2); border-color: var(--accent); }
+.chat-form { align-items: center; }
+.chat-form input { border-radius: var(--radius-pill); background: var(--accent-tint-2); border-color: var(--line); padding-left: 1rem; }
+.btn-send { width: 48px; min-width: 48px; padding: 0; border-radius: 50%; }
+.chat-head h2 { font-family: var(--font-display); }
+
+/* ==========================================================================
+   Delicate pass: fewer weights, lighter borders, pale selections (Figma direction).
+   ========================================================================== */
+
+/* Selected choices everywhere: pale green with green text and a small green check
+   (was solid green with white text). One look for meals, days, pills, cards and tabs. */
+.option:has(input:checked), .option[aria-pressed="true"],
+.choice[aria-pressed="true"],
+.chip-btn[aria-pressed="true"], .chip-btn[aria-current="true"],
+.chip-radio input:checked + span,
+.activity-chip input:checked + span,
+.meal-picker input:checked + span,
+.day-chips input:checked + span {
+  background: var(--accent-tint); border-color: #9fd3b9; color: var(--accent-strong);
+}
+.option:has(input:checked) .option-icon, .option[aria-pressed="true"] .option-icon { background: #fff; color: var(--accent); }
+.option:has(input:checked)::after, .option[aria-pressed="true"]::after, .choice[aria-pressed="true"]::after,
+.chip-btn[aria-pressed="true"]::before, .chip-radio input:checked + span::before {
+  background: var(--accent-fill); color: #fff;
+}
+.day-chips input:checked + span small, .day-chips input:checked + span .icon { color: var(--accent); }
+
+/* Shared pieces */
+.btn { min-height: 48px; font-weight: 500; }
+.btn-primary { font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
+label[for], .field-label { font-size: var(--fs-sm); font-weight: 500; color: #374151; }
+input[type="text"], input[type="search"], input[type="number"], input[type="email"], input[type="password"],
+input:not([type]), select { border-color: var(--line-strong); background: #fff; }
+.back a { font-size: var(--fs-sm); font-weight: 500; color: var(--accent-strong); }
+.thumb { border-radius: 12px; background: var(--accent-tint-2); }
+
+/* ---------- Food diary: quiet meal rows ---------- */
+.t-diary { padding: 1.25rem 1.25rem .75rem; }
+.t-diary .t-card-head h2 { font-size: var(--fs-lg); font-weight: 600; }
+.t-diary .meal { padding: .875rem 0 .5rem; }
+.t-diary .meal + .meal { border-top: 1px solid #f3f4f6; }
+.t-diary .meal-head { gap: .75rem; }
+.t-diary .meal-icon { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); }
+.t-diary .meal-icon .icon { width: 20px; height: 20px; }
+.t-diary .meal-head h3,
+.t-diary .meal-entries-head h3, .t-diary .meal-head:has(.meal-kcal) h3 { font-size: var(--fs-md); font-weight: 600; }
+.t-diary .meal-kcal { margin-left: 0; padding: 0; background: none; color: var(--muted); font-size: var(--fs-sm); font-weight: 400; }
+.t-diary .meal-tools { gap: 0; }
+.t-diary .meal-add { width: 36px; height: 36px; color: #9ca3af; }
+.t-diary .meal-add .icon { width: 18px; height: 18px; }
+.t-diary .meal-add:hover { background: var(--accent-tint-2); color: var(--accent); }
+/* Entries line up under the meal name (40px icon + 12px gap), separated by hairlines. */
+.t-diary .entry-list { margin: .375rem 0 0 3.25rem; padding: 0; background: none; border-radius: 0; }
+.t-diary .entry-list > li + li { border-top: 1px solid #f3f4f6; }
+.t-diary a.entry { padding: .625rem 0; gap: .75rem; }
+.t-diary .entry-name { font-size: var(--fs-md); font-weight: 400; }
+.t-diary .entry-amount { font-size: var(--fs-sm); margin-top: 0; }
+.t-diary .entry-amount { display: inline-flex; align-items: center; gap: .5rem; font-variant-numeric: tabular-nums; }
+.t-diary .entry-kcal { color: var(--muted); font-size: var(--fs-sm); }
+.entry-dot { width: 4px; height: 4px; border-radius: 50%; background: #9fd3b9; flex: none; }
+.t-diary a.entry .icon { color: #d1d5db; width: 16px; height: 16px; }
+.t-diary .quick-add { margin-left: 3.25rem; }
+.t-diary .quick-add > summary { padding: .375rem 0; gap: .375rem; font-size: var(--fs-sm); font-weight: 500; color: var(--accent); min-height: 36px; }
+.t-diary .quick-add > summary .icon { width: 16px; height: 16px; }
+.t-diary .quick-add > summary:hover { text-decoration: none; color: var(--accent-strong); }
+.diary-empty { padding: 1.25rem .5rem; color: var(--text-soft); }
+.diary-empty .icon { color: #9fd3b9; }
+
+/* Meal = grid: icon | name | tools. The meal total sits under the icon (the column is empty
+   once foods are listed); foods and Quick add use the name column and the tools column. */
+.t-diary .meal { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; column-gap: .75rem; align-items: center; }
+.t-diary .meal-head { display: contents; }
+.t-diary .meal-icon { grid-column: 1; grid-row: 1; justify-self: center; }
+.t-diary .meal-head h3 { grid-column: 2; grid-row: 1; }
+.t-diary .meal-tools { grid-column: 3; grid-row: 1; margin-left: 0; }
+.t-diary .entry-list { grid-column: 2 / -1; grid-row: 2; margin: .375rem 0 0; }
+.t-diary .quick-add { grid-column: 1 / -1; margin-left: 0; }
+.t-diary .meal-total { grid-column: 2 / -1; margin: .5rem 0 0; }
+.t-diary .meal-total .pill { min-height: 24px; padding: 0 .625rem; background: var(--accent-tint); color: var(--accent-strong); font-size: var(--fs-xs); font-weight: 500; font-variant-numeric: tabular-nums; }
+/* The green "+" sits with the other meal tools, same size, left of the barcode icon. */
+.t-diary .meal-quick { border: 0; background: none; cursor: pointer; color: var(--accent); }
+.t-diary .meal-quick .icon { width: 18px; height: 18px; stroke-width: 2; }
+.t-diary .meal-quick[aria-expanded="true"] { background: var(--accent-tint); }
+.t-diary .meal-quick[aria-expanded="true"] .icon { transform: rotate(45deg); }
+.t-diary .meal-quick .icon { transition: transform .2s var(--ease-spring); }
+.js-quick .t-diary .quick-add > summary { display: none; }
+.js-quick .t-diary .quick-add[open] .quick-form { margin-top: .5rem; }
+
+/* Other Today cards */
+.t-card-head h2 .icon { color: var(--accent); }
+.t-total { font-size: var(--fs-md); font-weight: 600; color: var(--text); }
+.sum-cell, .macro, .dp-macros div { background: #f9fafb; border-radius: 12px; }
+.sum-label, .macro-label { font-size: var(--fs-xs); font-weight: 500; }
+.sum-value { font-size: 1.25rem; font-weight: 600; }
+.meter { background: #f3f4f6; }
+.log-list li { background: #f9fafb; border-radius: 12px; }
+
+/* ---------- Add to diary: one calm card ---------- */
+.add-card { padding: 1.25rem; }
+.add-product { gap: .875rem; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 1px solid #f3f4f6; }
+.add-product .thumb { width: 52px; height: 52px; }
+.add-name { font-size: var(--fs-md); font-weight: 600; line-height: 1.4; }
+.add-product .meta { font-size: var(--fs-sm); }
+.add-title { font-size: var(--fs-lg); font-weight: 600; gap: .375rem; margin: 0 0 .25rem; }
+.add-day { font-size: var(--fs-sm); font-weight: 400; color: var(--muted); }
+.meal-picker { gap: .5rem; margin: .5rem 0 1rem; }
+.meal-picker span {
+  min-height: 40px; border: 1px solid var(--line-strong); border-radius: 12px; background: #fff;
+  font-size: var(--fs-sm); font-weight: 500; color: var(--text-soft); transition: background-color .2s, border-color .2s, color .2s;
+}
+.meal-picker label:hover span { border-color: #9fd3b9; }
+.meal-picker input:checked + span { font-weight: 600; }
+.add-form .amount-row { gap: .5rem; }
+.add-form .caption { font-size: var(--fs-sm); }
+.day-legend { gap: .5rem; font-size: var(--fs-md); font-weight: 600; margin-bottom: .625rem; }
+.day-chips { gap: .5rem; }
+.day-chips span { min-height: 56px; border: 1px solid var(--line-strong); border-radius: 12px; gap: .125rem; }
+.day-chips strong { font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; }
+.day-chips small { white-space: nowrap; }
+.day-chips small { font-size: var(--fs-xs); }
+.day-chips label:hover span { border-color: #9fd3b9; }
+.day-chips input:checked + span strong { font-weight: 600; }
+.add-actions { gap: .75rem; margin-top: 1rem; }
+.add-actions .btn:not(.btn-primary) { border-color: var(--line-strong); color: var(--text-soft); }
+.add-details { margin-top: 1rem; font-size: var(--fs-sm); }
+.add-details a { color: var(--muted); }
+
+/* Restriction and warning boxes: same honest colours, lighter touch. */
+.rs { padding: .625rem .875rem; border-radius: 12px; font-size: var(--fs-sm); line-height: 1.5; }
+.rs-may_contain, .rs-unknown, .notice-warn, .card-warn { background: #fffaf3; border-color: #fbe0c3; }
+.rs-incompatible, .rs-contains { background: #fff8f7; border-color: #f7d4cf; }
+.rs-compatible, .rs-not_declared { background: var(--accent-tint-2); border-color: #d3ebdf; }
+.restriction-list { gap: .5rem; }
+.partial { font-size: .6875rem; font-weight: 500; text-transform: none; letter-spacing: 0; background: #fffaf3; border-color: #fbe0c3; }
+
+/* ---------- Footer: on every page, full width, quiet ---------- */
+main { padding-bottom: 2.5rem; }
+.site-footer {
+  margin: 0; padding: 2rem var(--gutter) calc(var(--tabbar-h) + 1.5rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line-strong); background: #fff; color: var(--muted); font-size: var(--fs-sm);
+}
+.footer-inner, .footer-bottom { max-width: 1000px; margin: 0 auto; }
+.footer-inner { display: grid; gap: 1.5rem; }
+.footer-brand .brand { font-size: var(--fs-lg); text-decoration: none; }
+.footer-brand p { margin: .25rem 0 0; font-size: var(--fs-sm); color: var(--muted); }
+.footer-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.footer-cols h2 { margin: 0 0 .5rem; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #9ca3af; }
+.footer-cols ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .125rem; }
+.footer-cols a { display: inline-flex; align-items: center; min-height: 32px; color: var(--text-soft); text-decoration: none; font-size: var(--fs-sm); }
+.footer-cols a:hover { color: var(--accent-strong); }
+.footer-bottom { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #f3f4f6; display: grid; gap: .5rem; }
+.footer-bottom p { margin: 0; font-size: var(--fs-xs); line-height: 1.6; color: var(--muted); }
+.footer-bottom a { color: var(--text-soft); }
+.footer-note { white-space: nowrap; }
+.footer-note::before { content: "·"; margin: 0 .4rem 0 .15rem; }
+/* Phones: two columns; App then Legal on the left, Learn on the right. */
+@media (max-width: 767px) {
+  .footer-cols { grid-template-columns: 1fr 1fr; grid-template-areas: "app learn" "legal learn"; gap: 1.25rem 1rem; }
+  .footer-cols > div:nth-child(1) { grid-area: app; }
+  .footer-cols > div:nth-child(2) { grid-area: learn; }
+  .footer-cols > div:nth-child(3) { grid-area: legal; }
+}
+@media (min-width: 768px) {
+  .site-footer { padding: 2.5rem 1.5rem 2rem; }
+  .footer-inner { grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr); gap: 2rem; align-items: start; }
+  .footer-bottom { grid-template-columns: 1fr; }
+  .tabbar { box-shadow: none; }
+}
+
+/* ---------- Ask Foodo: full page, fixed to the visible viewport ---------- */
+.is-chat-page .site-footer { display: none; }
+.is-chat-page main { padding: 0; }
+.chat-page {
+  position: fixed; left: 0; right: 0; z-index: 25;
+  top: calc(var(--vv-top, 0px) + var(--header-h, 57px));
+  height: calc(var(--vv-h, 100dvh) - var(--header-h, 57px) - var(--tabbar-h) - env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; background: var(--bg);
+}
+.chat-page-head {
+  flex: none; display: flex; align-items: center; gap: .75rem; padding: .75rem var(--gutter);
+  background: #fff; border-bottom: 1px solid var(--line-strong);
+}
+.chat-page-head h1 { margin: 0; font-size: var(--fs-lg); }
+.chat-page-head .page-sub { margin: 0; font-size: var(--fs-xs); }
+.chat-page .chat-inline {
+  flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .5rem;
+  width: 100%; max-width: 760px; margin: 0 auto; padding: .75rem var(--gutter) .75rem;
+}
+.chat-page .chat-inline > .caption, .chat-page .chat-note { flex: none; }
+.chat-page .chat-log { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; padding: .25rem 0; overscroll-behavior: contain; }
+.chat-page .chat-send { flex: none; padding-top: .5rem; border-top: 1px solid #f3f4f6; }
+.chat-page .chat-suggest { flex-wrap: nowrap; overflow-x: auto; margin: 0; padding: 0 0 .25rem; }
+.chat-page .chat-suggest { scrollbar-width: none; }
+.chat-page .chat-suggest::-webkit-scrollbar { display: none; }
+
+/* Keyboard open (phones): the conversation takes the whole visible area. */
+.is-chat-page.kb-open .tabbar, .is-chat-page.kb-open .site-header { display: none; }
+.is-chat-page.kb-open .chat-page { top: var(--vv-top, 0px); height: var(--vv-h, 100dvh); }
+.is-chat-page.kb-open .chat-page .chat-note, .is-chat-page.kb-open .chat-page .chat-inline > .caption { display: none; }
+@media (min-width: 768px) {
+  /* Desktop: the tab bar sits in the header, so the page runs to the bottom of the window. */
+  .chat-page { height: calc(var(--vv-h, 100dvh) - var(--header-h, 61px)); }
+  .chat-page-head { justify-content: center; }
+  .chat-page-head .grow { flex: 0 1 auto; }
+}
+
+/* ---------- My Track: "Foodo remembers" (Figma card style) ---------- */
+#memories > .card { padding: 1.25rem; }
+.mem-head { display: flex; align-items: center; gap: .75rem; }
+.mem-head h2 { margin: 0; font-size: var(--fs-lg); font-weight: 600; }
+.mem-intro { margin: .625rem 0 1rem; font-size: var(--fs-sm); line-height: 1.5; }
+#memories .memory-list { margin: 0 0 1rem; gap: .75rem; }
+#memories .memory {
+  padding: 1rem; background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .03);
+}
+#memories .memory-top { align-items: flex-start; gap: .875rem; }
+.mem-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); }
+.memory.is-paused .mem-icon { background: #f3f4f6; color: var(--muted); }
+#memories .memory.is-paused { opacity: 1; border-style: solid; background: #fcfcfd; }
+#memories .memory.is-paused .memory-text { color: var(--muted); }
+.mem-body { flex: 1; min-width: 0; }
+#memories .memory-text { padding: 0; margin: 0 0 .25rem; font-size: var(--fs-md); font-weight: 500; line-height: 1.5; color: var(--text); }
+.mem-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem; margin: 0 !important; font-size: var(--fs-xs); color: var(--muted); }
+#memories .note-actions { gap: 0; margin: -.25rem -.375rem 0 0; }
+#memories .note-action { width: 32px; height: 32px; color: #9ca3af; border-radius: 50%; }
+#memories .note-action .icon { width: 16px; height: 16px; }
+#memories .note-action:hover { background: var(--accent-tint-2); color: var(--accent); }
+#memories .note-action.is-danger:hover { background: #fff1f0; color: #b42318; }
+#memories form.memory-add { gap: .5rem; margin-top: 0; }
+#memories form.memory-add input { min-height: 44px; background: #f9fafb; border-color: var(--line-strong); }
+#memories form.memory-add .btn { min-height: 44px; padding: 0 1rem; }
+.mem-hint { display: flex; align-items: flex-start; gap: .375rem; margin: .75rem 0 0; font-size: var(--fs-xs); line-height: 1.5; }
+.mem-hint .icon { flex: none; margin-top: 2px; color: var(--accent); }
+#memories .memory.is-suggestion { background: var(--accent-tint-2); border: 1px dashed #9fd3b9; box-shadow: none; display: grid; gap: .375rem; justify-items: start; }
+#memories .memory.is-suggestion .caption { margin: 0; font-size: var(--fs-xs); }
+#memories h3 { font-size: var(--fs-md); font-weight: 600; margin: 1.25rem 0 .75rem; }
+
+/* Products: filter pills as wide as the chosen text ("Category"), not the longest option. */
+.pill select.filter-select {
+  field-sizing: content; width: auto; max-width: min(70vw, 260px); text-overflow: ellipsis;
+  min-height: 40px; border: 1px solid var(--line-strong); font-size: var(--fs-sm); font-weight: 500; color: var(--text-soft);
+}
+.pill.is-active select.filter-select { border-color: #9fd3b9; background: var(--accent-tint); color: var(--accent-strong); }
+.pill .icon { color: var(--muted); }
+
+/* Tips band: its own full-width, pale background (same edge-to-edge trick as the day band),
+   with calm spacing above and below; the tips sit on it as white cards. */
+.tips {
+  --band: #eef7f2;
+  margin: 2.25rem 0 0; padding: 1.75rem 0 2rem;
+  background: var(--band); box-shadow: 0 0 0 100vmax var(--band); clip-path: inset(0 -100vmax);
+}
+/* No cards: the tips sit straight on the band. Desktop: thin vertical lines between them. */
+.tips .cheer { background: none; border: 0; box-shadow: none; border-radius: 0; padding: .25rem 1rem; }
+@media (min-width: 768px) {
+  .tips .tip { position: relative; padding: 0 .5rem; }
+  .tips .tip::before { content: ""; position: absolute; left: 0; top: 10%; bottom: 10%; width: 1px; background: #c9e6d6; }
+  .tips .tips-track { margin-left: -1px; }  /* the line at the left edge stays hidden */
+  .tips .cheer { padding: .25rem 1.25rem; }
+}
+@media (min-width: 768px) { .tips { margin-top: 2.75rem; padding: 2.25rem 0 2.5rem; } }
+/* The band leads straight into the footer. */
+.today:has(> .tips:last-child), .home-public:has(> .tips:last-child) { margin-bottom: -2.5rem; }
+
+/* Tips dots: tiny and quiet; the current tip is a slightly longer, slightly darker dash. */
+.tips-dots { display: flex; justify-content: center; gap: 6px; margin-top: 1rem; grid-column: 1 / -1; grid-row: 3; }
+.tips-dots[hidden] { display: none; }
+.tips-dot {
+  width: 6px; height: 6px; padding: 0; border: 0; border-radius: 999px; background: #c9e6d6; cursor: pointer;
+  transition: width .3s var(--ease-spring), background-color .3s;
+}
+.tips-dot[aria-current="true"] { width: 16px; background: #8cc7a9; }
+.tips-dot:focus-visible { outline: 2px solid #f59e0b; outline-offset: 2px; }
+.tips-dot { position: relative; }
+.tips-dot::after { content: ""; position: absolute; inset: -9px -4px; }  /* easier to tap, same look */
+
+/* Daily summary meters: white track, green fill in proportion to the real target
+   (full when the target is passed; never red). */
+svg.meter { height: 6px; border-radius: 3px; overflow: hidden; margin-top: .375rem; }
+svg.meter .meter-track { fill: #fff; }
+svg.meter .meter-fill, svg.meter.is-over .meter-fill { fill: var(--accent-fill); }
+/* Meter colour by share of the target: pale green → green → on target → orange → red. */
+svg.meter.level-low .meter-fill { fill: #9fd3b9; }
+svg.meter.level-mid .meter-fill { fill: #4fae86; }
+svg.meter.level-on .meter-fill { fill: var(--accent-fill); }
+svg.meter.level-high .meter-fill { fill: #f59e0b; }
+svg.meter.level-over .meter-fill { fill: #e5484d; }
+.sum-cell { border: 1px solid #f3f4f6; }
+/* Day chips: the same two-line card for every day; only the chosen one is tinted. */
+.day-chips label > span { display: grid; justify-items: center; align-content: center; gap: .125rem; min-height: 60px; padding: .375rem .25rem; }
+.day-chips label > span strong { font-size: var(--fs-sm); font-weight: 600; line-height: 1.3; color: var(--text); }
+.day-chips label > span small { font-size: var(--fs-xs); color: var(--muted); line-height: 1.3; }
+.day-chip-icon { display: grid; place-items: center; height: 18px; color: var(--accent); }
+.day-chip-icon .icon { width: 16px; height: 16px; }
+.day-chips input:checked + span strong { color: var(--accent-strong); }
+.day-chips input:checked + span small { color: var(--accent); }
+
+/* ==========================================================================
+   Figma parity pass
+   ========================================================================== */
+
+/* Tab bar: the active tab is shown by colour only (no pill behind the icon). */
+.tabbar a[aria-current="page"] .tab-icon, .tabbar a:hover .tab-icon { background: none; }
+.tabbar a[aria-current="page"] { color: var(--accent); }
+
+/* Header: the account shows your initial in a soft circle. */
+.avatar-initial { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; font-weight: 700; font-size: .95rem; color: var(--accent-strong); }
+
+/* Today head: bell (with a dot when there is a reminder) next to settings. */
+.head-tools { display: flex; gap: .5rem; }
+.head-tool { position: relative; }
+.head-dot { position: absolute; top: 9px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 2px var(--accent-tint); }
+
+/* Compare: a floating pill above the tab bar while products are selected. */
+.compare-bar {
+  position: fixed; z-index: 35; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom));
+  display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; padding: 0 .875rem 0 1rem;
+  border-radius: var(--radius-pill); background: #fff; color: var(--accent-strong); text-decoration: none;
+  font-size: var(--fs-sm); font-weight: 600; border: 1px solid #cfe9db;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, .14); animation: rise-in .35s var(--ease-spring) both;
+}
+.compare-bar[hidden] { display: none; }
+.compare-bar-count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 .375rem; border-radius: 999px; background: var(--accent-fill); color: #fff; font-size: var(--fs-xs); }
+@media (min-width: 768px) { .compare-bar { left: auto; right: 24px; bottom: 24px; transform: none; } }
+.is-chat-page .compare-bar { display: none; }
+
+/* Water / Activity: the rest of the form folds under one quiet line. */
+.log-more { margin: .25rem 0 0; }
+.log-more > summary {
+  display: inline-flex; align-items: center; gap: .375rem; min-height: 36px; cursor: pointer; list-style: none;
+  font-size: var(--fs-sm); font-weight: 500; color: var(--accent);
+}
+.log-more > summary::-webkit-details-marker { display: none; }
+.log-more > summary .icon { transition: transform .2s var(--ease-spring); }
+.log-more[open] > summary .icon { transform: rotate(45deg); }
+.log-more[open] > summary { margin-bottom: .5rem; }
+
+/* Daily summary: one quiet "partial" pill next to the title. */
+.t-card-head h2 .partial { align-self: center; margin-left: .375rem; line-height: 1.5; position: relative; top: 2px; }
+
+/* My Track: identity card (avatar, name, member since, profile completeness). */
+.id-card { display: grid; grid-template-columns: auto 1fr; gap: .75rem 1rem; align-items: center; padding: 1.25rem; }
+.avatar-lg { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--accent-tint); color: var(--accent-strong); font-size: 1.375rem; font-weight: 700; }
+.id-name { margin: 0; font-size: var(--fs-lg); font-weight: 600; overflow-wrap: anywhere; }
+.id-since { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
+.id-complete { grid-column: 1 / -1; }
+.id-complete-row { display: flex; justify-content: space-between; font-size: var(--fs-sm); color: var(--text-soft); }
+.id-complete-row strong { color: var(--accent); font-weight: 600; }
+.id-complete .meter { width: 100%; height: 8px; margin-top: .375rem; }
+.id-complete .meter .meter-track { fill: #f3f4f6; }
+
+/* "Information" lists (account): rows with an icon circle, two lines and a chevron. */
+.info-section { display: grid; gap: 0; }
+.info-list { list-style: none; margin: 0 0 1rem; padding: .25rem 0; }
+.info-list li + li { border-top: 1px solid #f3f4f6; }
+.info-list a, .info-list button, .info-row {
+  width: 100%; display: flex; align-items: center; gap: .875rem; min-height: 64px; padding: .625rem 1.125rem;
+  border: 0; background: none; font: inherit; color: var(--text); text-align: left; text-decoration: none; cursor: pointer;
+}
+.info-row { cursor: default; }
+.info-list a:hover, .info-list button:hover { background: var(--accent-tint-2); }
+.info-text { flex: 1; min-width: 0; display: grid; }
+.info-text strong { font-size: var(--fs-md); font-weight: 500; }
+.info-text small { font-size: var(--fs-xs); color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.info-list a > .icon, .info-list button > .icon { color: #d1d5db; flex: none; }
+.info-list.is-danger .soft-icon { background: #fff1f0; color: #b42318; }
+.info-list.is-danger strong { color: #b42318; }
+
+/* Learn: search box like the Figma one. */
+.learn-search { position: relative; margin: 0 0 1.25rem; }
+.learn-search .search-icon { position: absolute; left: .875rem; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.learn-search input { padding-left: 2.5rem; border-radius: var(--radius-sm); background: #fff; }
+
+/* Empty states: icon circle, one line, optional action. */
+.empty-card { display: grid; justify-items: center; gap: .625rem; padding: 1.5rem 1rem; text-align: center; background: #fff; border: 1px dashed var(--line-strong); border-radius: var(--radius); color: var(--text-soft); }
+.empty-card p { margin: 0; font-size: var(--fs-sm); max-width: 32ch; }
+
+/* Ask Foodo chips with icons. */
+.chat-suggest .chip-btn { gap: .375rem; }
+.chat-suggest .chip-btn .icon { color: var(--accent); flex: none; }
+
+/* Progress: partial days in pale green (no orange). */
+.bar-rect.is-partial { fill: #9fd3b9; }
+.partial-key { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: #9fd3b9 !important; vertical-align: middle; }
+
+/* "For you" / warnings: a calm list with coloured dots instead of filled boxes. */
+.restriction-list .rs { position: relative; padding: .375rem 0 .375rem 1.125rem; background: none !important; border: 0 !important; border-radius: 0; }
+.restriction-list .rs::before { content: ""; position: absolute; left: 0; top: .9em; width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; }
+.restriction-list .rs-incompatible::before, .restriction-list .rs-contains::before { background: #e5484d; }
+.restriction-list .rs-compatible::before, .restriction-list .rs-not_declared::before { background: var(--accent-fill); }
+.restriction-list li + li { border-top: 1px solid #f3f4f6; }
+
+/* Scanner: a pale frame instead of the dark block (the live camera covers it anyway). */
+.viewfinder { background: linear-gradient(160deg, #f3faf6, #e2f1e9); border: 1px solid #d3ebdf; }
+.viewfinder-idle { color: var(--text-soft); }
+.viewfinder-idle .icon { color: var(--accent); }
+.frame span { border-color: var(--accent-fill); }
+
+/* Card heads: title and the small link/total on the same text baseline. */
+.t-card-head { align-items: baseline; }
+.t-card-head .targets-edit { min-height: 0; line-height: 1.4; font-size: var(--fs-sm); }
+
+/* ---------- Product page: key cards first, the rest folded; no broken gaps ---------- */
+.product { display: flex; flex-direction: column; }
+.product-col { display: contents; }
+.po-1 { order: 1; } .po-2 { order: 2; } .po-3 { order: 3; } .po-4 { order: 4; } .po-5 { order: 5; } .po-6 { order: 6; }
+.product-more { order: 10; margin-top: .5rem; }
+.product-more > .dash-title { margin: 0 0 .75rem; }
+.product-more .card { padding: 0; }
+.product-more .card > .about > summary, .product-more .note-card > summary { padding: 1rem 1.25rem; }
+.product-more .card > .about[open], .product-more .note-card[open] { padding-bottom: 1rem; }
+.product-more .card > .about > :not(summary), .product-more .note-card > form { margin-left: 1.25rem; margin-right: 1.25rem; }
+.product-more .note-card > form { margin-top: 0; }
+.ingredients-fold { margin-top: 1rem; border-top: 1px solid #f3f4f6; padding-top: .5rem; }
+.ingredients-fold > summary { display: flex; align-items: center; gap: .5rem; cursor: pointer; list-style: none; min-height: 44px; }
+.ingredients-fold > summary::-webkit-details-marker { display: none; }
+.ingredients-fold > summary .sub-title { margin: 0; }
+.ingredients-fold > summary .icon { margin-left: auto; color: var(--muted); transition: transform .2s; }
+.ingredients-fold[open] > summary .icon { transform: rotate(180deg); }
+@media (min-width: 768px) {
+  .product { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 1.25rem; align-items: start; }
+  .product-col { display: flex; flex-direction: column; min-width: 0; }
+  .product-more { grid-column: 1 / -1; columns: 2; column-gap: 1.25rem; }
+  .product-more > .dash-title { column-span: all; }
+  .product-more > section, .product-more > details, .product-more > .card { break-inside: avoid; display: block; }
+}
+
+/* ---------- Messages ("Added", "Saved"…): always a dark floating toast, never a bar at the
+   top of the page. Same look as the Today toast; it fades out by itself (errors stay longer). */
+.messages {
+  position: fixed; z-index: 45; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--tabbar-h) + 14px + env(safe-area-inset-bottom));
+  width: max-content; max-width: calc(100vw - 32px); margin: 0; display: grid; gap: .5rem;
+  pointer-events: none; animation: none;
+}
+body:has(.compare-bar:not([hidden])) .messages { bottom: calc(var(--tabbar-h) + 70px + env(safe-area-inset-bottom)); }
+.messages .msg {
+  pointer-events: auto; display: flex; align-items: center; gap: .625rem; margin: 0;
+  padding: .75rem 1rem; border: 0; border-radius: 12px; background: #1f2937; color: #fff;
+  font-size: var(--fs-sm); font-weight: 500; line-height: 1.4; box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+  animation: toast-in .3s var(--ease-spring) both, toast-out .4s ease 6s forwards;
+}
+.messages .msg .icon { color: #7fe0c2; flex: none; }
+.messages .msg-error { animation: toast-in .3s var(--ease-spring) both, toast-out .4s ease 12s forwards; }
+.messages .msg-error .icon { color: #fca5a5; }
+.messages .msg a { color: #7fe0c2; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; visibility: hidden; } }
+@media (min-width: 768px) {
+  .messages, body:has(.compare-bar:not([hidden])) .messages { bottom: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .messages .msg { animation: toast-out 0s linear 6s forwards !important; }
+  .messages .msg-error { animation: toast-out 0s linear 12s forwards !important; }
+}
+
+/* ---------- Notifications ---------- */
+.head-bell { position: relative; flex: none; }
+.head-bell .count { top: -2px; right: -2px; background: #e5484d; box-shadow: 0 0 0 2px var(--bg); }
+.notifs .page-head-soft { flex-wrap: wrap; }
+.notifs-read-all { margin-left: auto; }
+.notifs-read-all .btn-link { min-height: 36px; font-size: var(--fs-sm); text-decoration: none; }
+.notif-group { margin-bottom: 1.25rem; }
+.notif-list { list-style: none; margin: 0; padding: .25rem 0; }
+.notif-list li + li { border-top: 1px solid #f3f4f6; }
+.notif { display: flex; align-items: flex-start; gap: .875rem; padding: .875rem 1.125rem; text-decoration: none; color: var(--text); transition: background-color .2s; }
+.notif:hover { background: var(--accent-tint-2); }
+.notif .soft-icon { width: 40px; height: 40px; }
+.notif-text { flex: 1; min-width: 0; display: grid; gap: .125rem; }
+.notif-text strong { font-size: var(--fs-md); font-weight: 500; line-height: 1.4; }
+.notif.is-unread .notif-text strong { font-weight: 700; }
+.notif-body { font-size: var(--fs-sm); color: var(--text-soft); line-height: 1.45; }
+.notif-text small { font-size: var(--fs-xs); color: var(--muted); }
+.notif-dot { flex: none; width: 10px; height: 10px; margin-top: .45rem; border-radius: 50%; background: var(--accent-fill); }
+.notifs-settings { margin: 1rem 0 0; text-align: center; }
+.notifs-settings a { display: inline-flex; align-items: center; gap: .375rem; font-size: var(--fs-sm); color: var(--muted); text-decoration: none; }
+.notifs-settings a:hover { color: var(--accent-strong); }
+/* Achievements: warm celebratory circles with the achievement's own icon. */
+.achievement .soft-icon { background: #fdf3e1; color: #9a5b00; }
+
+/* Article cards: topic pill alone on its row (ellipsis if long); read time sits with "Read more". */
+.article-card .article-meta { flex-wrap: nowrap; min-width: 0; }
+.article-card .article-meta .pill { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; line-height: 22px; }
+.article-foot { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-width: 0; }
+.article-foot .read-time { flex: none; display: inline-flex; align-items: center; gap: .25rem; white-space: nowrap; font-size: var(--fs-xs); color: var(--muted); }
+.article-foot .read-time .icon { color: var(--muted); }
+
+/* Food diary: the edit form of a food spans the whole meal, under the meal icon too. */
+.t-diary .entry-list > li > .entry-edit { margin-left: calc(-44px - .75rem); margin-right: 0; }
+
+/* Progress: a quiet link to the stats on My Track, on the same line as the summary. */
+.progress-sub { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; }
+.stats-link { display: inline-flex; align-items: center; gap: .25rem; font-size: var(--fs-sm); color: var(--muted); text-decoration: none; white-space: nowrap; }
+.stats-link .icon { color: var(--accent); }
+.stats-link:hover { color: var(--accent-strong); }
+#stats-h { scroll-margin-top: 90px; }
+
+/* Saved products: favourites show a solid green heart (tap to remove). */
+.product-card .icon-btn.filled, .product-card .icon-btn.filled:hover { color: var(--accent-fill); background: none; }
+.product-card .icon-btn.filled svg, .product-card .icon-btn.filled .icon { fill: currentColor; stroke: currentColor; }
+
+/* Ask Foodo suggestions: always one row, scrolled sideways (page and dialog, every width). */
+.chat-suggest, .chat-inline .chat-suggest, .chat-page .chat-suggest {
+  flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity;
+}
+.chat-suggest::-webkit-scrollbar { display: none; }
+.chat-suggest .chip-btn { flex: none; white-space: nowrap; scroll-snap-align: start; }
+
+/* Food diary rows: amount and kcal as small pills side by side (no meal totals). */
+.t-diary .entry-amount { display: flex; flex-wrap: wrap; gap: .375rem; margin-top: .25rem; }
+.entry-pill {
+  display: inline-flex; align-items: center; min-height: 22px; padding: 0 .55rem; border-radius: 999px;
+  background: var(--accent-tint); color: var(--accent-strong); font-size: var(--fs-xs); font-weight: 500;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+/* Same look for amount and kcal (beats the older .t-diary .entry-kcal rules). */
+.t-diary .entry-amount .entry-pill, .t-diary .entry-amount .entry-pill.entry-kcal {
+  flex: none; margin: 0; min-height: 22px; padding: 0 .55rem; border-radius: 999px;
+  background: var(--accent-tint); color: var(--accent-strong); font-size: var(--fs-xs); font-weight: 500; line-height: 1;
+}
+
+/* Food diary rows: each food on one line (name, then the amount and kcal pills) in a soft grey
+   tile; when it does not fit, the pills (and a long name) wrap onto a second line. */
+.t-diary .entry-list { display: grid; gap: .5rem; }
+/* After Cancel/Save in an opened food, the page scrolls back to that food (htmx show:), below the sticky header. */
+.t-diary .entry-list > li { scroll-margin-top: 112px; }
+.t-diary .entry-list > li + li { border-top: 0; }
+.t-diary a.entry { padding: .625rem .75rem .625rem 1rem; border-radius: var(--radius-sm); background: #f3f4f6; transition: background-color .2s; }
+.t-diary a.entry:hover { background: var(--accent-tint-2); }
+/* Text flow, not flex: when the name takes two lines, the pills follow it on the second line. */
+.t-diary .entry-main { display: block; line-height: 1.6; }
+.t-diary .entry-name { display: inline; white-space: normal; overflow: visible; overflow-wrap: anywhere; margin-right: .5rem; }
+.t-diary .entry-amount { display: inline-flex; vertical-align: 1px; margin-top: 0; white-space: nowrap; }
+.t-diary a.entry .icon { margin-left: auto; color: #9ca3af; }
+
+/* Edit a diary food: "Meal" and "Day" side by side, same label line, same control height. */
+.entry-edit-row { align-items: end; }
+.entry-edit-row > div { display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+.entry-edit-row label, .entry-edit-row .day-field-label {
+  display: block; margin: 0; font-size: var(--fs-sm); font-weight: 500; line-height: 1.4; color: #374151;
+}
+.entry-edit-row select, .entry-edit-row .day-drop > summary {
+  box-sizing: border-box; height: 48px; min-height: 48px; margin: 0;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: #fff;
+}
+.entry-edit-row .day-drop > summary { padding: 0 .75rem; }
+
+/* In-page jumps (meal tiles → Food diary) glide; the target clears the sticky header. */
+html { scroll-behavior: smooth; }
+.t-diary .meal { scroll-margin-top: 90px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Meal tiles jump to the meal: the meal name lands clearly below the sticky header. */
+.t-diary [id^="meal-"], .t-diary .meal { scroll-margin-top: 110px; }
+@media (min-width: 768px) { .t-diary [id^="meal-"], .t-diary .meal { scroll-margin-top: 96px; } }
+
+/* Article cards: the text column fills the card, so the read time sits at the right edge. */
+.article-card .article-text { flex: 1; }
+.article-foot { width: 100%; }
+
+/* Article page: bold title. */
+.article-head h1 { font-weight: 800; }
+
+
+/* Tab bar on phones: the selected tab is clearly green (darker icon, thicker lines, bold
+   label); the others are a lighter grey so the difference reads at a glance. */
+@media (max-width: 767px) {
+  .tabbar a { color: #9ca3af; }
+  .tabbar a[aria-current="page"] { color: #157a54; font-weight: 700; }
+  .tabbar a[aria-current="page"] .tab-icon { color: #157a54; }
+  .tabbar a { position: relative; }
+  .tabbar a[aria-current="page"]::before {
+    content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 28px; height: 3px; border-radius: 0 0 3px 3px; background: #1f7a59;
+  }
+}
+
+.chat-back { flex: none; margin: 0; padding: .5rem var(--gutter) 0; }
+.chat-back a { display: inline-flex; align-items: center; gap: .25rem; font-size: var(--fs-sm); color: var(--accent-strong); text-decoration: none; }
+
+/* Footer credit line: centred, one line on wide screens (may run wider than the content). */
+.footer-bottom { max-width: none; text-align: center; justify-items: center; }
+.footer-bottom p { text-align: center; }
+@media (min-width: 1200px) { .footer-bottom p { white-space: nowrap; } }
+
+/* "See more" on phones (no JavaScript): the text is clamped to two lines until opened. */
+.see-more { display: none; }
+@media (max-width: 767px) {
+  .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .see-more {
+    display: inline-flex; align-items: center; min-height: 32px; margin-top: .5rem; margin-right: 1rem;
+    font-size: var(--fs-sm); font-weight: 600; line-height: inherit; color: var(--accent-strong);
+    text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+  }
+  .see-more-toggle:checked ~ .clamp-2 { display: block; -webkit-line-clamp: unset; line-clamp: none; overflow: visible; }
+  .see-more-toggle:checked ~ .see-more { display: none; }
+  .see-more-toggle:focus-visible ~ .see-more { outline: 2px solid #f59e0b; outline-offset: 2px; border-radius: 4px; }
+}
+
+/* Learn article: one card. Desktop: text on 3 of 5 columns; the other 2 hold the pull quote
+   and the article's products. Phones: pull quote, text, then products. */
+.article-layout { display: grid; gap: 0; padding: 0; }
+.article-main { min-width: 0; padding: 1.1rem 1.25rem; order: 2; }
+.article-side { display: contents; }
+.article-side .pull-quote { order: 1; }
+.article-side .article-products { order: 3; }
+
+/* Pull quote: magazine style - large, centred, serif italic, a green opening mark, hairlines. */
+.pull-quote { margin: 0; padding: 1.75rem 1.5rem 1.5rem; text-align: center; }
+.pull-quote blockquote { margin: 0; position: relative; padding: 1.25rem 0 1.1rem; }
+.pull-quote blockquote::before, .pull-quote blockquote::after {
+  content: ""; display: block; width: 56px; height: 1px; margin: 0 auto; background: #9fd3b9;
+}
+.pull-quote blockquote::before { margin-bottom: 1.4rem; }
+.pull-quote blockquote::after { margin-top: 1.25rem; }
+.pull-quote p {
+  margin: 0; font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  font-style: italic; font-weight: 400; font-size: 1.45rem; line-height: 1.35; letter-spacing: -.005em;
+  color: #1f3d33; text-wrap: balance;
+}
+.pull-quote p::before {
+  content: "\201C"; display: block; height: .55em; margin-bottom: .35rem;
+  font-size: 3.6rem; line-height: 1; color: var(--accent); font-style: normal;
+}
+
+.article-products { padding: 1rem 1.25rem 1.25rem; border-top: 1px solid #f3f4f6; }
+.article-products-title { display: flex; align-items: center; gap: .5rem; margin: 0 0 .75rem; font-size: var(--fs-md); font-weight: 600; }
+.article-products-title .icon { color: var(--accent); }
+.ap-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .375rem; }
+.ap-list > li { display: flex; align-items: center; gap: .25rem; }
+.ap-card { flex: 1; min-width: 0; display: flex; align-items: center; gap: .75rem; padding: .5rem; border-radius: 12px; color: var(--text); text-decoration: none; transition: background-color .2s; }
+.ap-card:hover { background: var(--accent-tint-2); }
+.ap-img { flex: none; width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--accent-tint-2); display: grid; place-items: center; color: var(--accent); }
+.ap-text { display: grid; gap: .1rem; min-width: 0; }
+.ap-text strong { font-size: var(--fs-sm); font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ap-text small { font-size: var(--fs-xs); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ap-grade { margin-top: .2rem; }
+.ap-ask { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); text-decoration: none; transition: background-color .2s; }
+.ap-ask:hover { background: #d7eee2; color: var(--accent-strong); }
+
+@media (min-width: 1024px) {
+  .article-layout { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch; }
+  .article-main { grid-column: span 3; padding: 1.75rem 2rem; order: 0; }
+  .article-side {
+    display: flex; flex-direction: column; gap: 0; grid-column: span 2; order: 0;
+    border-left: 1px solid #f3f4f6; background: linear-gradient(180deg, #fff 40%, var(--accent-tint-2));
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+  .article-side > * { position: sticky; top: 84px; }
+  .article-side .pull-quote { padding: 2.75rem 2rem 2rem; }
+  .article-side .pull-quote p { font-size: 1.7rem; }
+  .article-side .article-products { border-top: 0; padding: 1.5rem 1.25rem; position: sticky; top: 84px; }
+}
+
+/* Pull quote placement: phones - inside the text, between the two halves; desktop - in the
+   side column, centred vertically (not sticky). */
+.pq-side { display: none; }
+.pq-inline { margin: 1.25rem -.25rem; padding: 1rem .5rem; }
+@media (min-width: 1024px) {
+  .pq-inline { display: none; }
+  .pq-side { display: block; }
+  .article-side:has(> .pq-side) { justify-content: center; }
+  .article-side > .pq-side { position: static; }
+}
+
+/* Achievements on desktop: an even number (two per row); the rest behind a small "See more". */
+.ach-more { display: none; }
+@media (min-width: 768px) {
+  .ach-section .ach-extra { display: none; }
+  .ach-more {
+    display: inline-flex; align-items: center; min-height: 36px; margin-top: .75rem; padding: 0 1rem;
+    border: 1px solid var(--accent-line); border-radius: 999px; background: #fff; color: var(--accent-strong);
+    font-size: var(--fs-sm); font-weight: 600; cursor: pointer;
+  }
+  .ach-more:hover { background: var(--accent-tint-2); }
+  .ach-more-toggle:checked ~ .achievement-list .ach-extra { display: flex; }
+  .ach-more-toggle:checked ~ .ach-more { display: none; }
+  .ach-more-toggle:focus-visible ~ .ach-more { outline: 2px solid #f59e0b; outline-offset: 2px; }
+}
+
+/* My Track > Profile: restrictions and allergies as calm, tinted chips (natural height). */
+.profile-chips { align-items: flex-start; gap: .5rem; }
+.profile-chip, .profile-chip.has-subs {
+  align-self: flex-start; gap: .4rem; padding: .5rem .75rem; border-radius: 12px;
+  background: var(--accent-tint); border: 1px solid #cfe9db; color: var(--accent-strong);
+  font-size: var(--fs-sm); font-weight: 600;
+}
+.profile-chip .chip-main .icon { color: var(--accent); }
+.profile-chip .chip-sub {
+  background: #fff; border: 1px solid #cfe9db; color: var(--text-soft); font-size: var(--fs-xs); font-weight: 500;
+}
+.profile-chip .chip-sub .icon { color: var(--accent); }
+.profile-chips-health .profile-chip { background: #fff8f7; border-color: #f7d4cf; color: #8a2a1e; }
+.profile-chips-health .profile-chip .chip-main .icon { color: #b42318; }
+
+/* ---------- Motion (as in the Figma app): pages rise in, sections cascade, cards reveal on
+   scroll, everything you tap gives a little. Off with reduced motion. ---------- */
+:root { --ease-spring: cubic-bezier(.16, 1, .3, 1); }
+@keyframes rise-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tab-pop { 0% { transform: scale(.82); } 55% { transform: scale(1.12); } 100% { transform: scale(1); } }
+main > * { animation: rise-in .55s var(--ease-spring) both; }
+/* Page sections arrive one after another. */
+.today > *, .learn > *, .learn > section > *, #mytrack > *, .stats-section, .progress-page > *, .add-food > *, .learn-article > * {
+  animation: rise-in .6s var(--ease-spring) both;
+}
+.today > *:nth-child(1), .learn > *:nth-child(1), #mytrack > *:nth-child(1), .learn-article > *:nth-child(1), .add-food > *:nth-child(1) { animation-delay: .02s; }
+.today > *:nth-child(2), .learn > *:nth-child(2), #mytrack > *:nth-child(2), .learn-article > *:nth-child(2), .add-food > *:nth-child(2) { animation-delay: .08s; }
+.today > *:nth-child(3), .learn > *:nth-child(3), #mytrack > *:nth-child(3), .learn-article > *:nth-child(3) { animation-delay: .14s; }
+.today > *:nth-child(4), .learn > *:nth-child(4), #mytrack > *:nth-child(4), .learn-article > *:nth-child(4) { animation-delay: .2s; }
+.today > *:nth-child(5), #mytrack > *:nth-child(5), .learn-article > *:nth-child(5) { animation-delay: .26s; }
+.today > *:nth-child(6), #mytrack > *:nth-child(6) { animation-delay: .32s; }
+.today > *:nth-child(n+7), #mytrack > *:nth-child(n+7) { animation-delay: .36s; }
+.stagger > * { animation: rise-in .55s var(--ease-spring) both; }
+.stagger > *:nth-child(1) { animation-delay: .12s; }
+.stagger > *:nth-child(2) { animation-delay: .18s; }
+.stagger > *:nth-child(3) { animation-delay: .24s; }
+.stagger > *:nth-child(4) { animation-delay: .30s; }
+.stagger > *:nth-child(5) { animation-delay: .36s; }
+.stagger > *:nth-child(n+6) { animation-delay: .42s; }
+/* Scroll reveal (static/js/reveal.js marks cards that start below the fold). */
+.reveal { opacity: 0; transform: translateY(22px); }
+.reveal.is-in { opacity: 1; transform: none; transition: opacity .6s ease var(--reveal-delay, 0ms), transform .7s var(--ease-spring) var(--reveal-delay, 0ms); }
+/* Tab bar: the active icon pops in. */
+.tabbar a[aria-current="page"] .tab-icon { animation: tab-pop .45s var(--ease-spring) both; }
+/* Touch feedback: what you press gives a little. */
+.qa, .meal-tile, .article-card, .topic-card, .stat-card, .tile, .btn, .chip-btn, .tabbar a, .tips-arrow, .meal-picker span, .day-chips span {
+  transition: transform .18s var(--ease-spring), background-color .2s, border-color .2s, box-shadow .2s, color .2s;
+}
+@media (hover: none) {
+  .qa:active, .meal-tile:active, .article-card:active, .topic-card:active, .tile:active, .stat-card:active { transform: scale(.97); }
+  .btn:active, .chip-btn:active, .meal-picker label:active span, .day-chips label:active span { transform: scale(.96); }
+  .tabbar a:active .tab-icon { transform: scale(.88); }
+}
+.site-footer { animation: fade-in .6s ease .3s both; }
+
+/* After a change on Today (htmx swaps #today in place), no entrance motion: the page must not jump. */
+.today.is-swapped, .today.is-swapped > *, .today.is-swapped .stagger > * { animation: none; }
+/* Chat bubbles rise in as they arrive (htmx appends them). */
+.chat-msg { animation: rise-in .3s var(--ease-out) both; }
+.chat-msg.chat-foodo { animation-delay: .1s; }
+
+@media (prefers-reduced-motion: reduce) {
+  main > *, .stagger > *, .chat-msg, .chat-welcome, .today > *, .learn > *, .learn > section > *, #mytrack > *, .stats-section, .progress-page > *, .add-food > *, .learn-article > *, .tabbar .tab-icon, .site-footer { animation: none !important; }
+  .reveal { opacity: 1 !important; transform: none !important; }
+  .meal-tile:hover, .topic-card:hover, .article-card:hover { transform: none; }
+  .meal-tile-icon::before, .meal-tile-icon .icon, .meal-tile-label { transition: none !important; }
+}
+
+/* Home "What would you like to check?": just icon + name on phones, a full explanation on desktop. */
+.try-tiles .meal-tile-more, .try-tiles .meal-tile-sub { display: none; }
+@media (min-width: 1024px) {
+  /* The line underneath fills with green from left to right on hover, and drains back out. */
+  .try-tiles .meal-tile-more {
+    display: block; white-space: nowrap; font-size: var(--fs-md); line-height: 1.45; color: var(--muted);
+    background: linear-gradient(90deg, var(--accent-fill) 0 50%, var(--muted) 50% 100%) right / 200% 100% no-repeat;
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    transition: background-position .7s cubic-bezier(.22, 1, .36, 1);
+  }
+  .try-tiles .meal-tile-label { font-size: var(--fs-lg); }
+  .try-tiles .meal-tile:hover .meal-tile-more, .try-tiles .meal-tile:focus-visible .meal-tile-more { background-position: left; }
+}
+
+/* Learn: publication date next to the topic pill */
+.article-meta .article-date { font-size: var(--fs-xs); color: var(--muted); margin-left: .5rem; font-variant-numeric: tabular-nums; }
+
+/* Learn ticker: the 4 newest article titles roll upwards, one line at a time. */
+.ticker { --tick-h: 1.45em; display: block; height: var(--tick-h); overflow: hidden; }
+.ticker-track { display: block; animation: ticker 14s cubic-bezier(.65, 0, .35, 1) infinite; }
+.ticker-item { display: block; height: var(--tick-h); line-height: var(--tick-h); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+a:hover .ticker-track, a:focus-visible .ticker-track { animation-play-state: paused; }
+@keyframes ticker {
+  0%, 21% { transform: translateY(0); }
+  25%, 46% { transform: translateY(calc(var(--tick-h) * -1)); }
+  50%, 71% { transform: translateY(calc(var(--tick-h) * -2)); }
+  75%, 96% { transform: translateY(calc(var(--tick-h) * -3)); }
+  100% { transform: translateY(calc(var(--tick-h) * -4)); }
+}
+/* On the home tile the line never grows wider than its column. */
+.try-tiles .meal-tile-more { max-width: 100%; }
+/* The green text sweep (background-clip: text) cannot paint moving text: the ticker fades
+   its own colour to green instead. */
+.try-tiles .meal-tile-more .ticker { -webkit-text-fill-color: var(--muted); color: var(--muted); transition: -webkit-text-fill-color .6s ease, color .6s ease; }
+.try-tiles .meal-tile:hover .ticker, .try-tiles .meal-tile:focus-visible .ticker { -webkit-text-fill-color: var(--accent-fill); color: var(--accent-fill); }
+@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
+
+/* Saved: the Avoid card title reads as a warning */
+#saved-avoid .avoid-head,
+#saved-avoid .avoid-head svg { color: var(--error, #b42318); }
+
+/* ===== Desktop hero (1024px+) =====
+   Visitors get a photo hero with a large title and buttons; signed-in users get the same photo
+   behind the greeting and the day picker. The photo runs edge to edge (left, right and up to the
+   header) under a dark veil with white text; the text stays on the page column.
+   The whole hero always fits on screen: on short windows the eyebrow goes and the title is one line.
+   Phones and tablets keep the compact card / plain header.
+   Photo: Unsplash, free licence (see static/img/home/SOURCES.txt). */
+.home-hero { display: none; }
+@media (min-width: 1024px) {
+  body { overflow-x: clip; } /* the full-bleed hero is 100vw wide; never scroll sideways */
+  .home-hero, .today-hero {
+    --hero-gutter: max(1.5rem, calc(50vw - 496px)); /* lines the text up with main's 992px column */
+    min-height: min(440px, calc(100vh - 61px - 9rem)); /* same height signed in and out */
+    position: relative; margin: -1.5rem calc(50% - 50vw) 1.75rem;
+    padding-left: var(--hero-gutter); padding-right: var(--hero-gutter);
+    color: #fff;
+    background:
+      linear-gradient(90deg, rgba(10, 14, 12, .86) 0, rgba(10, 14, 12, .78) calc(50% + 6rem), rgba(10, 14, 12, .45) 100%),
+      url("../img/home/hero-table.webp") 50% 42% / cover no-repeat #111;
+  }
+  .home-hero :focus-visible, .today-hero .today-head :focus-visible { outline-color: #fde68a; }
+
+  /* Visitors */
+  .home-public .home-nudge { display: none; }
+  .home-hero { display: flex; align-items: center; padding-top: 3rem; padding-bottom: 3rem; }
+  .home-hero-text { max-width: 44rem; }
+  .home-hero-eyebrow {
+    display: inline-flex; align-items: center; gap: .4rem; margin: 0 0 1rem; padding: .3rem .75rem;
+    border-radius: var(--radius-pill); background: rgba(255, 255, 255, .14); color: #fff;
+    font-size: var(--fs-sm); font-weight: 600; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  .home-hero h2 { margin: 0 0 .9rem; font-size: 3.25rem; line-height: 1.06; letter-spacing: -.02em; font-weight: 800; color: #fff; }
+  .home-hero-lead { margin: 0 0 1.6rem; max-width: 40rem; font-size: var(--fs-lg); line-height: 1.6; color: rgba(255, 255, 255, .86); }
+  .home-hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+  .home-hero-actions .btn { display: inline-flex; align-items: center; gap: .45rem; min-height: 52px; padding: 0 1.5rem; font-size: var(--fs-md); text-decoration: none; }
+  .home-hero-actions .btn-primary { background: var(--accent-fill); border-color: var(--accent-fill); }
+  .home-hero-actions .btn-primary:hover { background: #2f9a6f; border-color: #2f9a6f; }
+  .home-hero-actions .btn-light { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .55); color: #fff; }
+  .home-hero-actions .btn-light:hover { background: #fff; border-color: #fff; color: var(--accent-strong); }
+
+  /* Signed in: greeting + day picker sit on the photo */
+  /* Signed in, the hero is just the greeting + date with the day picker right under them (no fixed height). */
+  .today-hero { min-height: 0; padding-top: 2rem; padding-bottom: 1.5rem; }
+  .today-hero .today-head { align-items: flex-start; margin-bottom: 0; }
+  .today-hero .greet, .today-hero .today-head h1 { font-size: 2.5rem; font-weight: 800; line-height: 1.15; letter-spacing: -.02em; color: #fff; }
+  .today-hero .today-head .eyebrow { margin-top: .35rem; font-size: var(--fs-md); color: rgba(255, 255, 255, .82); }
+  .today-hero .head-bell { background: rgba(255, 255, 255, .92); box-shadow: var(--shadow-soft); }
+  .today-hero .day-band {
+    margin: .9rem 0 0; padding: .5rem .75rem; box-shadow: var(--shadow-soft); clip-path: none;
+    background: rgba(255, 255, 255, .94); border-radius: var(--radius);
+  }
+}
+/* Short windows: drop the eyebrow and set the title on one line, so the hero still fits. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  .home-hero { padding-top: 2rem; padding-bottom: 2rem; }
+  .home-hero-eyebrow, .home-hero-br { display: none; }
+  .home-hero h2 { font-size: 2.75rem; }
+  .today-hero { padding-top: 1.5rem; padding-bottom: 1.25rem; }
+}
+
+/* Article page, desktop: topic pill on the left, date and read time on the right. */
+@media (min-width: 1024px) {
+  .article-head .article-meta { justify-self: stretch; }
+  .article-head .article-meta .article-date { margin-left: auto; }
+}
+
+/* Number + unit field: same green ring as the other fields. */
+.unit-input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(11, 122, 94, .22); outline: none; }
+
+/* Article cards (Learn, topics): no date on phones; on wider screens the date sits on the
+   right, in line with the read time below it. */
+@media (max-width: 767px) { .article-card .article-date { display: none; } }
+@media (min-width: 768px) {
+  .article-card .article-meta { display: flex; }
+  .article-card .article-meta .article-date { margin-left: auto; padding-left: .5rem; flex: none; }
+}
+
+/* Home, desktop: the page sections ("What would you like to check?", "What did you eat today?",
+   "Quick actions") read as real sections: same large centred title, same space above each. */
+@media (min-width: 1024px) {
+  .home-hero, .today-hero { margin-bottom: 0; }
+  .today > .dash-section { margin: 3.5rem 0 0; }
+  /* Reminder card and setup notice: space under the photo hero, not stuck to it. */
+  .today > .nudge, .today > .notice-setup { margin-top: 2rem; }
+  .today > .dash-section > .dash-title, .today > .dash-section > .dash-title-sm {
+    margin: 0 0 1.75rem; text-align: center; font-size: 1.75rem; font-weight: 700;
+    line-height: 1.25; letter-spacing: -.01em; color: var(--text);
+  }
+  .today > .today-grid { margin-top: 3.5rem; }
+}
+
+/* Product page: "For you" on green, white Ask Foodo button, one or two leaves drifting down */
+.foryou-card { position: relative; overflow: hidden; isolation: isolate; background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
+.foryou-card > :not(dialog) { position: relative; z-index: 1; }
+.foryou-card h2, .foryou-card .foryou-prefs-line, .foryou-card .caption, .foryou-card .rs { color: #fff; }
+.foryou-card .caption { opacity: .85; }
+.foryou-card .foryou-prefs-line { border-top-color: rgba(255,255,255,.25); }
+.foryou-card .restriction-list li + li { border-top-color: rgba(255,255,255,.2); }
+.foryou-card .restriction-list .rs-compatible::before, .foryou-card .restriction-list .rs-not_declared::before { background: #fff; }
+.foryou-card .link-btn, .foryou-card .link-btn:visited { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+.foryou-card .btn-ask, .foryou-card .btn-ask:visited { background: #fff; border-color: #fff; color: var(--accent-fill); }
+.foryou-card .btn-ask .icon { color: var(--accent-fill); }
+.foryou-card .btn-ask:hover { background: var(--accent-tint); border-color: var(--accent-tint); color: var(--accent-strong); }
+.foryou-card .btn-ask:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.foryou-card dialog { color: var(--text); }
+.foryou-card::before, .foryou-card::after {
+  content: ""; position: absolute; z-index: 0; top: -40px; width: 22px; height: 22px; pointer-events: none; opacity: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' d='M12 2C5 8 4 15 12 22c8-7 7-14 0-20z'/%3E%3Cpath d='M12 5v15' stroke='%23288563' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  animation: leaf-fall 11s linear infinite;
+}
+.foryou-card::before { left: 72%; }
+.foryou-card::after { left: 18%; width: 16px; height: 16px; animation-duration: 14s; animation-delay: 6s; }
+@keyframes leaf-fall {
+  0%   { top: -40px; opacity: 0; transform: translateX(0) rotate(-20deg); }
+  10%  { opacity: .5; }
+  30%  { transform: translateX(18px) rotate(25deg); }
+  55%  { transform: translateX(-12px) rotate(-15deg); }
+  80%  { transform: translateX(14px) rotate(30deg); }
+  90%  { opacity: .5; }
+  100% { top: 100%; opacity: 0; transform: translateX(0) rotate(-10deg); }
+}
+@media (prefers-reduced-motion: reduce) { .foryou-card::before, .foryou-card::after { animation: none; } }
+
+/* Mobile, Profile: the goal's edit pencil sits in the top right corner */
+@media (max-width: 767px) {
+  .profile-goal { position: relative; padding-right: 3rem; }
+  .profile-goal .icon-btn { position: absolute; top: .35rem; right: .35rem; }
+}
+
+/* Profile: "Go through the questions again" always on one line */
+.profile-actions .btn-link { white-space: nowrap; padding-left: 0; padding-right: 0; }
+@media (max-width: 359px) { .profile-actions .btn-link { font-size: .875rem; gap: .35rem; } }
+.btn-nowrap { white-space: nowrap; }
+
+/* Desktop, My Track overview: cards side by side share the same height (Your profile = Recent scans) */
+@media (min-width: 1024px) { .mytrack-grid { align-items: stretch; } }
+
+/* Mobile, Food diary: the grey food rows span the whole card width, from under the meal icon */
+@media (max-width: 767px) {
+  .t-diary .entry-list { grid-column: 1 / -1; }
+  .t-diary .entry-list > li > .entry-edit { margin-left: 0; }
+}
+
+/* Today: meal tile kcal roll like an odometer after picking a day (static/js/week-nav.js) */
+.odo { display: inline-flex; align-items: flex-end; }
+.odo-d { display: inline-block; height: 1.2em; line-height: 1.2em; overflow: hidden; }
+.odo-strip { display: flex; flex-direction: column; transition: transform 1.4s cubic-bezier(.16,.84,.3,1); }
+.odo-strip > span { height: 1.2em; text-align: center; }
+
+/* Food diary rows, a little smaller, sized on the Fibonacci / golden-ratio steps 5·8·13·21:
+   8px tile padding, 5px between tiles, 13px left padding and radius, 21px line height (pills 18px sit inside it),
+   14px name over 11px pills (14 / 1.272 = √φ), 13px chevron. */
+.t-diary .entry-list { gap: 5px; }
+.t-diary a.entry { padding: 8px 8px 8px 13px; gap: 8px; border-radius: 13px; min-height: 0; }
+.t-diary .entry-main { line-height: 21px; }
+.t-diary .entry-name { font-size: 14px; margin-right: 8px; }
+.t-diary .entry-amount { gap: 5px; vertical-align: 0; }
+.t-diary .entry-amount .entry-pill, .t-diary .entry-amount .entry-pill.entry-kcal { min-height: 0; height: 18px; padding: 0 8px; font-size: 11px; }
+.t-diary a.entry .icon { width: 13px; height: 13px; }
+
+/* Water and Activity logs: same grey rows as the Food diary (14px text, 21px line, 8/13 padding, 5px apart) */
+.t-card .log-list { gap: 5px; }
+.t-card .log-list li { min-height: 0; padding: 2.5px 2.5px 2.5px 13px; gap: 8px; border-radius: 13px; background: #f9fafb; font-size: 14px; line-height: 21px; }
+.t-card .log-list li > span:first-child { font-weight: 400; }
+.t-card .log-list li .caption { font-size: 11px; line-height: 21px; }
+.t-card .log-remove { width: 32px; height: 32px; }
+
+/* Food diary rows: the same lighter grey as the Water and Activity rows */
+.t-diary a.entry { background: #f9fafb; }
+/* Food diary rows: tighter inner spacing (5px Fibonacci step) so name + pills fit one line more often */
+.t-diary a.entry { gap: 5px; }
+.t-diary .entry-name { margin-right: 5px; }
+.t-diary .entry-amount { gap: 3px; }
+.t-diary .entry-amount .entry-pill, .t-diary .entry-amount .entry-pill.entry-kcal { padding: 0 5px; }
+@media (max-width: 767px) { .t-diary { padding-left: 13px; padding-right: 13px; } }
+
+/* Mobile, Foodo remembers: the memory and its "From … · confirmed …" line get the full width;
+   pause / edit / delete move to a small row underneath, on the right. */
+@media (max-width: 767px) {
+  #memories > .card { padding: 1rem; }
+  #memories .memory { padding: .8125rem; }
+  #memories .memory-top { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: .8125rem; row-gap: .3125rem; }
+  #memories .memory-top .mem-icon { grid-row: 1; grid-column: 1; }
+  #memories .memory-top .mem-body { grid-row: 1; grid-column: 2; }
+  #memories .memory-top .note-actions { grid-row: 2; grid-column: 1 / -1; justify-self: end; margin: 0 -.3125rem -.3125rem 0; }
+  #memories .mem-meta { flex-wrap: nowrap; white-space: nowrap; }
+}
+
+/* My Track, Notes: "Foodo remembers" stands apart from the notes above it */
+#memories { margin-top: 2rem; }
+
+/* Ask Foodo pop-up: the messages fill all the space down to the input (the 55vh cap of the
+   inline chat does not apply inside the dialog), so on phones the chat covers the whole screen. */
+.chat-dialog .chat-log, .chat-dialog .chat-inline .chat-log { flex: 1 1 auto; min-height: 0; max-height: none; }
+/* Opened from the green "For you" card: the dialog keeps its normal colours. */
+.foryou-card dialog h2 { color: var(--text); }
+.foryou-card dialog .caption { color: var(--muted); opacity: 1; }
+
+/* Date and time fields (e.g. the Learn "Publication date") look like every other text field. */
+input[type="date"], input[type="datetime-local"], input[type="time"], input[type="month"], input[type="tel"] {
+  width: 100%; min-height: 48px; padding: .6rem .75rem; border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: #fff; color: var(--text); font: inherit; transition: border-color .2s, box-shadow .2s;
+}
+input[type="date"]::-webkit-calendar-picker-indicator, input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .6; }
+
+/* Today: "Set up your goal and allergies in a minute. Get started" centred (phones and desktop) */
+.notice-setup { justify-content: center; align-items: center; text-align: center; }
+.today > .notice-setup { margin-top: 1rem; }
+
+/* Quick actions on phones: the cards never grow wider than the screen. The Learn card's ticker
+   (one unbreakable line per title) used to stretch the whole column and the page beyond it. */
+@media (max-width: 767px) { .quick-actions { grid-template-columns: minmax(0, 1fr); } }
+.quick-actions > li, .qa, .qa-text, .qa-text small { min-width: 0; }
+.ticker, .ticker-track { max-width: 100%; }
+
+}
+
+/* Page titles with a close/back button (e.g. Scan a barcode): the button sits on the title's
+   centre line; the space below belongs to the whole row, not to the title alone. */
+.page-head:has(> .page-head-soft) { align-items: center; margin-bottom: 1rem; }
+.page-head > .page-head-soft { margin-bottom: 0; }
+
+/* Product, Nutrition: a long basis ("per 100 g or ml (not stated by the source)") moves to its
+   own line under the title instead of squeezing next to it. */
+.nutri-card .section-head { flex-wrap: wrap; row-gap: .125rem; column-gap: .75rem; }
+.nutri-card .section-head .caption { margin: 0; }
+
+/* Quick actions on phones: the green "Scan a barcode" card has the same 40px icon circle and gap
+   as the other cards, so all texts start at the same distance from the edge. */
+@media (max-width: 1023px) {
+  .qa-primary { gap: 1rem; }
+  .qa-primary .qa-icon { width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 255, 255, .16); }
+}
+
+/* Ask Foodo: "Foodo is typing" (three dots) while the answer is on its way (static/js/chat.js) */
+.chat-typing p { display: inline-flex; align-items: center; gap: 4px; min-height: 1.5em; }
+.chat-typing p span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: .35; animation: chat-dot 1.2s ease-in-out infinite; }
+.chat-typing p span:nth-child(2) { animation-delay: .15s; }
+.chat-typing p span:nth-child(3) { animation-delay: .3s; }
+@keyframes chat-dot { 0%, 60%, 100% { opacity: .4; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .chat-typing p span { animation: none; opacity: .6; } }
+/* The typing dots float on their own, without the speech-bubble frame. */
+.chat-msg.chat-typing p { background: none; border: 0; box-shadow: none; padding: .5rem .25rem; }
+
+/* Ask Foodo: helpful / not helpful under AI answers */
+.chat-bubble { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; min-width: 0; }
+.chat-rate { display: flex; gap: .15rem; margin: 0; padding-left: .35rem; }
+.chat-rate-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+.chat-rate-btn:hover { background: rgba(17, 24, 39, .06); color: var(--text); }
+.chat-rate-btn[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
+.chat-rate-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

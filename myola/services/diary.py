@@ -144,6 +144,23 @@ def activity_total(user, day: dt.date) -> int:
     return ActivityEntry.objects.filter(user=user, date=day).aggregate(s=Sum("minutes"))["s"] or 0
 
 
+def meter_level(value, target) -> str:
+    """Colour step of a summary meter, by the share of the target reached:
+    low (<50%) · mid (50-90%) · on (90-110%) · high (110-130%) · over (>130%)."""
+    if not target:
+        return ""
+    share = float(value) / float(target)
+    if share < 0.5:
+        return "low"
+    if share < 0.9:
+        return "mid"
+    if share <= 1.1:
+        return "on"
+    if share <= 1.3:
+        return "high"
+    return "over"
+
+
 def target_rows(t: Totals, targets: dict[str, int | None], show_energy: bool = True) -> list[dict]:
     """Rows for the daily summary: value, target, percentage (capped for the meter)."""
     rows = []
@@ -163,6 +180,7 @@ def target_rows(t: Totals, targets: dict[str, int | None], show_energy: bool = T
                 "target": target,
                 "pct": pct,
                 "over": bool(target and value > target),
+                "level": meter_level(value, target),
                 "partial": t.partial[key],
             }
         )
@@ -222,26 +240,33 @@ def preview_rows(
 
 # ---------- Day picker ----------
 def week(user, day: dt.date, today: dt.date) -> dict:
-    """The Monday-to-Sunday week holding ``day``, with the days that have food logged."""
+    """The Monday-to-Sunday week holding ``day``, with the days that have food logged.
+
+    ``earlier`` is the week before it: wide screens show both weeks in the day band.
+    """
     monday = day - dt.timedelta(days=day.weekday())
-    days = [monday + dt.timedelta(days=i) for i in range(7)]
+    first = monday - dt.timedelta(days=7)
+    span = [first + dt.timedelta(days=i) for i in range(14)]
     logged = set(
-        DiaryEntry.objects.filter(user=user, date__range=(days[0], days[-1]))
+        DiaryEntry.objects.filter(user=user, date__range=(span[0], span[-1]))
         .values_list("date", flat=True)
         .distinct()
     )
+
+    def row(d: dt.date) -> dict:
+        return {
+            "date": d,
+            "iso": d.isoformat(),
+            "selected": d == day,
+            "today": d == today,
+            "future": d > today,
+            "logged": d in logged,
+        }
+
+    days = span[7:]
     return {
-        "days": [
-            {
-                "date": d,
-                "iso": d.isoformat(),
-                "selected": d == day,
-                "today": d == today,
-                "future": d > today,
-                "logged": d in logged,
-            }
-            for d in days
-        ],
+        "days": [row(d) for d in days],
+        "earlier": [row(d) for d in span[:7]],
         "prev": (day - dt.timedelta(days=7)).isoformat(),
         "next": min(day + dt.timedelta(days=7), today).isoformat() if days[-1] < today else None,
     }

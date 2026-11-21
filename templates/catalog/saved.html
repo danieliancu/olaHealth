@@ -2,7 +2,7 @@
 {% load i18n ui %}
 {% block title %}{% translate "Saved" %}{% endblock %}
 {% block content %}
-<h1>{% translate "Saved products" %}</h1>
+<div class="page-head page-head-soft"><span class="soft-icon">{% icon "heart" 20 %}</span><h1>{% translate "Saved products" %}</h1></div>
 
 {% if not user.is_authenticated %}
 <section class="card">
@@ -10,40 +10,8 @@
   <a class="btn btn-primary btn-block" href="{{ login_url }}">{% icon "log-in" 18 %}<span>{% translate "Sign in to save" %}</span></a>
 </section>
 {% else %}
-<nav class="segmented seg-3 saved-nav" aria-label="{% translate 'Saved lists' %}">
-  <a href="#fav-h">{% translate "Favourites" %}</a>
-  <a href="#hist-h">{% translate "Recently viewed" %}</a>
-  <a href="#hidden-h">{% translate "Hidden" %}</a>
-</nav>
 
-<section aria-labelledby="fav-h" class="saved-section">
-  <h2 id="fav-h">{% translate "Favourites" %}</h2>
-  {% if favourites %}
-  <ul class="product-list">
-    {% for p in favourites %}
-    {% translate "Remove from favourites" as remove_label %}
-    {% include "partials/product_row.html" with kind="favorite" remove_label=remove_label %}
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p class="empty">{% translate "No favourites yet. Use the heart on a product page." %}</p>
-  {% endif %}
-</section>
-
-<section aria-labelledby="hist-h" class="saved-section">
-  <h2 id="hist-h">{% translate "Recently viewed" %}</h2>
-  {% if recent %}
-  <ul class="product-list">
-    {% for p in recent %}{% include "partials/product_row.html" with kind="" %}{% endfor %}
-  </ul>
-  <form method="post" action="{% url 'saved-clear' 'history' %}" data-confirm="{% translate 'This removes your recently viewed products and scans.' %}"
-        data-confirm-title="{% translate 'Clear history?' %}" data-confirm-label="{% translate 'Clear' %}" data-confirm-tone="danger">
-    {% csrf_token %}<button type="submit" class="btn btn-link">{% translate "Clear history" %}</button>
-  </form>
-  {% else %}
-  <p class="empty">{% translate "No products viewed yet." %}</p>
-  {% endif %}
-</section>
+{% include "catalog/partials/saved_lists.html" %}
 
 <section aria-labelledby="hidden-h" class="saved-section">
   <h2 id="hidden-h">{% translate "Hidden" %}</h2>

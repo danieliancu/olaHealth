@@ -98,6 +98,19 @@ ACTIVITIES = {
     "other": (_("Other"), "activity"),
 }
 
+# Daily activity for estimating energy needs: (label, description, physical activity level).
+# PAL values follow the FAO/WHO/UNU and SACN (2011) approach: energy = resting energy x PAL.
+ACTIVITY_LEVELS = {
+    "sedentary": (_("Mostly sitting"), _("Desk job, little exercise"), 1.4),
+    "light": (
+        _("Lightly active"),
+        _("On your feet some of the day, or exercise 1-3 days a week"),
+        1.6,
+    ),
+    "active": (_("Active"), _("Active job, or exercise 3-5 days a week"), 1.8),
+    "very_active": (_("Very active"), _("Physical job, or hard exercise most days"), 2.0),
+}
+
 
 def picker_context() -> dict:
     """Options for the onboarding steps, the restriction picker and My Track."""

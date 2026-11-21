@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
+from unfold.admin import ModelAdmin, TabularInline
 
 from assessments.models import AssessmentSnapshot
 from catalog.models import (
@@ -14,7 +15,7 @@ from catalog.models import (
 )
 
 
-class IdentifierInline(admin.TabularInline):
+class IdentifierInline(TabularInline):
     model = ProductIdentifier
     extra = 0
     readonly_fields = ("raw_value", "detected_format", "normalized", "off_code", "kind", "context")
@@ -25,7 +26,7 @@ class IdentifierInline(admin.TabularInline):
 
 
 @admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
+class ProductAdmin(ModelAdmin):
     list_display = (
         "name",
         "brand",
@@ -47,7 +48,7 @@ class ProductAdmin(admin.ModelAdmin):
         return False
 
 
-class SnapshotInline(admin.TabularInline):
+class SnapshotInline(TabularInline):
     model = AssessmentSnapshot
     extra = 0
     can_delete = False
@@ -67,7 +68,7 @@ class SnapshotInline(admin.TabularInline):
 
 
 @admin.register(ProductRevision)
-class ProductRevisionAdmin(admin.ModelAdmin):
+class ProductRevisionAdmin(ModelAdmin):
     list_display = ("product", "number", "source", "created_at")
     list_filter = ("source",)
     readonly_fields = [f.name for f in ProductRevision._meta.fields]
@@ -84,7 +85,7 @@ class ProductRevisionAdmin(admin.ModelAdmin):
 
 
 @admin.register(ProductImage)
-class ProductImageAdmin(admin.ModelAdmin):
+class ProductImageAdmin(ModelAdmin):
     list_display = ("product", "kind", "source", "license", "is_active", "created_at")
     list_filter = ("source", "kind", "is_active")
     readonly_fields = [f.name for f in ProductImage._meta.fields]
@@ -94,7 +95,7 @@ class ProductImageAdmin(admin.ModelAdmin):
 
 
 @admin.register(ReviewFlag)
-class ReviewFlagAdmin(admin.ModelAdmin):
+class ReviewFlagAdmin(ModelAdmin):
     list_display = ("kind", "field", "product_link", "status", "created_at")
     list_filter = ("kind", "status", ("created_at", admin.DateFieldListFilter))
     readonly_fields = (
@@ -130,7 +131,7 @@ class ReviewFlagAdmin(admin.ModelAdmin):
 
 
 @admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
+class CategoryAdmin(ModelAdmin):
     """Reference data imported by ``sync_taxonomies`` (read only)."""
 
     list_display = ("name", "tag")
@@ -145,7 +146,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(Country)
-class CountryAdmin(admin.ModelAdmin):
+class CountryAdmin(ModelAdmin):
     list_display = ("name", "code", "tag")
     search_fields = ("name", "tag", "code")
     readonly_fields = ("tag", "name", "code")

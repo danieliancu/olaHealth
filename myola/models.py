@@ -1,4 +1,4 @@
-"""Personal data of a FoodoTrack account: profile, food diary, water, activity, weight, product
+"""Personal data of a AskFoodo account: profile, food diary, water, activity, weight, product
 lists, scans, notes, memories and chats.
 
 Everything here belongs to one user and is deleted with the account (CASCADE). None of it ever
@@ -32,6 +32,7 @@ NUT_CHOICES = _choices(P.NUT_TYPES)
 SEAFOOD_CHOICES = _choices(P.SEAFOOD_TYPES)
 CONDITION_CHOICES = _choices(P.CONDITIONS)
 ACTIVITY_CHOICES = _choices(P.ACTIVITIES)
+ACTIVITY_LEVEL_CHOICES = _choices(P.ACTIVITY_LEVELS)
 
 
 class Meal(models.TextChoices):
@@ -63,6 +64,8 @@ class Profile(models.Model):
         blank=True,
         validators=[MinValueValidator(Decimal(25)), MaxValueValidator(Decimal(400))],
     )
+    # Asked when daily targets are calculated automatically (myola.services.targets).
+    activity_level = models.CharField(max_length=20, choices=ACTIVITY_LEVEL_CHOICES, blank=True)
     restrictions = ArrayField(
         models.CharField(max_length=20, choices=RESTRICTION_CHOICES), default=list, blank=True
     )
@@ -79,10 +82,15 @@ class Profile(models.Model):
         models.CharField(max_length=20, choices=CONDITION_CHOICES), default=list, blank=True
     )
     conditions_note = models.CharField(max_length=300, blank=True)
+    # Allergies and religious restrictions are special-category data too (GDPR art. 9):
+    # stored only with this explicit consent.
+    restrictions_consent_at = models.DateTimeField(null=True, blank=True)
     health_consent_at = models.DateTimeField(null=True, blank=True)
     onboarded = models.BooleanField(default=False)
     # Settings
     use_notes = models.BooleanField(default=False)
+    # Separate, explicit consent: diets and allergies may be sent to the AI provider.
+    ai_use_preferences = models.BooleanField(default=False)
     show_energy = models.BooleanField(default=True)
     show_targets = models.BooleanField(default=True)
     track_weight = models.BooleanField(default=False)
@@ -99,6 +107,14 @@ class Profile(models.Model):
         null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(1000)]
     )
     timezone = models.CharField(max_length=64, default="Europe/London")
+    # In-app notifications, one switch per kind (all on by default).
+    notify_reminders = models.BooleanField(default=True)
+    notify_achievements = models.BooleanField(default=True)
+    notify_contributions = models.BooleanField(default=True)
+    notify_announcements = models.BooleanField(default=True)
+    notify_water = models.BooleanField(default=True)
+    # Weekly weigh-in reminder day (0 = Monday); only with weight tracking switched on.
+    weigh_day = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -316,6 +332,10 @@ class ChatMessage(models.Model):
     context = models.CharField(max_length=60, default="personal")
     role = models.CharField(max_length=5, choices=Role.choices)
     text = models.TextField(max_length=4000)
+    # The AI call behind a Foodo answer (for the helpful / not helpful buttons).
+    ai_answer = models.ForeignKey(
+        "ai.AIAnswer", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -324,6 +344,41 @@ class ChatMessage(models.Model):
 
     def __str__(self) -> str:
         return f"{self.role}: {self.text[:60]}"
+
+
+class Notification(models.Model):
+    """An in-app notification (bell in the header). Never contains health data or calories."""
+
+    class Kind(models.TextChoices):
+        REMINDER = "reminder", _("Reminder")
+        ACHIEVEMENT = "achievement", _("Achievement")
+        CONTRIBUTION = "contribution", _("Contribution")
+        ANNOUNCEMENT = "announcement", _("Announcement")
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    kind = models.CharField(max_length=12, choices=Kind.choices)
+    # Stable identity of the event, so the same notification is never created twice.
+    key = models.CharField(max_length=120)
+    title = models.CharField(max_length=160)
+    body = models.CharField(max_length=500, blank=True)
+    url = models.CharField(max_length=300, blank=True)
+    icon = models.CharField(max_length=40, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "key"], name="one_notification_per_key")
+        ]
+        indexes = [models.Index(fields=["user", "read_at", "-created_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.kind}: {self.title[:60]}"
+
+    @property
+    def is_read(self) -> bool:
+        return self.read_at is not None
 
 
 # Per-user limits (as in the former browser store).

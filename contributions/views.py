@@ -6,6 +6,8 @@ import uuid
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import PermissionDenied
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -35,7 +37,7 @@ OCR_POLL_SECONDS = 120  # the status fragment stops polling after two minutes
 PHOTO_SLOTS = (
     (ContributionImage.Kind.FRONT, "Front of pack"),
     (ContributionImage.Kind.INGREDIENTS, "Ingredients"),
-    (ContributionImage.Kind.NUTRITION, "Nutrition label"),
+    (ContributionImage.Kind.NUTRITION, "Nutrition"),  # one line on phones, like the others
 )
 
 
@@ -78,6 +80,7 @@ def start(request: HttpRequest) -> HttpResponse:
         code=code,
         code_format=form.cleaned_data.get("format") or "",
         country=_country(request),
+        user=request.user,
     )
     return redirect("contribution", token=c.access_token)
 
@@ -252,6 +255,19 @@ def ocr_retry(request: HttpRequest, token: str, run_id: int) -> HttpResponse:
     return redirect(_step_url(c, "check"))
 
 
+def _web_copy(img) -> str:
+    """The web copy of an approved photo: WebP, no wider than product photos are shown (made once;
+    the full-size label photo stays private for moderation and text recognition)."""
+    from core.images import PRODUCT_MAX_WIDTH, decode, web_webp
+
+    name = f"publicimg/{img.pk}.webp"
+    if not default_storage.exists(name):
+        with img.contribution_image.file.open("rb") as f:
+            rgb, _fmt = decode(f.read())
+        default_storage.save(name, ContentFile(web_webp(rgb, PRODUCT_MAX_WIDTH)))
+    return name
+
+
 @require_GET
 def public_image(request: HttpRequest, pk: uuid.UUID) -> FileResponse:
     """Approved contributed photos. Drafts and rejected photos are never served here."""
@@ -261,7 +277,7 @@ def public_image(request: HttpRequest, pk: uuid.UUID) -> FileResponse:
         source=ProductImage.Source.CONTRIBUTION,
         contribution_image__is_public=True,
     )
-    response = FileResponse(img.contribution_image.file.open("rb"), content_type="image/jpeg")
+    response = FileResponse(default_storage.open(_web_copy(img), "rb"), content_type="image/webp")
     response["Cache-Control"] = "public, max-age=86400"
     return response
 

@@ -8,18 +8,19 @@
   <td>{% if u.is_active %}<span class="staff-status staff-status-approved">Active</span>{% else %}<span class="staff-status staff-status-rejected">Deactivated</span>{% endif %}<br>{% if u.email_verified %}<span class="hint">email confirmed</span>{% else %}<span class="badge badge-warn">email not confirmed</span>{% endif %}</td>
   <td>{{ u.diary_count }}</td>
   <td>{{ u.notes_count }}</td>
+  <td class="staff-money">{{ u.ai_usd_total|gbp }}<br><span class="hint">{{ u.ai_usd_month|gbp }} this month</span></td>
   <td>
     {% if u.is_superuser %}<span class="hint">Protected</span>{% elif u.pk == request.user.pk %}<span class="hint">You</span>{% else %}
     <div class="staff-actions">
       {% if u.is_active %}
-      <form method="post" action="{% url 'staff:user-action' u.pk 'deactivate' %}" hx-post="{% url 'staff:user-action' u.pk 'deactivate' %}" hx-target="#user-{{ u.pk }}" hx-swap="outerHTML">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}"><button class="btn btn-small btn-outline" type="submit">{% icon "ban" 16 %}<span>Deactivate</span></button></form>
+      <form method="post" action="{% url 'staff:user-action' u.pk 'deactivate' %}" hx-post="{% url 'staff:user-action' u.pk 'deactivate' %}" hx-target="#user-{{ u.pk }}" hx-swap="outerHTML">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}"><button class="btn btn-small btn-outline btn-icon-only" type="submit" title="Deactivate" aria-label="Deactivate {{ u.email|default:u.username }}">{% icon "ban" 16 %}</button></form>
       {% else %}
-      <form method="post" action="{% url 'staff:user-action' u.pk 'activate' %}" hx-post="{% url 'staff:user-action' u.pk 'activate' %}" hx-target="#user-{{ u.pk }}" hx-swap="outerHTML">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}"><button class="btn btn-small btn-outline" type="submit">{% icon "check" 16 %}<span>Activate</span></button></form>
+      <form method="post" action="{% url 'staff:user-action' u.pk 'activate' %}" hx-post="{% url 'staff:user-action' u.pk 'activate' %}" hx-target="#user-{{ u.pk }}" hx-swap="outerHTML">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}"><button class="btn btn-small btn-outline btn-icon-only" type="submit" title="Activate" aria-label="Activate {{ u.email|default:u.username }}">{% icon "check" 16 %}</button></form>
       {% endif %}
       {% if not u.email_verified %}
-      <form method="post" action="{% url 'staff:user-action' u.pk 'resend' %}" hx-post="{% url 'staff:user-action' u.pk 'resend' %}" hx-target="#user-{{ u.pk }}" hx-swap="outerHTML">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}"><button class="btn btn-small btn-outline" type="submit">{% icon "mail" 16 %}<span>Resend confirmation</span></button></form>
+      <form method="post" action="{% url 'staff:user-action' u.pk 'resend' %}" hx-post="{% url 'staff:user-action' u.pk 'resend' %}" hx-target="#user-{{ u.pk }}" hx-swap="outerHTML">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}"><button class="btn btn-small btn-outline btn-icon-only" type="submit" title="Resend confirmation email" aria-label="Resend confirmation email to {{ u.email|default:u.username }}">{% icon "mail" 16 %}</button></form>
       {% endif %}
-      <a class="btn btn-small btn-outline btn-danger-link" href="{% url 'staff:user-delete' u.pk %}">{% icon "trash-2" 16 %}<span>Delete…</span></a>
+      <a class="btn btn-small btn-outline btn-danger-link btn-icon-only" href="{% url 'staff:user-delete' u.pk %}" title="Delete…" aria-label="Delete {{ u.email|default:u.username }}…">{% icon "trash-2" 16 %}</a>
     </div>
     {% endif %}
   </td>

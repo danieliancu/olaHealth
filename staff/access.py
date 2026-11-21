@@ -14,6 +14,7 @@
   Users                         ``staff.manage_users``
   Site settings                 ``staff.manage_settings``
   Audit log                     ``staff.view_staffaction``
+  Learn articles (CMS)          ``core.change_learnarticle``
   ============================  ====================================================
 
 The "Reviewers" group (``setup_roles``) can therefore read the queue, flags and products;
@@ -36,6 +37,7 @@ PERM_VIEW_PRODUCTS = "catalog.view_product"
 PERM_MANAGE_USERS = "staff.manage_users"
 PERM_MANAGE_SETTINGS = "staff.manage_settings"
 PERM_VIEW_AUDIT = "staff.view_staffaction"
+PERM_MANAGE_LEARN = "core.change_learnarticle"
 
 
 def is_staff_user(user) -> bool:
@@ -74,5 +76,6 @@ def sections(user) -> dict[str, bool]:
         "users": user.has_perm(PERM_MANAGE_USERS),
         "settings": user.has_perm(PERM_MANAGE_SETTINGS),
         "audit": user.has_perm(PERM_VIEW_AUDIT),
+        "learn": user.has_perm(PERM_MANAGE_LEARN),
         "can_moderate": user.has_perm(PERM_MODERATE),
     }

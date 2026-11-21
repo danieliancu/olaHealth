@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load i18n ui %}
+{% block title %}{% translate "Learn" %}{% endblock %}
+{% block head %}<meta name="description" content="{% translate 'Food news and short, calm reads: Nutri-Score, NOVA, E numbers, allergens and hidden sugar.' %}">{% endblock %}
+{% block content %}
+<div class="learn">
+  <div class="page-head page-head-soft">
+    <div>
+      <h1>{% translate "Learn" %}</h1>
+      <p class="page-sub">{% translate "The latest food news and short reads" %}</p>
+    </div>
+  </div>
+
+  <form class="learn-search" method="get" action="{% url 'learn' %}" role="search">
+    <label for="learn-q" class="sr-only">{% translate "Search articles" %}</label>
+    <span class="search-icon">{% icon "search" 18 %}</span>
+    <input type="search" id="learn-q" name="q" value="{{ q }}" placeholder="{% translate 'Search articles' %}" maxlength="80">
+  </form>
+
+  <section aria-labelledby="topics-h">
+    <h2 class="dash-title dash-title-sm" id="topics-h">{% translate "Explore by topic" %}</h2>
+    <ul class="topic-grid stagger">
+      {% for row in topics %}<li><a class="topic-card{% if topic and topic.key == row.topic.key %} is-current{% endif %}" href="{% url 'learn-topic' row.topic.key %}"{% if topic and topic.key == row.topic.key %} aria-current="true"{% endif %}>
+        <span class="soft-icon">{% icon row.topic.icon 20 %}</span>
+        <strong>{{ row.topic.title }}</strong>
+        <small>{% blocktranslate count n=row.count %}{{ n }} article{% plural %}{{ n }} articles{% endblocktranslate %}</small>
+      </a></li>{% endfor %}
+    </ul>
+  </section>
+
+  <section aria-labelledby="articles-h">
+    <div class="section-head">
+      <h2 class="dash-title dash-title-sm" id="articles-h">{% if q %}{% translate "Search results" %}{% elif topic %}{{ topic.title }}{% else %}{% translate "Featured articles" %}{% endif %}</h2>
+      {% if topic or q %}<a class="btn btn-link" href="{% url 'learn' %}">{% translate "All topics" %}</a>{% endif %}
+    </div>
+    <ul class="article-list stagger">
+      {% for a in articles %}<li>{% include "learn/article_card.html" %}</li>{% empty %}<li>{% translate "No article matches that search yet." as t %}{% include "partials/empty.html" with icon="search" text=t %}</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

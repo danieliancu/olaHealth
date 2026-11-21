@@ -7,13 +7,13 @@
 <p class="caption">{% translate "Last updated: 19 November 2026." %} {% translate "Draft: to be reviewed before launch." %}</p>
 
 <h2>{% translate "Who we are" %}</h2>
-<p>{% blocktranslate with controller=LEGAL_CONTROLLER contact=LEGAL_CONTACT %}FoodoTrack is operated by {{ controller }}, the data controller. Contact: {{ contact }}.{% endblocktranslate %}</p>
+<p>{% blocktranslate with controller=LEGAL_CONTROLLER contact=LEGAL_CONTACT %}AskFoodo is operated by {{ controller }}, the data controller. Contact: {{ contact }}.{% endblocktranslate %}</p>
 
 <h2>{% translate "What we collect and why" %}</h2>
 <ul>
   <li><strong>{% translate "Account" %}</strong>: {% translate "your email address and a hashed password, to let you sign in (contract)." %}</li>
   <li><strong>{% translate "Profile and diary" %}</strong>: {% translate "your goal, optional age, height and weight, dietary restrictions and allergies, food diary, water, activity, weight entries, product lists, scans, notes, memories and Ask Foodo messages, to provide the service you asked for (contract)." %}</li>
-  <li><strong>{% translate "Health information" %}</strong>: {% translate "health conditions you choose to tell us are special category data. We store them only with your explicit consent, use them only to adapt what the app shows you, and you can delete them at any time in My Track (Profile)." %}</li>
+  <li><strong>{% translate "Health information" %}</strong>: {% translate "health conditions, allergies and religious restrictions you choose to tell us are special category data. We store them only with your explicit consent, use them only to adapt what the app shows you, and you can delete them at any time in My Track (Profile)." %}</li>
   <li><strong>{% translate "Contributions" %}</strong>: {% translate "photos and corrections you submit for a product are reviewed by moderators and, once approved, published under the open licences shown on the contribution page. They are not linked to your account." %}</li>
   <li><strong>{% translate "Technical data" %}</strong>: {% translate "a session cookie, your IP address in short-lived rate-limit counters, and error reports without personal details, to keep the service secure and working (legitimate interest)." %}</li>
 </ul>
@@ -22,7 +22,8 @@
 <ul>
   <li>{% translate "Open Food Facts: we only look up product barcodes and categories; none of your personal data or preferences is ever sent." %}</li>
   <li>{% translate "Our email provider, to send account emails." %}</li>
-  <li>{% translate "When Ask Foodo uses an AI model, the AI provider receives only the product facts and your question, never your name, email or health conditions." %}</li>
+  <li>{% translate "When Ask Foodo uses an AI model (for questions about a product's label, and for general food questions in the general chat), the AI provider receives only your question and, on a product page, that product's facts (including its ingredient list). Only if you switch on “Use my diets and allergies in AI answers” in Settings does it also receive the names of your diets and allergies. It never receives your name, email, health conditions, notes, memories or lists. So it can follow up, it also receives your last two questions in the same chat from the past 30 minutes and its own answers to them. Allergen and diet checks are always done by AskFoodo itself." %}</li>
+  <li>{% translate "To check the quality and safety of these answers, we keep each question sent to the AI provider, its answer and your helpful / not helpful rating for 30 days, then delete them. Our team sees them without your name or email." %}</li>
   <li>{% translate "Our hosting and error-monitoring providers, under data processing agreements." %}</li>
 </ul>
 
@@ -33,6 +34,6 @@
 <p>{% translate "You can see and correct your data in the app, download a copy of everything (My Track, Account, Download my data), withdraw consent for health data, and delete your account at any time. You can also contact us, and you have the right to complain to the data protection authority (in the UK, the ICO)." %}</p>
 
 <h2>{% translate "Not medical advice" %}</h2>
-<p>{% translate "FoodoTrack shows information from food labels. It is not medical advice: always read the label and ask a health professional about your diet." %}</p>
+<p>{% translate "AskFoodo shows information from food labels. It is not medical advice: always read the label and ask a health professional about your diet." %}</p>
 </article>
 {% endblock %}

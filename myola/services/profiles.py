@@ -87,3 +87,17 @@ def parse_day(value: str | None, profile: Profile | None) -> dt.date:
     except ValueError:
         return today
     return min(day, today)
+
+
+def profile_completeness(profile) -> int:
+    """Share of the optional profile answers that are filled in (for the identity card)."""
+    checks = [
+        bool(profile.goal),
+        bool(profile.gender),
+        profile.age is not None,
+        profile.height is not None,
+        profile.weight is not None,
+        bool(profile.restrictions or profile.restrictions_consent_at),
+        any(profile.targets.values()),
+    ]
+    return round(100 * sum(checks) / len(checks))

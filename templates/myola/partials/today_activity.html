@@ -1,6 +1,8 @@
 {% load i18n ui %}{% url 'today-activity-add' as add_url %}
 <section class="card t-card" aria-labelledby="act-h">
   <div class="t-card-head"><h2 id="act-h">{% icon "activity" 20 %} {% translate "Activity" %}</h2><strong class="t-total">{{ activity_total }}</strong></div>
+  <details class="log-more"{% if activity_form.errors %} open{% endif %}>
+  <summary>{% icon "plus" 16 %}<span>{% translate "Log activity" %}</span></summary>
   <form class="activity-form" method="post" action="{{ add_url }}" hx-post="{{ add_url }}" hx-target="#today" hx-swap="outerHTML" data-no-busy novalidate>
     {% csrf_token %}<input type="hidden" name="date" value="{{ day_iso }}">
     <fieldset class="activity-types">
@@ -15,6 +17,7 @@
     {% for err in activity_form.non_field_errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}{% for err in activity_form.minutes.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}{% for err in activity_form.kind.errors %}<p class="field-error" role="alert">{{ err }}</p>{% endfor %}
   </form>
   <p class="caption">{% translate "Minutes only – no calories burned are estimated." %}</p>
+  </details>
   {% if activity %}<ul class="log-list">
     {% for a in activity %}<li><span>{{ a.label }}</span><span class="caption">{{ a.minutes }} min</span>{% url 'today-activity-delete' a.pk as del_url %}<form method="post" action="{{ del_url }}" hx-post="{{ del_url }}" hx-target="#today" hx-swap="outerHTML" data-no-busy>{% csrf_token %}<button type="submit" class="log-remove" aria-label="{% blocktranslate with name=a.label minutes=a.minutes %}Remove {{ name }} {{ minutes }} minutes{% endblocktranslate %}">{% icon "x" 16 %}</button></form></li>{% endfor %}
   </ul>{% endif %}

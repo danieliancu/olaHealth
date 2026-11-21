@@ -3,7 +3,7 @@
 {% block title %}{% translate "Products" %}{% endblock %}
 {% block content %}
 <div id="catalog">
-<h1>{% translate "Products" %}</h1>
+<div class="page-head page-head-soft"><span class="soft-icon">{% icon "search" 20 %}</span><h1>{% translate "Products" %}</h1></div>
 
 {% include "partials/diary_banner.html" %}
 {# Filters apply on change through htmx (the Apply button stays for no-JS). #}
@@ -19,7 +19,7 @@
            hx-indicator="closest .search-box"{% if diary %} hx-include="#diary-add, #diary-date"{% endif %}>
     {% include "partials/suggest.html" with show=False %}
   </div>
-  <p class="caption">{% translate "Products in the FoodoTrack catalogue" %}<span class="sr-only"> – {% translate "only products already scanned or added here" %}</span></p>
+  <p class="caption">{% translate "Products in the AskFoodo catalogue" %}<span class="sr-only"> – {% translate "only products already scanned or added here" %}</span></p>
   <div class="pills">
     {% translate "Category" as l_cat %}{% translate "Country" as l_country %}{% translate "Completeness" as l_comp %}
     {% include "partials/facet_select.html" with name="category" label=l_cat options=facets.category value=form.category.value %}

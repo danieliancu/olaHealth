@@ -1,0 +1,7 @@
+{% load i18n %}<form id="notes-replies" class="card stack" method="post" action="{% url 'notes-in-replies' %}" hx-post="{% url 'notes-in-replies' %}" hx-target="this" hx-swap="outerHTML">
+    {% csrf_token %}
+    <h2>{% translate "Notes in replies" %}</h2>
+    <label class="check"><input type="checkbox" name="use_notes"{% if use_notes %} checked{% endif %}> <span>{% translate "Use my Notes to personalise Foodo’s replies" %}</span></label>
+    <p class="caption">{% translate "Off by default. When on, Foodo uses only the notes relevant to the current conversation (the same product, or matching words)." %}</p>
+    <button type="submit" class="btn btn-outline btn-small">{% translate "Save" %}</button>
+  </form>

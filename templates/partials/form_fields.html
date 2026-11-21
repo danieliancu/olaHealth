@@ -1,7 +1,15 @@
-{% load i18n %}{% if form.non_field_errors %}<div class="error-box" role="alert">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
-{% for field in form.hidden_fields %}{{ field }}{% endfor %}
-{% for field in form.visible_fields %}
-  {% if field.widget_type == "checkbox" %}
+{% load i18n ui %}{# Optional: fields=<list of bound fields> renders only those; skip_meta=True skips errors and hidden fields. #}{% if not skip_meta and form.non_field_errors %}<div class="error-box" role="alert">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+{% if not skip_meta %}{% for field in form.hidden_fields %}{{ field }}{% endfor %}{% endif %}
+{% for field in fields|default:form.visible_fields %}
+  {% if field.field.icon_picker %}
+  <fieldset class="field icon-picker{% if field.errors %} has-error{% endif %}">
+    <legend>{{ field.label }}</legend>
+    {% if field.help_text %}<p class="caption">{{ field.help_text }}</p>{% endif %}
+    <input type="search" class="icon-picker-filter" placeholder="{% translate 'Filter icons' %}" aria-label="{% translate 'Filter icons' %}" data-icon-filter>
+    <div class="icon-grid">{% for c in field %}<label class="icon-opt" title="{{ c.choice_label }}" data-icon-name="{{ c.choice_label }}"><input type="radio" name="{{ field.html_name }}" value="{{ c.data.value }}"{% if c.data.selected %} checked{% endif %}>{% icon c.data.value 22 %}<span>{{ c.choice_label }}</span></label>{% endfor %}</div>
+    {% for e in field.errors %}<p class="error">{{ e }}</p>{% endfor %}
+  </fieldset>
+  {% elif field.widget_type == "checkbox" %}
   <label class="check"><input type="checkbox" name="{{ field.html_name }}" id="{{ field.auto_id }}"{% if field.value %} checked{% endif %}> <span>{{ field.label }}</span></label>
   {% else %}
   <div class="field{% if field.errors %} has-error{% endif %}">

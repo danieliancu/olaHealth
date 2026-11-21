@@ -1,4 +1,4 @@
 {# Out-of-band updates added to htmx responses (catalog.views._oob). #}
 {% include "partials/messages.html" with oob=True %}
 {% include "partials/saved_count.html" with oob=True %}
-{% if compare_oob %}{% include "partials/compare_link.html" with oob=True %}{% endif %}
+{% if compare_oob %}{% include "partials/compare_link.html" with oob=True %}{% include "partials/compare_bar.html" with oob=True %}{% endif %}

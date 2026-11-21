@@ -452,19 +452,39 @@ def test_settings_save_and_log(boss, superuser):
         {
             "ai_enabled": "on",
             "ai_provider": "openai",
-            "ai_model": " gpt-test ",
+            "ai_model": "gpt-5-mini",
             "ai_daily_messages_per_user": "12",
-            "ai_monthly_budget_usd": "55.50",
+            "ai_monthly_budget_gbp": "55.50",
             "maintenance_message": "Back soon",
         },
     )
     assert r.status_code == 302
     s = SiteSettings.load()
-    assert s.ai_enabled and s.ai_provider == "openai" and s.ai_model == "gpt-test"
-    assert s.ai_daily_messages_per_user == 12 and str(s.ai_monthly_budget_usd) == "55.50"
+    assert s.ai_enabled and s.ai_provider == "openai" and s.ai_model == "gpt-5-mini"
+    assert s.ai_daily_messages_per_user == 12 and str(s.ai_monthly_budget_gbp) == "55.50"
+    assert str(s.usd_to_gbp) == "0.7500"  # fixed rate, not in the form
     assert s.updated_by == superuser
     entry = StaffAction.objects.get(action="settings_update")
     assert entry.details["changes"]["ai_provider"] == ["anthropic", "openai"]
+
+
+def test_model_menu_follows_the_provider(boss, monkeypatch):
+    for key in ("GROQ_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
+        monkeypatch.delenv(key, raising=False)
+    html = boss.get(reverse("staff:settings")).content.decode()
+    assert 'value="claude-haiku-5-5"' in html and "Google Gemini" in html and "Groq" in html
+    assert "OpenAI-compatible" not in html
+    r = boss.get(reverse("staff:ai-models"), {"ai_provider": "groq"}, HTTP_HX_REQUEST="true")
+    html = r.content.decode()
+    assert 'id="id_ai_model"' in html and "llama-3.1-8b-instant (default)" in html
+    assert "claude" not in html and "Set GROQ_API_KEY" in html
+    # A model of another provider is refused.
+    r = boss.post(
+        reverse("staff:settings"),
+        {"ai_provider": "groq", "ai_model": "claude-haiku-5-5",
+         "ai_daily_messages_per_user": "5", "ai_monthly_budget_gbp": "1"},
+    )  # fmt: skip
+    assert r.status_code == 200 and "ai_model" in r.context["form"].errors
 
 
 def test_settings_rejects_invalid_values(boss):
@@ -474,7 +494,7 @@ def test_settings_rejects_invalid_values(boss):
             "ai_provider": "nope",
             "ai_model": "m",
             "ai_daily_messages_per_user": "5000",
-            "ai_monthly_budget_usd": "-1",
+            "ai_monthly_budget_gbp": "-1",
         },
     )
     assert r.status_code == 200 and r.context["form"].errors

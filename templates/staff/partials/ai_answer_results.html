@@ -1,0 +1,20 @@
+{% load ui %}{% if page.object_list %}
+<ul class="ai-log">
+{% for a in page.object_list %}
+  <li class="ai-log-item">
+    <div class="ai-log-meta">
+      <span>{{ a.created_at|date:"j M Y H:i" }}</span>
+      <span>{{ a.get_kind_display }}</span>
+      <span class="answer-pill {% if a.outcome == 'answered' %}is-ai{% elif a.outcome == 'routed' %}is-rules{% elif a.outcome == 'blocked' %}is-warn{% else %}is-off{% endif %}">{{ a.get_outcome_display }}{% if a.reason %}: {{ a.reason }}{% endif %}</span>
+      {% if a.rating == 1 %}<span class="ai-log-rating" title="Helpful">{% icon "thumbs-up" 14 %}<span class="sr-only">Helpful</span></span>{% elif a.rating == -1 %}<span class="ai-log-rating is-down" title="Not helpful">{% icon "thumbs-down" 14 %}<span class="sr-only">Not helpful</span></span>{% endif %}
+      <span class="ai-log-cost">{{ a.model }} · {{ a.input_tokens }}+{{ a.output_tokens }} tokens · {{ a.cost_usd|gbp }}</span>
+    </div>
+    <p class="ai-log-q"><strong>Q:</strong> {{ a.question }}</p>
+    {% if a.answer %}<p class="ai-log-a"><strong>A:</strong> {{ a.answer|linebreaksbr }}</p>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% include "staff/partials/pager.html" %}
+{% else %}
+<p class="empty">No AI answers to show.</p>
+{% endif %}

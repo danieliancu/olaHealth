@@ -27,11 +27,12 @@ from core.coordination import rate_limited
 from myola import preferences as P
 from myola.forms_mytrack import NOTE_KIND_LABELS, ChatForm, MemoryForm, NoteForm
 from myola.models import LIMITS, DiaryEntry, Memory, Note, ProductMark, ProductVisit
-from myola.services import chat, lists
+from myola.services import chat, lists, stats
 from myola.services import memories as memory_service
-from myola.services.profiles import derive_prefs, get_profile
+from myola.services.profiles import derive_prefs, get_profile, local_today, profile_completeness
 
 TABS = ("overview", "profile", "notes", "saved", "account")
+LAST_TAB_KEY = "mytrack_last_tab"
 TAB_LABELS = {
     "overview": gettext_lazy("Overview"),
     "profile": gettext_lazy("Profile"),
@@ -51,7 +52,7 @@ def _hx(request: HttpRequest) -> bool:
 
 
 def _tab_url(tab: str, anchor: str = "") -> str:
-    url = f"{reverse('my-ola')}?tab={tab}"
+    url = f"{reverse('ask-foodo')}?tab={tab}"
     return f"{url}#{anchor}" if anchor else url
 
 
@@ -266,13 +267,21 @@ def _saved_list(user, kind: str) -> dict:
 @login_required
 @require_GET
 def my_ola(request: HttpRequest) -> HttpResponse:
-    tab = request.GET.get("tab", "overview")
+    # No tab asked for (the account icon in the header): the last tab you used, else Overview.
+    tab = request.GET.get("tab") or request.session.get(LAST_TAB_KEY, "overview")
     if tab not in TABS:
         tab = "overview"
+    request.session[LAST_TAB_KEY] = tab
     user, profile = request.user, get_profile(request.user)
-    ctx: dict = {"tab": tab, "tabs": list(TAB_LABELS.items()), "nav_active": "my-ola"}
+    ctx: dict = {
+        "tab": tab,
+        "tabs": list(TAB_LABELS.items()),
+        "nav_active": "ask-foodo",
+        "profile_complete": profile_completeness(profile),
+    }
     if tab == "overview":
         ctx.update(_overview(user, profile))
+        ctx.update(stats.overview_stats(user, profile, local_today(profile)))
     elif tab == "profile":
         ctx["summary"] = _profile_summary(profile)
         ctx["profile"] = profile
@@ -296,7 +305,7 @@ def my_ola(request: HttpRequest) -> HttpResponse:
 def notes_search(request: HttpRequest) -> HttpResponse:
     q = request.GET.get("q", "")[:200]
     if not _hx(request):
-        return redirect(f"{reverse('my-ola')}?{urlencode({'tab': 'notes', 'q': q})}")
+        return redirect(f"{reverse('ask-foodo')}?{urlencode({'tab': 'notes', 'q': q})}")
     return render(
         request, "myola/partials/mytrack_notes_list.html", _notes_list_context(request.user, q)
     )
@@ -329,7 +338,12 @@ def note_create(request: HttpRequest) -> HttpResponse:
             status=200,
         )
     if form is not None and form.errors:
-        ctx = {"tab": "notes", "tabs": list(TAB_LABELS.items()), "nav_active": "my-ola"}
+        ctx = {
+            "tab": "notes",
+            "tabs": list(TAB_LABELS.items()),
+            "nav_active": "ask-foodo",
+            "profile_complete": profile_completeness(get_profile(request.user)),
+        }
         ctx.update(_notes_context(request.user, form=form))
         ctx.update(_memories_context(request.user))
         return render(request, "myola/my_ola.html", ctx, status=400)
@@ -495,7 +509,11 @@ def notes_in_replies(request: HttpRequest) -> HttpResponse:
         messages.success(request, _("Relevant notes will be used in replies."))
     else:
         messages.success(request, _("Notes are no longer used in replies."))
-    return _memories_response(request)
+    if _hx(request):
+        return _fragment(
+            request, "myola/partials/mytrack_notes_replies.html", {"use_notes": profile.use_notes}
+        )
+    return redirect(_tab_url("notes", "notes-replies"))
 
 
 # ---------- Saved lists and data ----------
@@ -553,6 +571,24 @@ def chat_clear(request: HttpRequest) -> HttpResponse:
 
 
 # ---------- Ask Foodo ----------
+@login_required
+@require_POST
+def chat_rate(request: HttpRequest, pk: int) -> HttpResponse:
+    """Helpful / not helpful on an AI answer (pressing the same button again clears it)."""
+    from ai.models import AIAnswer
+
+    answer = get_object_or_404(AIAnswer, pk=pk, user=request.user)
+    value = {"up": 1, "down": -1}.get(request.POST.get("value", ""))
+    if value is None:
+        raise Http404
+    answer.rating = None if answer.rating == value else value
+    answer.save(update_fields=["rating"])
+    if _hx(request):
+        return render(request, "myola/partials/chat_rating.html", {"a": answer})
+    query = urlencode({"context": answer.context or chat.PERSONAL})
+    return redirect(_next_url(request, f"{reverse('chat')}?{query}"))
+
+
 def _chat_product(context: str):
     try:
         pid = chat.product_id(context)
@@ -576,6 +612,67 @@ def _chat_context(request, context: str, product) -> dict:
     }
 
 
+CHAT_BACK_KEY = "chat_back"
+BACK_LABELS = {
+    "home": gettext_lazy("Home"),
+    "today": gettext_lazy("Today"),
+    "scan": gettext_lazy("Scan"),
+    "products": gettext_lazy("Products"),
+    "saved": gettext_lazy("Saved products"),
+    "compare": gettext_lazy("Compare"),
+    "progress": gettext_lazy("Progress"),
+    "learn": gettext_lazy("Learn"),
+    "ask-foodo": gettext_lazy("My Track"),
+    "notifications": gettext_lazy("Notifications"),
+    "settings-edit": gettext_lazy("Settings"),
+    "profile-edit": gettext_lazy("Profile"),
+}
+
+
+def _back_label(path: str) -> str:
+    """A short name for the page at ``path`` ("the product name", "Learn", "Home"...)."""
+    from django.urls import Resolver404, resolve
+
+    try:
+        match = resolve(path.split("?", 1)[0])
+    except Resolver404:
+        return ""
+    name = match.url_name or ""
+    if name == "product":
+        p = Product.objects.filter(pk=match.kwargs.get("pk")).only("name").first()
+        return (p.name if p and p.name else "") or str(_("the product"))
+    if name == "learn-article":
+        from core.models import LearnArticle
+
+        a = LearnArticle.objects.filter(slug=match.kwargs.get("slug")).only("title").first()
+        return a.title if a else str(_("Learn"))
+    return str(BACK_LABELS.get(name, ""))
+
+
+def _chat_back(request: HttpRequest) -> tuple[str, str]:
+    """Where the user came from (``?next=`` or the referring page on this site), remembered
+    in the session so the link survives sending messages. Returns (url, label)."""
+    from urllib.parse import urlsplit
+
+    candidate = request.GET.get("next") or ""
+    if not candidate:
+        ref = urlsplit(request.headers.get("Referer", ""))
+        if ref.netloc == request.get_host():
+            candidate = ref.path + (f"?{ref.query}" if ref.query else "")
+    chat_path = reverse("chat")
+    ok = (
+        candidate.startswith("/")
+        and not candidate.startswith(chat_path)
+        and url_has_allowed_host_and_scheme(candidate, allowed_hosts={request.get_host()})
+    )
+    if ok:
+        label = _back_label(candidate)
+        if label:
+            request.session[CHAT_BACK_KEY] = {"url": candidate, "label": label}
+    back = request.session.get(CHAT_BACK_KEY) or {}
+    return back.get("url", ""), back.get("label", "")
+
+
 @login_required
 @require_GET
 def chat_view(request: HttpRequest) -> HttpResponse:
@@ -584,7 +681,8 @@ def chat_view(request: HttpRequest) -> HttpResponse:
     ctx = _chat_context(request, context, product)
     if _hx(request):
         return render(request, "myola/partials/chat_body.html", ctx)
-    ctx["nav_active"] = "my-ola"
+    ctx["nav_active"] = "assistant"
+    ctx["back_url"], ctx["back_label"] = _chat_back(request)
     return render(request, "myola/partials/chat_page.html", ctx)
 
 

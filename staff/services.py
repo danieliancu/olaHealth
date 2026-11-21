@@ -97,7 +97,14 @@ def ai_usage_this_month() -> dict[str, Any] | None:
             )
     except DatabaseError:
         return None
-    return {"messages": agg["messages"] or 0, "cost": agg["cost"] or Decimal("0")}
+    from staff.models import SiteSettings
+
+    cost = agg["cost"] or Decimal("0")
+    return {
+        "messages": agg["messages"] or 0,
+        "cost": cost,  # US dollars, as billed
+        "cost_gbp": SiteSettings.load().to_gbp(cost),
+    }
 
 
 def off_status() -> OffStatus:

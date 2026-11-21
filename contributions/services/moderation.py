@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.db import transaction
+from django.urls import reverse
 from django.utils import timezone
 
 from catalog.models import Product, ProductImage, ProductRevision, ReviewFlag
@@ -62,6 +63,37 @@ def _audit(c: Contribution, actor, action: str, reason: str = "", **details: Any
     ModerationAudit.objects.create(
         contribution=c, actor=actor, action=action, reason=reason, details=details
     )
+
+
+def _notify_contributor(c: Contribution) -> None:
+    """Tell a signed-in contributor the outcome (in-app notification, after the commit)."""
+    if not c.user_id:
+        return
+    from myola.models import Notification
+    from myola.services.notifications import notify
+
+    name = (c.product.name if c.product and getattr(c.product, "name", "") else "") or "a product"
+    url = reverse("product", args=[c.product_id]) if c.product_id else ""
+    if c.status == Contribution.Status.APPROVED:
+        title = f"Your correction to {name} was accepted"
+        body = "Thank you: it is now part of the product page."
+    else:
+        title = f"Your correction to {name} was not accepted"
+        body = c.moderation_reason[:400]
+    user, key, status = c.user, f"contribution:{c.pk}:{c.status}", c.status
+
+    def send() -> None:
+        notify(
+            user,
+            Notification.Kind.CONTRIBUTION,
+            key,
+            title,
+            body,
+            url,
+            icon="circle-check" if status == Contribution.Status.APPROVED else "info",
+        )
+
+    transaction.on_commit(send)
 
 
 def approve(contribution_id: Any, moderator, reason: str = "") -> Outcome:
@@ -166,6 +198,7 @@ def approve(contribution_id: Any, moderator, reason: str = "") -> Outcome:
             fields=sorted(proposed),
             revision=c.resulting_revision.number if c.resulting_revision else None,
         )
+        _notify_contributor(c)
         return Outcome("approved", revision)
 
 
@@ -206,7 +239,7 @@ def _publish_images(c: Contribution, product: Product) -> None:
                 "lang": img.lang,
                 "source": ProductImage.Source.CONTRIBUTION,
                 "license": CONTRIBUTED_IMAGE_LICENSE,
-                "attribution": "FoodoTrack contributor",
+                "attribution": "AskFoodo contributor",
                 "is_active": True,
             },
         )
@@ -229,6 +262,7 @@ def reject(contribution_id: Any, moderator, reason: str) -> None:
         c.moderated_at = timezone.now()
         c.save()
         _audit(c, moderator, "reject", reason)
+        _notify_contributor(c)
 
 
 def rebase(contribution_id: Any, moderator, reason: str) -> None:

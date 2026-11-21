@@ -7,7 +7,7 @@ import os
 from .base import ProviderError, ProviderNotConfiguredError, Reply
 
 DEFAULT_MODEL = "claude-haiku-5-5"
-TIMEOUT_SECONDS = 20.0
+TIMEOUT_SECONDS = 10.0  # well inside the web worker timeout; no retry
 
 
 class AnthropicProvider:
@@ -23,9 +23,16 @@ class AnthropicProvider:
         except ImportError as exc:
             raise ProviderNotConfiguredError("the anthropic package is not installed") from exc
         self._sdk = anthropic
-        self._client = anthropic.Anthropic(api_key=api_key, timeout=TIMEOUT_SECONDS, max_retries=1)
+        self._client = anthropic.Anthropic(api_key=api_key, timeout=TIMEOUT_SECONDS, max_retries=0)
 
-    def reply(self, system: str, messages: list[dict[str, str]], max_tokens: int) -> Reply:
+    def reply(
+        self,
+        system: str,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        *,
+        short_thinking: bool = False,  # effort is already "low"; the retry only gets more room
+    ) -> Reply:
         try:
             response = self._client.messages.create(
                 model=self.model,
@@ -37,17 +44,17 @@ class AnthropicProvider:
             )
         except self._sdk.APIError as exc:
             raise ProviderError(f"anthropic: {type(exc).__name__}") from exc
+        usage = response.usage
+        spent = {
+            "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
+            "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
+            "model": str(getattr(response, "model", "") or self.model),
+        }
         if getattr(response, "stop_reason", None) == "refusal":
-            raise ProviderError("anthropic: refusal")
+            raise ProviderError("anthropic: refusal", **spent)
         text = "".join(
             block.text for block in response.content if getattr(block, "type", "") == "text"
         ).strip()
         if not text:
-            raise ProviderError("anthropic: empty answer")
-        usage = response.usage
-        return Reply(
-            text=text,
-            input_tokens=int(getattr(usage, "input_tokens", 0) or 0),
-            output_tokens=int(getattr(usage, "output_tokens", 0) or 0),
-            model=str(getattr(response, "model", "") or self.model),
-        )
+            raise ProviderError("anthropic: empty answer", empty=True, **spent)
+        return Reply(text=text, **spent)

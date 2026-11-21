@@ -1,10 +1,14 @@
 {% extends "base.html" %}
 {% load i18n ui %}
 {% block title %}{% translate "Ask Foodo" %}{% endblock %}
+{% block body_class %}is-chat-page{% endblock %}
 {% block content %}
-<div class="page-head">
-  <h1>{% icon "sparkles" 24 %} {% translate "Ask Foodo" %}</h1>
+{% comment %}Full page: the conversation fills the screen between the header and the tab bar; with the
+on-screen keyboard open it fills exactly the visible area above it (static/js/chat.js).{% endcomment %}
+<div class="chat-page" data-chat-page>
+  <h1 class="sr-only">{% translate "Ask Foodo" %}</h1>
+  {% if back_url %}<p class="chat-back"><a href="{{ back_url }}">{% icon "chevron-left" 18 %}<span>{% blocktranslate with page=back_label %}Back to {{ page }}{% endblocktranslate %}</span></a></p>
+  {% elif chat_product %}<p class="chat-back"><a href="{% url 'product' chat_product.pk %}">{% icon "chevron-left" 18 %}<span>{% translate "Back to the product" %}</span></a></p>{% endif %}
+  {% include "myola/partials/chat_body.html" %}
 </div>
-<p>{% if chat_product %}<a class="btn btn-link" href="{% url 'product' chat_product.pk %}">{% icon "chevron-left" 18 %}<span>{% translate "Back to the product" %}</span></a>{% else %}<a class="btn btn-link" href="{% url 'my-ola' %}">{% icon "chevron-left" 18 %}<span>{% translate "Back to My Track" %}</span></a>{% endif %}</p>
-<div class="card">{% include "myola/partials/chat_body.html" %}</div>
 {% endblock %}

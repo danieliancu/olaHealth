@@ -1,7 +1,10 @@
 {% load i18n ui %}<div id="memories">
   <div class="card">
-    <h2>{% icon "sparkles" 20 %} {% translate "Foodo remembers" %}</h2>
-    <p class="caption">{% translate "Only confirmed, active memories are used in Foodo's replies. Suggestions do nothing until you confirm them." %}</p>
+    <div class="mem-head">
+      <span class="soft-icon">{% icon "sparkles" 20 %}</span>
+      <h2>{% translate "Foodo remembers" %}</h2>
+    </div>
+    <p class="caption mem-intro">{% translate "Only confirmed, active memories are used in Foodo's replies. Suggestions do nothing until you confirm them." %}</p>
     {% if memories %}
     <ul class="memory-list">
       {% for m in memories %}
@@ -12,46 +15,50 @@
           <label for="memory-{{ m.pk }}-text" class="sr-only">{% translate "Edit memory" %}</label>
           <input id="memory-{{ m.pk }}-text" name="text" maxlength="300" value="{{ m.text }}" required autofocus>
           <button type="submit" class="btn btn-primary btn-small">{% translate "Save" %}</button>
-          <a class="btn btn-link" href="{% url 'my-ola' %}?tab=notes#memories" hx-get="{% url 'my-ola' %}?tab=notes" hx-select="#memories" hx-target="#memories" hx-swap="outerHTML">{% translate "Cancel" %}</a>
+          <a class="btn btn-link" href="{% url 'ask-foodo' %}?tab=notes#memories" hx-get="{% url 'ask-foodo' %}?tab=notes" hx-select="#memories" hx-target="#memories" hx-swap="outerHTML">{% translate "Cancel" %}</a>
         </form>
         {% else %}
         <div class="memory-top">
+          <span class="mem-icon">{% if m.active %}{% icon "circle-check" 18 %}{% else %}{% icon "pause" 18 %}{% endif %}</span>
+          <div class="mem-body">
           <p class="memory-text">{{ m.text }}</p>
+          <p class="caption mem-meta">{% if m.source == "suggestion" %}{% translate "From a suggestion" %}{% else %}{% translate "Added by you" %}{% endif %}<span class="entry-dot" aria-hidden="true"></span>{% if m.confirmed_at %}{% blocktranslate with day=m.confirmed_at|date:"j M" %}confirmed {{ day }}{% endblocktranslate %}{% else %}{% translate "not confirmed" %}{% endif %}{% if not m.active %}<span class="entry-dot" aria-hidden="true"></span>{% translate "paused" %}{% endif %}</p>
+          </div>
           <span class="note-actions">
             <form method="post" action="{% url 'memory-toggle' m.pk %}" hx-post="{% url 'memory-toggle' m.pk %}" hx-target="#memories" hx-swap="outerHTML">
               {% csrf_token %}
               {% if m.active %}<button type="submit" class="note-action" aria-label="{% translate 'Pause this memory' %}" title="{% translate 'Pause' %}">{% icon "pause" 18 %}</button>
               {% else %}<button type="submit" class="note-action" aria-label="{% translate 'Use this memory again' %}" title="{% translate 'Use again' %}">{% icon "play" 18 %}</button>{% endif %}
             </form>
-            <a class="note-action" href="{% url 'my-ola' %}?tab=notes&amp;memory={{ m.pk }}#memories" hx-get="{% url 'memory-edit' m.pk %}" hx-target="#memories" hx-swap="outerHTML" aria-label="{% translate 'Edit memory' %}" title="{% translate 'Edit' %}">{% icon "pencil" 18 %}</a>
+            <a class="note-action" href="{% url 'ask-foodo' %}?tab=notes&amp;memory={{ m.pk }}#memories" hx-get="{% url 'memory-edit' m.pk %}" hx-target="#memories" hx-swap="outerHTML" aria-label="{% translate 'Edit memory' %}" title="{% translate 'Edit' %}">{% icon "pencil" 18 %}</a>
             <form method="post" action="{% url 'memory-delete' m.pk %}" hx-post="{% url 'memory-delete' m.pk %}" hx-target="#memories" hx-swap="outerHTML" hx-confirm="{% translate 'Delete this memory?' %}">
               {% csrf_token %}<button type="submit" class="note-action is-danger" aria-label="{% translate 'Delete memory' %}" title="{% translate 'Delete' %}">{% icon "trash-2" 18 %}</button>
             </form>
           </span>
         </div>
         {% endif %}
-        <p class="caption">{% if m.source == "suggestion" %}{% translate "From a suggestion" %}{% else %}{% translate "Added by you" %}{% endif %} · {% if m.confirmed_at %}{% blocktranslate with day=m.confirmed_at|date:"j M" %}confirmed {{ day }}{% endblocktranslate %}{% else %}{% translate "not confirmed" %}{% endif %}{% if not m.active %} · {% translate "paused" %}{% endif %}</p>
       </li>
       {% endfor %}
     </ul>
     {% else %}
-    <p class="empty">{% translate "Nothing remembered yet." %}</p>
+    {% translate "Nothing remembered yet." as t %}{% include "partials/empty.html" with icon="sparkles" text=t %}
     {% endif %}
     <form class="row memory-add" method="post" action="{% url 'memory-add' %}" hx-post="{% url 'memory-add' %}" hx-target="#memories" hx-swap="outerHTML">
       {% csrf_token %}
       <label for="mo-memory" class="sr-only">{% translate "Something Foodo should remember" %}</label>
       <input id="mo-memory" name="text" maxlength="300" placeholder="{% translate 'e.g. I prefer plain yogurts' %}" required value="{{ memory_form.text.value|default_if_none:'' }}"{% if memory_form.text.errors %} aria-invalid="true" aria-describedby="mo-memory-error"{% endif %}>
-      <button type="submit" class="btn btn-outline btn-small">{% icon "plus" 18 %}<span>{% translate "Add" %}</span></button>
+      <button type="submit" class="btn btn-primary btn-small">{% icon "plus" 18 %}<span>{% translate "Add" %}</span></button>
     </form>
     {% if memory_form.text.errors %}<p class="field-error" id="mo-memory-error">{{ memory_form.text.errors|join:" " }}</p>{% endif %}
-    <p class="hint">{% translate "Food preferences only: Foodo never keeps diagnoses, symptoms or medication." %}</p>
+    <p class="hint mem-hint">{% icon "info" 14 %}<span>{% translate "Food preferences only: Foodo never keeps diagnoses, symptoms or medication." %}</span></p>
     {% if suggestions %}
     <h3>{% translate "Suggestions from your activity" %}</h3>
     <ul class="memory-list">
       {% for key, text in suggestions %}
       <li class="memory is-suggestion">
+        <span class="pill">{% translate "Suggestion" %}</span>
         <p class="memory-text">{{ text }}</p>
-        <p class="caption">{% translate "Suggestion – not used until you confirm it." %}</p>
+        <p class="caption">{% translate "Not used until you confirm it." %}</p>
         <form method="post" action="{% url 'memory-confirm' %}" hx-post="{% url 'memory-confirm' %}" hx-target="#memories" hx-swap="outerHTML">
           {% csrf_token %}<input type="hidden" name="key" value="{{ key }}">
           <button type="submit" class="btn btn-outline btn-small">{% translate "Confirm" %}</button>
@@ -61,11 +68,4 @@
     </ul>
     {% endif %}
   </div>
-  <form class="card stack" method="post" action="{% url 'notes-in-replies' %}" hx-post="{% url 'notes-in-replies' %}" hx-target="#memories" hx-swap="outerHTML">
-    {% csrf_token %}
-    <h2>{% translate "Notes in replies" %}</h2>
-    <label class="check"><input type="checkbox" name="use_notes"{% if use_notes %} checked{% endif %}> <span>{% translate "Use my Notes to personalise Foodo’s replies" %}</span></label>
-    <p class="caption">{% translate "Off by default. When on, Foodo uses only the notes relevant to the current conversation (the same product, or matching words)." %}</p>
-    <button type="submit" class="btn btn-outline btn-small">{% translate "Save" %}</button>
-  </form>
 </div>

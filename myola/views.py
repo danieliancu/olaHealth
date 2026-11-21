@@ -22,4 +22,4 @@ def delete_account(request: HttpRequest) -> HttpResponse:
         user.delete()
         messages.success(request, _("Your account and all its data have been deleted."))
         return redirect("home")
-    return render(request, "myola/delete_account.html", {"form": form, "nav_active": "my-ola"})
+    return render(request, "myola/delete_account.html", {"form": form, "nav_active": "ask-foodo"})

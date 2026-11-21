@@ -2,11 +2,26 @@
 {% block staff_title %}Settings{% endblock %}
 {% block staff_content %}
 <h1>Site settings</h1>
-<form method="post" action="{% url 'staff:settings' %}" class="card staff-form" novalidate>{% csrf_token %}
-  {% include "partials/form_fields.html" %}
-  <div class="row">
-    <button class="btn btn-primary" type="submit">{% icon "check" 18 %}<span>Save settings</span></button>
+<form method="post" action="{% url 'staff:settings' %}" class="settings-grid" novalidate>{% csrf_token %}
+  <div class="card staff-form">
+    {% include "partials/form_fields.html" with fields=main_fields %}
+    <div class="row">
+      <button class="btn btn-primary" type="submit">{% icon "check" 18 %}<span>Save settings</span></button>
+    </div>
+    <p class="hint">Last changed {{ obj.updated_at|default:"never" }}{% if obj.updated_by %} by {{ obj.updated_by.email|default:obj.updated_by }}{% endif %}. Every change is recorded in the audit log.</p>
   </div>
-  <p class="hint">Last changed {{ obj.updated_at|default:"never" }}{% if obj.updated_by %} by {{ obj.updated_by.email|default:obj.updated_by }}{% endif %}. Every change is recorded in the audit log.</p>
+  <section class="card staff-form answer-scope" aria-labelledby="scope-h">
+    <h2 id="scope-h">What Ask Foodo answers</h2>
+    <p class="hint">Who writes each kind of answer, with the settings as saved. Allergy and diet checks are always the app's own.</p>
+    <ul class="answer-map">
+      {% for r in answer_map %}<li>
+        <div class="answer-q"><span class="answer-where">{{ r.where }}</span><strong>{{ r.what }}</strong><small>{{ r.how.note }}</small></div>
+        <span class="answer-pill is-{{ r.how.tone }}">{{ r.how.label }}</span>
+      </li>{% endfor %}
+    </ul>
+    <h3>Options</h3>
+    {% include "partials/form_fields.html" with fields=scope_fields skip_meta=True %}
+    <div class="row"><button class="btn btn-outline btn-small" type="submit">{% icon "check" 16 %}<span>Save</span></button></div>
+  </section>
 </form>
 {% endblock %}

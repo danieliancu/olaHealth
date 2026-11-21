@@ -4,7 +4,7 @@
   {% if user.is_authenticated %}
   <form method="post" action="{% url 'product-mark' product.pk 'favorite' %}" hx-post="{% url 'product-mark' product.pk 'favorite' %}" hx-target="#product-actions" hx-swap="outerHTML" hx-disabled-elt="find button">
     {% csrf_token %}<input type="hidden" name="ui" value="page"><input type="hidden" name="next" value="{{ next }}">
-    <button type="submit" class="btn btn-outline btn-small" data-fav aria-pressed="{% if 'favorite' in marks %}true{% else %}false{% endif %}">{% icon "heart" 18 %}<span>{% translate "Favourite" %}</span></button>
+    <button type="submit" class="btn btn-outline btn-small" data-fav aria-pressed="{% if 'favorite' in marks %}true{% else %}false{% endif %}">{% if 'favorite' in marks %}{% icon "heart-fill" 18 %}{% else %}{% icon "heart" 18 %}{% endif %}<span>{% translate "Favourite" %}</span></button>
   </form>
   {% else %}
   <a class="btn btn-outline btn-small" href="{% url 'account_login' %}?next={{ product_url|urlencode }}" title="{% translate 'Sign in to save' %}">{% icon "heart" 18 %}<span>{% translate "Favourite" %}</span></a>

@@ -5,12 +5,12 @@ by the server (htmx). Without JavaScript the button is a link to the full chat p
 Context: chat_context ("personal" or "product:<uuid>"), optional chat_product, button_label.
 {% endcomment %}{% url 'chat' as chat_url %}{% with cid=chat_context|slugify %}
 {% if user.is_authenticated %}
-{% if not hide_button %}<a class="btn btn-primary btn-block btn-ask" href="{{ chat_url }}?context={{ chat_context|urlencode }}" data-chat-open="chat-dialog-{{ cid }}">{% icon "sparkles" 18 %}<span>{{ button_label|default:_("Ask Foodo") }}</span></a>{% endif %}
+{% if not hide_button %}<a class="btn btn-primary btn-block btn-ask" href="{{ chat_url }}?context={{ chat_context|urlencode }}" data-chat-open="chat-dialog-{{ cid }}">{% icon "message-circle" 18 %}<span>{{ button_label|default:_("Ask Foodo") }}</span></a>{% endif %}
 <dialog class="dialog chat-dialog" id="chat-dialog-{{ cid }}" aria-labelledby="chat-title-{{ cid }}">
   <div class="chat">
     <div class="chat-head">
       <div>
-        <h2 id="chat-title-{{ cid }}">{% icon "sparkles" 20 %} {% translate "Ask Foodo" %}</h2>
+        <h2 id="chat-title-{{ cid }}">{% icon "message-circle" 20 %} {% translate "Ask Foodo" %}</h2>
       </div>
       <button type="button" class="icon-btn" data-chat-close aria-label="{% translate 'Close' %}">{% icon "x" 22 %}</button>
     </div>
@@ -20,6 +20,6 @@ Context: chat_context ("personal" or "product:<uuid>"), optional chat_product, b
   </div>
 </dialog>
 {% else %}
-<a class="btn btn-primary btn-block btn-ask" href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}">{% icon "sparkles" 18 %}<span>{{ button_label|default:_("Ask Foodo") }}</span></a>
+<a class="btn btn-primary btn-block btn-ask" href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}">{% icon "message-circle" 18 %}<span>{{ button_label|default:_("Ask Foodo") }}</span></a>
 {% endif %}
 {% endwith %}

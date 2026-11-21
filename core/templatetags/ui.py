@@ -1,5 +1,7 @@
 """UI helpers: Lucide icons from the local SVG sprite."""
 
+import re
+
 from django import template
 from django.templatetags.static import static
 from django.utils.html import format_html
@@ -7,6 +9,10 @@ from django.utils.html import format_html
 register = template.Library()
 
 ICONS = {
+    "menu",
+    "calculator",
+    "thumbs-up",
+    "thumbs-down",
     "scan-barcode",
     "flashlight",
     "zoom-in",
@@ -92,7 +98,32 @@ ICONS = {
     "mail",
     "key-round",
     "lock",
+    # Dashboard, Learn and achievements
+    "award",
+    "clock",
+    "house",
+    "bell",
+    "megaphone",
+    "newspaper",
+    "heart-fill",
 }
+
+
+SUGGESTION_ICONS = {
+    "remember": "sparkles",
+    "avoid": "ban",
+    "scans": "scan-barcode",
+    "prefs": "heart",
+    "values": "chart-line",
+    "indicators": "info",
+    "restrictions": "shield-alert",
+}
+
+
+@register.filter
+def suggestion_icon(key: str) -> str:
+    """Icon for an Ask Foodo suggestion chip (falls back to a neutral one)."""
+    return SUGGESTION_ICONS.get(key, "message-circle")
 
 
 @register.simple_tag
@@ -134,3 +165,42 @@ def img(value: str) -> str:
     from core.assets import image_url
 
     return image_url(value or "")
+
+
+_CHAT_LINK = re.compile(r"(/p/[0-9a-f-]{36}/|/lookup/\?code=\d{8,14})")
+
+
+@register.filter
+def chat_links(text: str):
+    """Escape a chat message and turn the app's own product links into real links."""
+    from django.utils.html import escape
+    from django.utils.safestring import mark_safe
+
+    return mark_safe(  # noqa: S308 - the text is escaped first; only matched paths become links
+        _CHAT_LINK.sub(lambda m: f'<a href="{m.group(1)}">{m.group(1)}</a>', escape(text or ""))
+    )
+
+
+@register.filter
+def gbp(usd) -> str:
+    """A US-dollar cost (what AI providers bill) as pounds with 3 decimals: "£0.012"."""
+    from decimal import Decimal, InvalidOperation
+
+    from staff.models import SiteSettings
+
+    try:
+        amount = SiteSettings.load().to_gbp(Decimal(usd or 0))
+    except (InvalidOperation, TypeError, ValueError):
+        return "£0.000"
+    return f"£{amount.quantize(Decimal('0.001')):,}"
+
+
+@register.filter
+def pounds(value) -> str:
+    """A set amount already in pounds (e.g. the budget), with 2 decimals: "£15.00"."""
+    from decimal import Decimal, InvalidOperation
+
+    try:
+        return f"£{Decimal(value or 0).quantize(Decimal('0.01')):,}"
+    except (InvalidOperation, TypeError, ValueError):
+        return "£0.00"
