@@ -8,7 +8,7 @@
     <tr>
       <td>{{ p.name|default:"(no name)" }}{% if p.quantity %} <span class="hint">{{ p.quantity }}</span>{% endif %}</td>
       <td>{{ p.brand|default:"—" }}</td>
-      <td>{{ p.completeness }}%</td>
+      <td>{{ p.completeness }}%{% if not p.listable %} <span class="tag tag-warn" title="Not shown in search, suggestions or alternatives">Hidden</span>{% endif %}{% if p.quality_issues %}<br><span class="hint">{{ p.quality_labels|join:", " }}</span>{% endif %}</td>
       <td>{{ p.updated_at|date:"j M Y" }}</td>
       <td><a class="btn btn-outline btn-small" href="{% url 'staff:product' p.pk %}">Open</a></td>
     </tr>

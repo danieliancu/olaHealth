@@ -69,3 +69,42 @@ function countUp(root) {
 let pending = false;
 try { pending = sessionStorage.getItem(FLAG) === "1"; sessionStorage.removeItem(FLAG); } catch { /* ignore */ }
 if (pending) countUp(document.getElementById("today"));
+
+// Phones: the date in Daily summary opens the calendar (the date input lies over it; a change
+// loads that day through htmx). showPicker() opens it on browsers where a click alone doesn't.
+document.addEventListener("click", (e) => {
+  const input = e.target.closest("[data-day-pick]");
+  if (input && typeof input.showPicker === "function") {
+    try { input.showPicker(); } catch { /* already open or not allowed: the native tap works */ }
+  }
+});
+
+// Phones: each meal in Food diary folds to one row. A tap on the row or the chevron opens it.
+// Open meals stay open when the day body is swapped (adding or editing a food). On larger
+// screens the chevron is hidden and nothing folds.
+const openMeals = new Set();
+const dayKey = () => document.querySelector("#today [data-day-pick]")?.value || "";
+
+document.addEventListener("click", (e) => {
+  let fold = e.target.closest("[data-meal-fold]");
+  if (!fold) {
+    const head = e.target.closest("#today .meal-head");
+    if (!head || e.target.closest("a, button, summary, input, label")) return;
+    fold = head.querySelector("[data-meal-fold]");
+  }
+  if (!fold || !fold.offsetParent) return;
+  const meal = fold.closest(".meal");
+  const open = !meal.classList.contains("is-open");
+  meal.classList.toggle("is-open", open);
+  fold.setAttribute("aria-expanded", String(open));
+  const key = `${dayKey()}:${meal.dataset.meal}`;
+  if (open) openMeals.add(key); else openMeals.delete(key);
+});
+
+document.addEventListener("htmx:afterSwap", () => {
+  document.querySelectorAll("#today .meal[data-meal]").forEach((meal) => {
+    if (!openMeals.has(`${dayKey()}:${meal.dataset.meal}`)) return;
+    meal.classList.add("is-open");
+    meal.querySelector("[data-meal-fold]")?.setAttribute("aria-expanded", "true");
+  });
+});

@@ -80,7 +80,8 @@ def test_complete_profile_shows_the_four_values_and_saves_only_on_save(member_cl
          "t-target_fat": "55", "d-sex": "between"},
         **HX,
     )  # fmt: skip
-    assert r.status_code == 204 and r["HX-Redirect"].endswith("#targets")
+    # A different URL from the open Settings page, so the browser reloads it (not just scrolls)
+    assert r.status_code == 204 and r["HX-Redirect"].endswith("?saved=targets#targets")
     p.refresh_from_db()
     assert (p.target_kcal, p.target_protein, p.target_carbs, p.target_fat) == (1700, 60, 230, 55)
 

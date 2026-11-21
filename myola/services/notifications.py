@@ -12,8 +12,9 @@ import datetime as dt
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.translation import gettext as _
 
-from myola.models import Notification
+from myola.models import Meal, Notification
 from myola.services.profiles import get_profile
 
 KIND_ICONS = {
@@ -115,3 +116,27 @@ def purge_old(now: dt.datetime | None = None) -> int:
     )
     any_old = Notification.objects.filter(created_at__lt=now - dt.timedelta(days=180))
     return read_old.delete()[0] + any_old.delete()[0]
+
+
+def home_card(user) -> Notification | None:
+    """The card at the top of Today: the latest notification, only while it is unread. Once it
+    is read (on the Notifications page, by opening it or dismissing the card) nothing shows,
+    and an older unread one does not take its place."""
+    latest = Notification.objects.filter(user=user).order_by("-created_at", "-pk").first()
+    if latest is None or latest.read_at is not None:
+        return None
+    latest.icon = latest.icon or KIND_ICONS.get(latest.kind, "bell")
+    latest.action = _action(latest)
+    return latest
+
+
+def _action(n: Notification) -> str:
+    """The link label on the Today card (the notification's own link opens and marks it read)."""
+    tail = n.key.rsplit(":", 1)[-1]
+    if tail.startswith("meal-") and tail[5:] in Meal.values:
+        return _("Scan for %(meal)s") % {"meal": Meal(tail[5:]).label.lower()}
+    if tail == "start":
+        return _("Scan a barcode")
+    if tail.startswith("water-"):
+        return _("Go to Water")
+    return _("Open")

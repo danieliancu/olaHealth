@@ -39,6 +39,10 @@ class Product(models.Model):
     nova_group = models.PositiveSmallIntegerField(null=True, blank=True)
     completeness = models.PositiveSmallIntegerField(default=0)
     front_image_url = models.URLField(max_length=500, blank=True)
+    # Data quality (catalog/quality.py): what is missing, and whether the product may appear
+    # in search, suggestions and alternatives. Set with each revision.
+    quality_issues = ArrayField(models.CharField(max_length=30), default=list, blank=True)
+    listable = models.BooleanField(default=True, db_index=True)
 
     off_synced_at = models.DateTimeField(null=True, blank=True)
     off_sync_status = models.CharField(
@@ -62,6 +66,12 @@ class Product(models.Model):
 
     def __str__(self) -> str:
         return self.name or str(self.id)
+
+    @property
+    def quality_labels(self) -> list[str]:
+        from catalog.quality import LABELS
+
+        return [LABELS.get(i, i) for i in self.quality_issues or []]
 
     @property
     def data(self) -> dict[str, Any]:
@@ -215,6 +225,8 @@ class ProductImage(models.Model):
         related_name="published_as",
     )
     is_active = models.BooleanField(default=True)
+    # Switched off by staff as unsuitable: never shown, and an OFF refresh never brings it back.
+    hidden_by_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

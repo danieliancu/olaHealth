@@ -1,6 +1,13 @@
-{% load i18n %}
-<section class="card t-card" aria-labelledby="sum-h">
-  <div class="t-card-head"><h2 id="sum-h">{% translate "Daily summary" %}{% if any_partial %} <span class="partial" title="{% translate 'Some foods have unknown values' %}">{% translate "partial" %}</span>{% endif %}</h2>{% url 'settings-edit' as targets_url %}{% if targets_url %}<a class="link-btn targets-edit" href="{{ targets_url }}">{% if has_targets %}{% translate "Edit targets" %}{% else %}{% translate "Set targets" %}{% endif %}</a>{% endif %}</div>
+{% load i18n ui %}{% url 'today' as today_url %}{% url 'settings-edit' as targets_url %}
+<section class="card t-card t-summary" aria-labelledby="sum-h">
+  <div class="t-card-head"><h2 id="sum-h">{% translate "Daily summary" %}{% if any_partial %} <span class="partial" title="{% translate 'Some foods have unknown values' %}">{% translate "partial" %}</span>{% endif %}</h2>{% if targets_url %}<a class="link-btn targets-edit" href="{{ targets_url }}">{% if has_targets %}{% translate "Edit targets" %}{% else %}{% translate "Set targets" %}{% endif %}</a>{% endif %}
+    {# Phones: the day and a calendar to pick another one (replaces the week strip) #}
+    <form class="sum-day" action="{{ today_url }}" method="get" hx-get="{{ today_url }}" hx-trigger="change" hx-target="#today" hx-swap="outerHTML" hx-push-url="true">
+      <span class="sum-day-label">{% if is_today %}<span class="sum-day-prefix">{% translate "Today" %}, </span>{{ day|date:"M j" }}{% else %}{{ day|date:"D, M j" }}{% endif %}</span>{% icon "calendar-days" 18 %}
+      <input class="sum-day-input" type="date" name="date" value="{{ day_iso }}" max="{{ today|date:'Y-m-d' }}" required data-day-pick aria-label="{% translate 'Choose a day' %}">
+      <noscript><button type="submit" class="link-btn">{% translate "Go" %}</button></noscript>
+    </form>
+  </div>
   <div class="sum-grid">
     {% for r in rows %}<div class="sum-cell">
       <span class="sum-label">{% translate r.label %}</span>
@@ -8,6 +15,25 @@
       {% if r.target and entry_count %}<svg class="meter{% if r.over %} is-over{% endif %} level-{{ r.level }}" viewBox="0 0 100 6" preserveAspectRatio="none" width="100" height="6" role="img" aria-label="{% blocktranslate with value=r.display target=r.target unit=r.unit %}{{ value }} of {{ target }} {{ unit }}{% endblocktranslate %}"><rect class="meter-track" x="0" y="0" width="100" height="6"/><rect class="meter-fill" x="0" y="0" width="{{ r.pct }}" height="6"/></svg>
       <span class="sum-target">{% blocktranslate with target=r.target unit=r.unit %}of {{ target }} {{ unit }}{% endblocktranslate %}</span>{% elif r.target %}<span class="sum-target">{% blocktranslate with target=r.target unit=r.unit %}target {{ target }} {{ unit }}{% endblocktranslate %}</span>{% endif %}
     </div>{% endfor %}
+  </div>
+  {# Phones: kcal in a ring, protein / carbs / fat as bars beside it. No target: grey, and the ring asks for one. #}
+  <div class="sum-ring-layout{% if not energy_row %} no-ring{% endif %}">
+    {% if energy_row %}{% if energy_row.target %}<div class="sum-ring{% if energy_row.over %} is-over{% endif %}" role="img" aria-label="{% blocktranslate with value=energy_row.display target=energy_row.target %}{{ value }} of {{ target }} kcal{% endblocktranslate %}">
+      <svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true"><circle class="ring-track" cx="60" cy="60" r="52"/><circle class="ring-fill level-{{ energy_row.level }}" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="{{ energy_row.pct }} 100" transform="rotate(-90 60 60)"/></svg>
+      <span class="sum-ring-text" aria-hidden="true"><strong>{{ energy_row.display }}</strong><span>{% blocktranslate with target=energy_row.target %}of {{ target }} kcal{% endblocktranslate %}</span></span>
+    </div>{% else %}<a class="sum-ring is-empty" href="{{ targets_url }}#targets">
+      <svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true"><circle class="ring-track" cx="60" cy="60" r="52"/></svg>
+      <span class="sum-ring-text">{% icon "plus" 18 %}<span>{% translate "Set your targets" %}</span></span>
+    </a>{% endif %}{% endif %}
+    <ul class="sum-bars">
+      {% for r in macro_rows %}<li class="sum-bar{% if not r.target %} is-empty{% endif %}">
+        <span class="sum-bar-label">{% translate r.label %}</span>
+        <span class="sum-bar-value">{{ r.display }} {{ r.unit }}{% if r.target %} / {{ r.target }} {{ r.unit }}{% endif %}</span>
+        <svg class="meter{% if r.over %} is-over{% endif %} level-{{ r.level }}" viewBox="0 0 100 6" preserveAspectRatio="none" width="100" height="6" aria-hidden="true"><rect class="meter-track" x="0" y="0" width="100" height="6"/>{% if r.target %}<rect class="meter-fill" x="0" y="0" width="{{ r.pct }}" height="6"/>{% endif %}</svg>
+      </li>{% endfor %}
+    </ul>
+    {# Until every target is set (the empty ring already says it when kcal is the one missing) #}
+    {% if targets_missing and energy_row.target or targets_missing and not energy_row %}<a class="link-btn sum-set" href="{{ targets_url }}#targets">{% icon "plus" 16 %}<span>{% translate "Set your targets" %}</span></a>{% endif %}
   </div>
   {% if not entry_count %}<p class="caption">{% translate "No entries yet for this day." %}</p>{% elif any_partial %}<p class="caption">{% translate "Some foods have unknown values, which are not counted." %}</p>{% endif %}
 </section>

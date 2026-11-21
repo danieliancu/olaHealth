@@ -397,7 +397,9 @@ def test_model_can_hand_a_question_back_to_the_rules(site, fake, member, monkeyp
     assert "ROUTE:restrictions" in SYSTEM_PROMPT and "ROUTE:scans" in GENERAL_SYSTEM_PROMPT
     monkeypatch.setattr(fake, "reply", lambda *a, **k: Reply("ROUTE:scans", 10, 2, "fake-1"))
     out, log = chat.reply(member, "personal", "Ce produse am verificat ieri, te rog?")
-    assert out == chat.rule_answer("scans", chat.build_facts(member, "personal"))
+    # The rule answer, in English with a Romanian note (scan history is never sent to the AI).
+    assert out.endswith(chat.rule_answer("scans", chat.build_facts(member, "personal")))
+    assert out.startswith("Acest răspuns conține notițele, listele sau istoricul tău")
     assert log.outcome == "routed" and log.reason == "scans"
 
 
@@ -502,3 +504,94 @@ def test_one_language_only_in_the_general_information_line():
         )
         == "Are 5,1 g de proteine la 100 g."
     )
+
+
+# ---------- Rule answers in the language of the question ----------
+def _translating(monkeypatch, fake, text="Răspuns tradus."):
+    from ai.providers.base import Reply
+
+    monkeypatch.setattr(fake, "reply", lambda system, *a, **k: Reply(
+        text if system.startswith("You translate") else "ROUTE:restrictions", 10, 5, "fake-1"
+    ))  # fmt: skip
+
+
+def test_rule_answers_are_translated_with_consent(site, fake, member, monkeypatch):
+    from ai.models import AIAnswer
+    from myola.services import chat
+    from myola.services.profiles import get_profile
+
+    _translating(monkeypatch, fake)
+    question = "Ce alergii am setate în profil?"
+    out, _log = chat.reply(member, "personal", question)
+    assert out.startswith("Acest răspuns conține datele tale") and "Răspuns tradus" not in out
+    profile = get_profile(member)
+    profile.ai_use_preferences = True
+    profile.save()
+    out, _log = chat.reply(member, "personal", question)
+    assert out == "Răspuns tradus."
+    t = AIAnswer.objects.filter(user=member, kind="translation").latest("created_at")
+    assert t.outcome == "answered" and t.answer == ""  # own data: the text is not kept
+
+
+def test_english_questions_are_never_translated(site, fake, member, monkeypatch):
+    from myola.services import chat
+
+    _translating(monkeypatch, fake)
+    out, _log = chat.reply(member, "personal", "What allergies do I have set?")
+    assert "Răspuns tradus" not in out and "Acest" not in out
+
+
+def test_english_with_a_note_only_when_the_ai_cannot_help(site, fake, member):
+    from myola.services import chat
+    from myola.services.profiles import get_profile
+
+    profile = get_profile(member)
+    profile.ai_use_preferences = True
+    profile.save()
+    site.ai_enabled = False
+    site.save()
+    out, _log = chat.reply(member, "personal", "Ce alergii am setate în profil?")
+    assert out.startswith("Momentan nu pot traduce acest răspuns")
+    assert out.endswith(chat.rule_answer("restrictions", chat.build_facts(member, "personal")))
+
+
+def test_translation_that_adds_text_is_refused(site, fake, member, monkeypatch):
+    from ai.service import translate
+
+    _translating(monkeypatch, fake, text="x" * 500)
+    out, log = translate(member, "Short.", "ro")
+    assert out is None and log.outcome == "failed" and log.reason == "too long"
+
+
+def test_public_rule_answers_are_translated_without_consent(site, fake, member, monkeypatch):
+    from myola.services import chat
+
+    _translating(monkeypatch, fake)
+    assert chat._personal_data("values", {"notes": []}) == "public"
+    assert chat._personal_data("values", {"notes": ["mine"]}) == "private"
+    assert chat._personal_data("restrictions", {"notes": []}) == "diets"
+    for intent in ("remember", "avoid", "scans"):
+        assert chat._personal_data(intent, {"notes": []}) == "private"
+    profile = chat.get_profile(member)
+    out, _log = chat._localise(
+        member, profile, "Sugars 3 g.", None, "ro", "Câte zaharuri are?", "", kind="public"
+    )
+    assert out == "Răspuns tradus."
+
+
+def test_private_answers_translated_only_with_my_data_switch(site, fake, member, monkeypatch):
+    from myola.services import chat
+
+    _translating(monkeypatch, fake)
+    profile = chat.get_profile(member)
+    args = (member, profile, "You asked me to remember: x.", None, "ro", "Ce știi despre mine?", "")
+    out, _log = chat._localise(*args, kind="private")
+    assert out.startswith("Acest răspuns conține notițele") and "Let Ask Foodo use my" in out
+    profile.ai_use_my_data = True
+    profile.save()
+    out, _log = chat._localise(*args, kind="private")
+    assert out == "Răspuns tradus."
+    from ai.models import AIAnswer
+
+    t = AIAnswer.objects.filter(user=member, kind="translation").latest("created_at")
+    assert t.answer == ""  # own data: the text is not kept

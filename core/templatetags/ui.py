@@ -204,3 +204,16 @@ def pounds(value) -> str:
         return f"£{Decimal(value or 0).quantize(Decimal('0.01')):,}"
     except (InvalidOperation, TypeError, ValueError):
         return "£0.00"
+
+
+# Long single words that may not fit a narrow column: a soft hyphen where they may split.
+_SOFT_BREAKS = {"Carbohydrate": "Carbo­hydrate", "Carbohydrates": "Carbo­hydrates"}
+
+
+@register.filter
+def breakable(text) -> str:
+    """``text`` with a soft hyphen in long nutrient words (Carbo-hydrate) so they wrap."""
+    out = str(text or "")
+    for word, soft in _SOFT_BREAKS.items():
+        out = re.sub(rf"\b{word}\b", soft, out)
+    return out

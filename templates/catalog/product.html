@@ -37,19 +37,21 @@
     </ul>
     {% endif %}
     {% if restricted %}<p class="note note-warn">{% icon "triangle-alert" 16 %}<span>{% translate "Store code: may differ between shops." %}</span></p>{% endif %}
-    <a class="btn btn-primary btn-block add-diary" href="{% url 'add-food' product.pk %}{% if scanned %}?scanned={{ scanned|urlencode }}{% endif %}">{% icon "plus" 20 %}<span>{% translate "Add to diary" %}</span></a>
-    {% include "partials/product_actions.html" %}
-    {% include "partials/compare_link.html" %}
-    {% if not user.is_authenticated %}<p class="caption sign-in-save"><a href="{{ login_url }}">{% translate "Sign in to save" %}</a> {% translate "favourites, lists and notes." %}</p>{% endif %}
-    {% if scanned %}
+    <div class="hero-buttons{% if scanned %} has-two{% endif %}">
+      <a class="btn btn-primary add-diary" href="{% url 'add-food' product.pk %}{% if scanned %}?scanned={{ scanned|urlencode }}{% endif %}">{% icon "plus" 20 %}<span>{% translate "Add to diary" %}</span></a>
+      {% if scanned %}
       <form method="post" action="{% url 'contribution-start' %}" class="not-mine">
         {% csrf_token %}
         <input type="hidden" name="problem_type" value="wrong_product">
         <input type="hidden" name="product" value="{{ product.pk }}">
         <input type="hidden" name="code" value="{{ scanned }}">
-        <button class="btn btn-orange btn-small" type="submit">{% translate "This is not my product" %}</button>
+        <button class="btn btn-orange" type="submit">{% translate "This is not my product" %}</button>
       </form>
-    {% endif %}
+      {% endif %}
+    </div>
+    {% include "partials/product_actions.html" %}
+    {% include "partials/compare_link.html" %}
+    {% if not user.is_authenticated %}<p class="caption sign-in-save"><a href="{{ login_url }}">{% translate "Sign in to save" %}</a> {% translate "favourites, lists and notes." %}</p>{% endif %}
   </section>
   {# 4. Nutrients at a glance: value first, explanation on tap #}
   {% if nutrient_rows or additives %}
@@ -230,7 +232,7 @@
         <table class="nutrition">
           <caption>{{ g.title|capfirst }}</caption>
           <tbody>
-            {% for r in g.rows %}<tr{% if r.sub %} class="sub"{% endif %}><th scope="row">{{ r.label }}</th><td>{{ r.value }}</td></tr>{% endfor %}
+            {% for r in g.rows %}<tr{% if r.sub %} class="sub"{% endif %}><th scope="row">{{ r.label|breakable }}</th><td>{{ r.value }}</td></tr>{% endfor %}
           </tbody>
         </table>
         </div>
@@ -271,6 +273,15 @@
     </form>
     </details>
   </section>
+  {% if can_delete %}{# Only the person who added it, while no one else has changed it #}
+  <section class="card product-owner" aria-labelledby="owner-h">
+    <h2 id="owner-h">{% translate "You added this product" %}</h2>
+    <p class="caption">{% translate "You can delete it while no one else has changed it. Diary entries keep their values." %}</p>
+    <form method="post" action="{% url 'product-delete' product.pk %}" data-confirm="{% translate 'The product, its photos and everyone’s saved marks for it are removed. This cannot be undone.' %}" data-confirm-title="{% translate 'Delete this product?' %}" data-confirm-label="{% translate 'Delete' %}" data-confirm-tone="danger">
+      {% csrf_token %}<button class="btn btn-danger" type="submit">{% icon "trash-2" 18 %}<span>{% translate "Delete product" %}</span></button>
+    </form>
+  </section>
+  {% endif %}
   </section>
 </article>
 {% endblock %}

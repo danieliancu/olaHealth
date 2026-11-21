@@ -149,3 +149,96 @@ def with_disclaimer(text: str, code: str) -> str:
 
 def refer(code: str) -> str:
     return REFER.get(code, REFER["en"])
+
+
+# Put above a rule answer that stays in English although the question was in another language.
+# "busy": the AI is off, out of messages or failed (a passing problem); "consent": the answer
+# names the user's diets or allergies, which go to the AI only with the switch "Use my diets
+# and allergies in AI answers" on; "private": notes, memories, lists or scans, sent only with
+# "Let Ask Foodo use my diary, lists, notes and memories" on.
+ENGLISH_ONLY = {
+    "busy": {
+        "ro": "Momentan nu pot traduce acest răspuns, așa că este în engleză.",
+        "es": "Ahora mismo no puedo traducir esta respuesta, así que está en inglés.",
+        "fr": "Je ne peux pas traduire cette réponse pour le moment, elle est donc en anglais.",
+        "it": "Al momento non posso tradurre questa risposta, quindi è in inglese.",
+        "de": "Ich kann diese Antwort gerade nicht übersetzen, daher ist sie auf Englisch.",
+        "pt": "De momento não consigo traduzir esta resposta, por isso está em inglês.",
+        "pl": "Nie mogę teraz przetłumaczyć tej odpowiedzi, więc jest po angielsku.",
+    },
+    "consent": {
+        "ro": (
+            "Acest răspuns conține datele tale, așa că este în engleză. Pentru răspunsuri în "
+            "limba ta, activează „Use my diets and allergies in AI answers” în Settings."
+        ),
+        "es": (
+            "Esta respuesta contiene tus datos, así que está en inglés. Para recibirla en tu "
+            "idioma, activa «Use my diets and allergies in AI answers» en Settings."
+        ),
+        "fr": (
+            "Cette réponse contient vos données, elle est donc en anglais. Pour l'avoir dans "
+            "votre langue, activez « Use my diets and allergies in AI answers » dans Settings."
+        ),
+        "it": (
+            "Questa risposta contiene i tuoi dati, quindi è in inglese. Per averla nella tua "
+            "lingua, attiva “Use my diets and allergies in AI answers” in Settings."
+        ),
+        "de": (
+            "Diese Antwort enthält deine Daten, daher ist sie auf Englisch. Für Antworten in "
+            "deiner Sprache aktiviere „Use my diets and allergies in AI answers“ in Settings."
+        ),
+        "pt": (
+            "Esta resposta contém os teus dados, por isso está em inglês. Para a receberes na "
+            "tua língua, ativa “Use my diets and allergies in AI answers” em Settings."
+        ),
+        "pl": (
+            "Ta odpowiedź zawiera Twoje dane, więc jest po angielsku. Aby dostawać odpowiedzi "
+            "w swoim języku, włącz „Use my diets and allergies in AI answers” w Settings."
+        ),
+    },
+}
+
+
+ENGLISH_ONLY["private"] = {
+    "ro": (
+        "Acest răspuns conține notițele, listele sau istoricul tău, așa că este în engleză. "
+        "Pentru răspunsuri în limba ta, activează „Let Ask Foodo use my diary, lists, notes and "
+        "memories” în Settings."
+    ),
+    "es": (
+        "Esta respuesta contiene tus notas, listas o historial, así que está en inglés. Para "
+        "recibirla en tu idioma, activa «Let Ask Foodo use my diary, lists, notes and memories» "
+        "en Settings."
+    ),
+    "fr": (
+        "Cette réponse contient vos notes, listes ou historique, elle est donc en anglais. Pour "
+        "l'avoir dans votre langue, activez « Let Ask Foodo use my diary, lists, notes and "
+        "memories » dans Settings."
+    ),
+    "it": (
+        "Questa risposta contiene le tue note, liste o cronologia, quindi è in inglese. Per "
+        "averla nella tua lingua, attiva “Let Ask Foodo use my diary, lists, notes and memories” "
+        "in Settings."
+    ),
+    "de": (
+        "Diese Antwort enthält deine Notizen, Listen oder deinen Verlauf, daher ist sie auf "
+        "Englisch. Für Antworten in deiner Sprache aktiviere „Let Ask Foodo use my diary, lists, "
+        "notes and memories“ in Settings."
+    ),
+    "pt": (
+        "Esta resposta contém as tuas notas, listas ou histórico, por isso está em inglês. Para "
+        "a receberes na tua língua, ativa “Let Ask Foodo use my diary, lists, notes and "
+        "memories” em Settings."
+    ),
+    "pl": (
+        "Ta odpowiedź zawiera Twoje notatki, listy lub historię, więc jest po angielsku. Aby "
+        "dostawać odpowiedzi w swoim języku, włącz „Let Ask Foodo use my diary, lists, notes "
+        "and memories” w Settings."
+    ),
+}
+
+
+def english_only(text: str, code: str, why: str = "busy") -> str:
+    """``text`` with a one-line note in the question's language saying why it is in English."""
+    note = ENGLISH_ONLY.get(why, {}).get(code)
+    return f"{note}\n\n{text}" if note else text

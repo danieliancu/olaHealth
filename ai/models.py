@@ -36,6 +36,8 @@ class AIAnswer(models.Model):
     class Kind(models.TextChoices):
         PRODUCT = "product", "Product chat"
         GENERAL = "general", "General chat"
+        TRANSLATION = "translation", "Translation of a rule answer"
+        PERSONAL = "personal", "Question about the user (their data)"
 
     class Outcome(models.TextChoices):
         ANSWERED = "answered", "Answered by the AI"
@@ -47,7 +49,7 @@ class AIAnswer(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ai_answers"
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    kind = models.CharField(max_length=10, choices=Kind.choices)
+    kind = models.CharField(max_length=12, choices=Kind.choices)
     context = models.CharField(max_length=60, blank=True)
     question = models.TextField(max_length=2000)
     answer = models.TextField(blank=True)

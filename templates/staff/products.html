@@ -2,8 +2,9 @@
 {% block staff_title %}Products{% endblock %}
 {% block staff_content %}
 <h1>Products</h1>
-<form class="staff-filters" method="get" action="{% url 'staff:products' %}" hx-get="{% url 'staff:products' %}" hx-target="#staff-results" hx-push-url="true" hx-trigger="submit, input changed delay:400ms from:#staff-q">
+<form class="staff-filters" method="get" action="{% url 'staff:products' %}" hx-get="{% url 'staff:products' %}" hx-target="#staff-results" hx-push-url="true" hx-trigger="submit, input changed delay:400ms from:#staff-q, change from:#staff-quality">
   <div class="field grow"><label for="staff-q">Name, brand or barcode</label><input type="search" name="q" id="staff-q" value="{{ q }}" maxlength="100" autocomplete="off"></div>
+  <div class="field"><label for="staff-quality">Data</label><select name="quality" id="staff-quality"><option value="">All products</option><option value="incomplete"{% if quality == "incomplete" %} selected{% endif %}>Incomplete or hidden</option></select></div>
   <button class="btn btn-outline btn-small" type="submit">{% icon "search" 16 %}<span>Search</span></button>
 </form>
 <div id="staff-results">{% include "staff/partials/product_results.html" %}</div>

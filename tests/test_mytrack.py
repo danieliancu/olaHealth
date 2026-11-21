@@ -393,7 +393,7 @@ def test_chat_partial_and_product_page(member_client, yogurt):
     body = r.content.decode()
     assert "<html" not in body and f'id="chat-log-product-{yogurt.pk}"' in body
     assert 'hx-post="/ask-foodo/chat/send/"' in body and 'hx-swap="beforeend scroll:bottom"' in body
-    assert "Does it fit my restrictions?" in body
+    assert "Does it fit my restrictions?" not in body  # no suggestion pills
     html = member_client.get(reverse("product", args=[yogurt.pk])).content.decode()
     assert f"context=product%3A{yogurt.pk}" in html  # the includable panel
 

@@ -56,7 +56,7 @@
   <form class="ob-step" method="post" action="{{ start_url }}" hx-post="{{ start_url }}" hx-target="#onboard" hx-swap="outerHTML show:window:top" aria-labelledby="ob4" novalidate{% if step != 4 %} hidden{% endif %}>
     {% csrf_token %}<input type="hidden" name="step" value="4">
     <h1 id="ob4" tabindex="-1">{% translate "Have you ever had any of the following conditions?" %}</h1>
-    <p class="hint">{% translate "Optional. Saved only with your consent below. You can change or delete it in My Track, and it is never used for diagnoses, plans or advice." %}</p>
+    <p class="hint">{% translate "Optional. Saved only with your consent below. You can change or delete it in My account, and it is never used for diagnoses, plans or advice." %}</p>
     {% include "myola/partials/profile_conditions_fields.html" with form=conditions_form %}
     <div class="ob-actions">
       <a class="btn btn-outline" href="{{ start_url }}?step=3" hx-get="{{ start_url }}?step=3" hx-target="#onboard" hx-swap="outerHTML show:window:top">{% icon "chevron-left" 18 %}<span>{% translate "Back" %}</span></a>
@@ -64,5 +64,5 @@
     </div>
   </form>
 
-  <p class="caption ob-privacy">{% translate "Your answers are saved in your account. You can change or delete them at any time in My Track." %}</p>
+  <p class="caption ob-privacy">{% translate "Your answers are saved in your account. You can change or delete them at any time in My account." %}</p>
 </div>

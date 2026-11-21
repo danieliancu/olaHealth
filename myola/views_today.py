@@ -27,6 +27,7 @@ from myola.forms_today import ActivityForm, AddFoodForm, EntryForm, QuickAddForm
 from myola.models import LIMITS, ActivityEntry, DiaryEntry, Meal, WaterEntry
 from myola.preferences import ACTIVITIES, ALLERGENS, DIETS, picker_context
 from myola.services import diary, nudges
+from myola.services import notifications as notes
 from myola.services.lists import record_visit
 from myola.services.profiles import derive_prefs, get_profile, local_today, parse_day, user_tz
 
@@ -89,11 +90,13 @@ def _context(request: HttpRequest, profile, day: dt.date, **extra) -> dict:
                 prefix=g.key, today=today, initial={"date": day, "meal": g.key}
             )
             g.quick_open = False
+        g.open = g.quick_open  # phones: the meal starts expanded (it collapses otherwise)
         for e in g.entries:
             e.amount_display = format_number(e.amount)
             e.kcal_display = diary.fmt(e.values["energy-kcal"])
             if edit and str(edit[0]) == str(e.pk):
                 e.edit_form = edit[1]
+                g.open = True
                 e.pv = diary.preview_rows(
                     diary.entry_per100(e), e.amount, e.basis_known, show_energy
                 )
@@ -108,13 +111,8 @@ def _context(request: HttpRequest, profile, day: dt.date, **extra) -> dict:
     return {
         "greeting": nudges.greeting(now),
         "first_name": user.first_name,
-        "nudge": nudges.pick_nudge(
-            is_today=day == today,
-            now=now,
-            groups=groups,
-            water_ml=sum(w.ml for w in water),
-            scan_url=scan_url,
-        ),
+        # Top of Today: the latest notification while it is unread (see notifications.home_card).
+        "nudge": notes.home_card(user) if day == today else None,
         "profile": profile,
         "picker": picker_context(),
         "nav_active": "today",
@@ -128,6 +126,10 @@ def _context(request: HttpRequest, profile, day: dt.date, **extra) -> dict:
         "groups": groups,
         "entry_count": day_totals.count,
         "rows": rows,
+        # Phones: kcal in the ring, the macros as bars beside it.
+        "energy_row": next((r for r in rows if r["key"] == "energy-kcal"), None),
+        "macro_rows": [r for r in rows if r["key"] != "energy-kcal"],
+        "targets_missing": any(not r["target"] for r in rows),
         "any_partial": bool(day_totals.count) and any(r["partial"] for r in rows),
         "show_energy": show_energy,
         "has_targets": any(profile.targets.values()),

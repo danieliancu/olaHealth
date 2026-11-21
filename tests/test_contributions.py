@@ -342,3 +342,50 @@ def test_moderation_view_permissions(client, product):
     client.post(url, {"decision": "approve", "reason": "ok"})
     c.refresh_from_db()
     assert c.status == "approved"
+
+
+# ---------- Deleting a product you added ----------
+def _own_product(user, admin_user, code="5900000000015"):
+    c = drafts.create_draft(session_key="s", problem_type="new_product", code=code, user=user)
+    drafts.save_proposal(c, {"name": "My local bar", "brand": "Mine"}, "")
+    drafts.submit(c, consent=True)
+    moderation.approve(c.pk, admin_user, "")
+    return Product.objects.get(name="My local bar"), c
+
+
+def test_the_person_who_added_a_product_can_delete_it(client, member, admin_user):
+    product, c = _own_product(member, admin_user)
+    url = reverse("product", args=[product.pk])
+    client.force_login(member)
+    html = client.get(url).content.decode()
+    assert "You added this product" in html and reverse("product-delete", args=[product.pk]) in html
+    r = client.post(reverse("product-delete", args=[product.pk]))
+    assert r.status_code == 302 and r["Location"] == reverse("saved")
+    assert not Product.objects.filter(pk=product.pk).exists()
+    c.refresh_from_db()
+    assert (
+        c.product is None
+        and ModerationAudit.objects.filter(contribution=c, action="product_deleted").exists()
+    )
+
+
+def test_others_cannot_delete_and_open_food_facts_products_cannot_be_deleted(
+    client, member, admin_user, product
+):
+    mine, _c = _own_product(member, admin_user)
+    other = User.objects.create_user("other2", password="pw12345!long")
+    client.force_login(other)
+    assert (
+        "You added this product"
+        not in client.get(reverse("product", args=[mine.pk])).content.decode()
+    )
+    assert client.post(reverse("product-delete", args=[mine.pk])).status_code == 404
+    client.force_login(member)
+    assert client.post(reverse("product-delete", args=[product.pk])).status_code == 404  # OFF
+    # Someone else's approved change: no longer theirs alone.
+    fix = submitted(mine, {"brand": "Fixed"})
+    fix.user = other
+    fix.save()
+    moderation.approve(fix.pk, admin_user, "")
+    assert client.post(reverse("product-delete", args=[mine.pk])).status_code == 404
+    assert Product.objects.filter(pk=mine.pk).exists()

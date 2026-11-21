@@ -127,7 +127,7 @@ def _sync_off_images(product: Product, urls: dict[str, str]) -> bool:
     }
     wanted = {(kind, url) for kind, url in urls.items()}
     for key, img in current.items():
-        active = key in wanted
+        active = key in wanted and not img.hidden_by_staff
         if img.is_active != active:
             img.is_active = active
             img.save(update_fields=["is_active"])

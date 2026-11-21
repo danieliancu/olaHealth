@@ -145,7 +145,7 @@ def test_publishing_an_article_notifies_once(client, editor, member):
     assert "notifications shortly" in r.content.decode()
     notify_new_articles()  # what the queued job runs
     n = Notification.objects.get(user=member, key__startswith="learn:")
-    assert n.title == "New article in Learn" and n.url == "/learn/salt-in-bread/"
+    assert n.title == "New article in the Magazine" and n.url == "/learn/salt-in-bread/"
     assert n.body == "“Salt in bread”: a 2-minute read in Reading the label."
     a = LearnArticle.objects.get(slug="salt-in-bread")
     client.post(reverse("staff:learn-article", args=[a.pk]), {**data, "summary": "Edited."})

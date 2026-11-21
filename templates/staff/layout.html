@@ -13,7 +13,7 @@
     {% if nav.users %}<a href="{% url 'staff:users' %}"{% if section == "users" %} aria-current="page"{% endif %}>{% icon "user-round" 18 %}<span>Users</span></a>{% endif %}
     {% if nav.settings %}<a href="{% url 'staff:settings' %}"{% if section == "settings" %} aria-current="page"{% endif %}>{% icon "settings" 18 %}<span>Settings</span></a>{% endif %}
     {% if nav.settings %}<a href="{% url 'staff:ai-answers' %}"{% if section == "ai-answers" %} aria-current="page"{% endif %}>{% icon "message-circle" 18 %}<span>AI answers</span></a>{% endif %}
-    {% if nav.learn %}<a href="{% url 'staff:learn' %}"{% if section == "learn" %} aria-current="page"{% endif %}>{% icon "book-open" 18 %}<span>Learn</span></a>{% endif %}
+    {% if nav.learn %}<a href="{% url 'staff:learn' %}"{% if section == "learn" %} aria-current="page"{% endif %}>{% icon "book-open" 18 %}<span>Magazine</span></a>{% endif %}
     {% if nav.settings %}<a href="{% url 'staff:announcements' %}"{% if section == "announcements" %} aria-current="page"{% endif %}>{% icon "bell" 18 %}<span>Announcements</span></a>{% endif %}
     {% if nav.audit %}<a href="{% url 'staff:audit' %}"{% if section == "audit" %} aria-current="page"{% endif %}>{% icon "history" 18 %}<span>Audit log</span></a>{% endif %}
     <form class="staff-logout" method="post" action="{% url 'account_logout' %}">{% csrf_token %}<button type="submit">{% icon "log-out" 18 %}<span>Log out</span></button></form>

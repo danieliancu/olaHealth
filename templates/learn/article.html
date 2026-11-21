@@ -17,7 +17,7 @@
   <p class="back"><a href="{% url 'learn-topic' topic.key %}">{% icon "chevron-left" 18 %}<span>{{ topic.title }}</span></a></p>
   <header class="article-head">
     <img class="article-hero" src="{{ article.image_url }}" alt="{{ article.image_alt }}" width="720" height="540" decoding="async">
-    <div class="article-meta"><span class="pill">{{ topic.title }}</span><time class="article-date" datetime="{{ article.published_at|date:'Y-m-d' }}">{{ article.published_at|date:"j F Y" }}</time><span class="read-time">{% icon "clock" 14 %}{% blocktranslate with n=article.minutes %}{{ n }} min read{% endblocktranslate %}</span></div>
+    <div class="article-meta"><span class="pill">{{ topic.title }}</span><span class="read-time">{% icon "clock" 14 %}{% blocktranslate with n=article.minutes %}{{ n }} min read{% endblocktranslate %}</span></div>
     <h1>{{ article.title }}</h1>
     <p class="page-sub">{{ article.summary }}</p>
   </header>
@@ -50,7 +50,9 @@
   <p class="notice">{% icon "info" 18 %}<span>{% translate "Information, not medical advice. The label on the package is always the reference." %} <a href="{% url 'sources' %}">{% translate "Sources & methodology" %}</a></span></p>
   {% if related %}<section aria-labelledby="related-h">
     <h2 class="dash-title dash-title-sm" id="related-h">{% translate "More on this topic" %}</h2>
-    <ul class="article-list stagger">{% for a in related %}<li>{% include "learn/article_card.html" %}</li>{% endfor %}</ul>
+    <ul class="related-list stagger">{% for a in related %}<li><a class="related-card" href="{% url 'learn-article' a.slug %}">
+      <span class="related-text"><strong>{{ a.title }}</strong><span class="related-time">{% blocktranslate with n=a.minutes %}{{ n }} min read{% endblocktranslate %}</span></span>
+      {% icon "chevron-right" 18 %}</a></li>{% endfor %}</ul>
   </section>{% endif %}
 </article>
 {% endblock %}

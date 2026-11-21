@@ -84,7 +84,7 @@ def test_home_is_scan_first(client):
     html = client.get(reverse("home")).content.decode()
     assert "Get started" in html and 'href="/accounts/signup/"' in html and 'href="/scan/"' in html
     assert "Welcome to AskFoodo" in html and 'class="quick-actions stagger"' in html
-    assert "magazine" not in html.lower() and "try the demo" not in html.lower()
+    assert "try the demo" not in html.lower()
 
 
 @pytest.mark.django_db
@@ -92,7 +92,7 @@ def test_navigation_has_five_entries(client):
     html = client.get(reverse("home")).content.decode()
     nav = html.split('<nav class="tabbar"')[1].split("</nav>")[0]
     labels = re.findall(r"<span>([^<]+)</span></a>", nav)
-    assert labels == ["Home", "Scan", "Ask Foodo", "Progress", "Learn"]
+    assert labels == ["Home", "Scan", "Ask Foodo", "Progress", "Magazine"]
     assert 'href="/learn/"' in nav and 'href="/"' in nav and 'href="/ask-foodo/chat/"' in nav
     # Search and favourites are in the header; comparison opens from the product pages.
     header = html.split('<header class="site-header">')[1].split("</header>")[0]

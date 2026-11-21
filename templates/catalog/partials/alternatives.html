@@ -9,7 +9,7 @@
         {% for p in score.points %}<li>{{ p.reason }}: {{ p.points }}</li>{% empty %}<li>{% translate "No points deducted." %}</li>{% endfor %}
       </ul>
       {% if score.missing %}<p class="caption">{% translate "Unknown, not counted:" %} {{ score.missing|join:", " }}</p>{% endif %}
-      <p class="caption">{% translate "Starts at 100 and deducts points from Nutri-Score, NOVA processing, high sugar, salt and saturated fat. Your own restrictions are shown separately and never change the score." %} <a href="{% url 'sources' %}">{% translate "Method" %}</a></p>
+      <p class="caption">{% translate "Starts at 100 and deducts points from Nutri-Score, NOVA processing, high sugar, salt and saturated fat. Your own restrictions are shown separately and never change the score." %} <a href="{% url 'sources' %}#foodo-score">{% translate "Method" %}</a></p>
     </details>
   </div>
   {% if alternatives %}
@@ -27,7 +27,7 @@
     </ul>
     {% if not user.is_authenticated %}<p class="caption"><a href="{% url 'account_login' %}?next={% url 'product' product.pk %}%23better">{% translate "Sign in" %}</a> {% translate "to filter alternatives by your diets, allergies and Avoid list." %}</p>{% endif %}
   {% else %}
-    <p class="caption">{% translate "No better-scoring alternative found in this category yet." %}</p>
+    <p class="caption">{% translate "We haven't found a suitable alternative yet." %}</p>
   {% endif %}
 {% else %}
   <p class="caption">{% translate "Not enough data for a Foodo Score: this product has no Nutri-Score and no NOVA group yet." %}</p>

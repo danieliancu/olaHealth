@@ -18,6 +18,7 @@ urlpatterns = [
     path("lookup/", catalog_views.lookup_view, name="lookup"),
     path("scan/photo/", catalog_views.scan_photo, name="scan-photo"),
     path("p/<uuid:pk>/", catalog_views.product_detail, name="product"),
+    path("p/<uuid:pk>/delete/", catalog_views.product_delete, name="product-delete"),
     path(
         "p/<uuid:pk>/alternatives/",
         catalog_views.product_alternatives,

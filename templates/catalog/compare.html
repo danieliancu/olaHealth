@@ -12,7 +12,7 @@
       {% for p in products %}
       <li class="product-card">
         {% if p.front_image_url %}<img class="thumb" src="{{ p.front_image_url|img }}" alt="" width="64" height="64" loading="lazy">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="64" height="64">{% endif %}
-        <div class="grow"><a class="product-link" href="{% url 'product' p.pk %}">{{ p.name|default:_("Unnamed product") }}</a><p class="meta">{{ p.brand }}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</p></div>
+        <div class="grow"><a class="product-link" href="{% url 'product' p.pk %}">{{ p.name|default:_("Unnamed product") }}</a>{% if p.quality_issues %} <span class="partial quality-pill" title="{{ p.quality_labels|join:', ' }}">{% translate "Incomplete data" %}</span>{% endif %}<p class="meta">{{ p.brand }}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</p></div>
         {% if not from_query %}
         <form method="post" action="{% url 'compare-remove' p.pk %}">{% csrf_token %}
           <button type="submit" class="icon-btn" aria-label="{% blocktranslate with n=p.name|default:_('this product') %}Remove {{ n }} from comparison{% endblocktranslate %}" title="{% translate 'Remove' %}">{% icon "x" 20 %}</button>
@@ -66,7 +66,7 @@
       {% for b in g.column_bases %}<td>{% if b %}{{ b }}{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
   {% endif %}
   {% for r in g.rows %}
-    <tr><th scope="row">{{ r.label }}</th>
+    <tr><th scope="row">{{ r.label|breakable }}</th>
       {% for cell in r.cells %}<td>{% if cell.state == "declared" %}{{ cell.display }}{% elif cell.state == "not_on_label" %}<span class="muted">{% translate "not on label" %}</span>{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
   {% endfor %}
   </tbody>
@@ -91,7 +91,7 @@
     <div class="chart-grid">
       {% for panel in g.panels %}
       <figure class="chart-panel">
-        <figcaption class="chart-title"><span class="chart-name">{% icon panel.icon 18 %}<span>{{ panel.label }}</span></span><span class="chart-unit">{{ panel.unit }}</span></figcaption>
+        <figcaption class="chart-title"><span class="chart-name">{% icon panel.icon 18 %}<span>{{ panel.label|breakable }}</span></span><span class="chart-unit">{{ panel.unit }}</span></figcaption>
         <svg class="hbars" viewBox="0 0 330 {{ panel.height }}" width="100%" role="img" aria-label="{{ panel.label }}: {{ panel.summary }}">
           {% for b in panel.bars %}
           <text class="hbar-label" x="{{ panel.label_x }}" y="{{ b.text_y }}" text-anchor="end">{{ b.name }}</text>

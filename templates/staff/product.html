@@ -22,6 +22,18 @@
 </form>
 {% endif %}
 
+{% if images %}
+<section class="card">
+  <h2>Photos</h2>
+  <p class="hint">Switch off a photo that does not show this product (wrong item, unreadable, unsuitable). It stays off after an Open Food Facts refresh.</p>
+  <ul class="staff-photos">{% for img in images %}<li class="{% if not img.is_active %}is-off{% endif %}">
+    {% if img.remote_url %}<img src="{% url 'off-image' img.pk %}" alt="" width="96" height="96" loading="lazy">{% else %}<img src="{% url 'public-image' img.pk %}" alt="" width="96" height="96" loading="lazy">{% endif %}
+    <span class="hint">{{ img.get_kind_display }} · {{ img.get_source_display }}{% if img.hidden_by_staff %} · switched off{% elif not img.is_active %} · not current{% endif %}</span>
+    {% if can_moderate %}<form method="post" action="{% url 'staff:product-image-toggle' product.pk img.pk %}">{% csrf_token %}<button class="btn btn-outline btn-small" type="submit">{% if img.hidden_by_staff %}Show again{% else %}Switch off{% endif %}</button></form>{% endif %}
+  </li>{% endfor %}</ul>
+</section>
+{% endif %}
+
 {% if flags %}
 <section class="card card-warn">
   <h2>Open review flags</h2>

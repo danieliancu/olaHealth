@@ -1467,3 +1467,166 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
 .chat-rate-btn:hover { background: rgba(17, 24, 39, .06); color: var(--text); }
 .chat-rate-btn[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
 .chat-rate-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Learn → article → "More on this topic": title, reading time, chevron */
+.related-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.related-card { display: flex; align-items: center; gap: .75rem; padding: 1rem 1.1rem; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); color: var(--text); text-decoration: none; transition: background-color .15s var(--ease-out), border-color .15s var(--ease-out); }
+.related-card:hover { border-color: var(--line-strong); background: var(--accent-tint); }
+.related-card:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 2px; }
+.related-text { flex: 1; min-width: 0; display: grid; gap: .2rem; }
+.related-text strong { font-size: var(--fs-md); font-weight: 700; line-height: 1.35; }
+.related-time { font-size: var(--fs-sm); color: var(--muted); }
+.related-card > svg { flex: none; color: var(--muted); }
+.related-card:hover > svg { color: var(--accent-fill); }
+@media (min-width: 900px) { .related-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ===== Today on phones (under 768px): Daily summary (ring + bars, calendar), "What would you
+   like to check?", then a folding Food diary. Layout only: the type and colours above are reused.
+   Tablets and desktop keep the week strip, meal tiles, Quick actions and the summary grid. ===== */
+.sum-day, .sum-ring-layout, .t-check, .meal-sum, .meal-fold, .diary-total { display: none; }
+.t-diary .meal-body { display: contents; }
+@media (max-width: 767px) {
+  .today:not(.home-public) { display: flex; flex-direction: column; }
+  .today > .today-grid { display: contents; }
+  .today > .notice-setup { order: 1; }
+  .today .t-summary { order: 2; }
+  .today > .t-check { order: 3; }
+  .today .t-diary { order: 4; }
+  .today > .nudge { order: 1; margin-top: 0; }
+  .today .t-water { order: 6; }
+  .today .t-activity { order: 7; }
+  .today > .tips { order: 8; }
+  .today > .t-meals, .today > .t-actions, .today .day-band, .today .sum-grid, .today .targets-edit,
+  .today .t-diary .diary-empty { display: none; }
+  .today .today-head { margin-bottom: 1rem; }
+
+  /* Daily summary: the day + calendar in the head */
+  .sum-day { position: relative; display: inline-flex; align-items: center; gap: .4rem; flex: none; font-size: var(--fs-sm); color: var(--text-soft); }
+  .sum-day svg { color: var(--accent-strong); }
+  .sum-day-input { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); opacity: 0; cursor: pointer; border: 0; padding: 0; }
+  .sum-day:focus-within { outline: 2px solid var(--accent-fill); outline-offset: 4px; border-radius: 6px; }
+
+  /* Ring on the left, the three bars on the right */
+  .sum-ring-layout { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 1rem; margin-top: .25rem; }
+  .sum-ring-layout.no-ring { grid-template-columns: minmax(0, 1fr); }
+  .sum-ring { position: relative; display: grid; place-items: center; width: 124px; height: 124px; color: var(--text); text-decoration: none; }
+  .sum-ring > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .sum-ring circle { fill: none; stroke-width: 10; }
+  .sum-ring .ring-track { stroke: #f3f4f6; }
+  .sum-ring .ring-fill { stroke: var(--accent-fill); stroke-linecap: round; }
+  .sum-ring .ring-fill.level-low { stroke: #9fd3b9; }
+  .sum-ring .ring-fill.level-mid { stroke: #4fae86; }
+  .sum-ring .ring-fill.level-high { stroke: #f59e0b; }
+  .sum-ring .ring-fill.level-over { stroke: #e5484d; }
+  .sum-ring-text { position: relative; display: grid; justify-items: center; text-align: center; padding: 0 1.1rem; line-height: 1.25; }
+  .sum-ring-text strong { font-size: 1.25rem; font-weight: 600; }
+  .sum-ring-text span { font-size: var(--fs-xs); color: var(--muted); }
+  .sum-ring.is-empty .sum-ring-text { gap: .2rem; color: var(--accent-strong); }
+  .sum-ring.is-empty .sum-ring-text span { font-size: var(--fs-sm); color: var(--accent-strong); font-weight: 600; }
+  .sum-ring.is-empty:hover .ring-track { stroke: var(--line-strong); }
+  .sum-bars { list-style: none; margin: 0; padding: 0 0 0 1rem; border-left: 1px solid var(--line); display: grid; gap: .8rem; }
+  .no-ring .sum-bars { padding-left: 0; border-left: 0; }
+  .sum-bar { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; column-gap: .5rem; }
+  .sum-bar-label { font-size: var(--fs-sm); font-weight: 600; }
+  .sum-bar-value { font-size: var(--fs-xs); color: var(--text-soft); text-align: right; white-space: nowrap; }
+  .sum-bar .meter { grid-column: 1 / -1; }
+  .sum-bar .meter .meter-track { fill: #f3f4f6; }
+  .sum-set { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: .3rem; }
+
+  /* What would you like to check? */
+  .t-check { display: grid; gap: .75rem; }
+  .t-check h2 { margin: 0; font-size: var(--fs-lg); }
+  .check-btn { display: flex; align-items: center; gap: .6rem; min-height: 52px; padding: .75rem 1rem; border-radius: var(--radius-sm); background: var(--accent-tint); color: var(--accent-strong); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
+  .check-btn span { flex: 1; min-width: 0; }
+  .check-btn svg { flex: none; }
+  .check-btn:hover { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .check-primary { position: relative; min-height: 60px; background: var(--accent-fill); color: #fff; font-size: var(--fs-md); }
+  .check-primary > span { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+  .check-primary > svg:last-child { margin-left: auto; }
+  .check-primary:hover { background: var(--accent-fill-hover); box-shadow: none; }
+  .check-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .check-row .check-btn { padding-inline: .7rem; gap: .4rem; }
+  @media (max-width: 374px) { .check-row .check-btn > svg:last-child { display: none; } }
+
+  /* Food diary: one row per meal (icon | name | total | chevron); tap to open the tools and foods */
+  .diary-total { display: inline; font-size: var(--fs-sm); font-weight: 600; color: var(--text-soft); }
+  .t-diary .meal { grid-template-columns: 44px minmax(0, 1fr) auto auto; cursor: pointer; }
+  .t-diary .meal.is-open { cursor: auto; }
+  .t-diary .meal-sum { display: inline; grid-column: 3; grid-row: 1; font-size: var(--fs-sm); color: var(--text-soft); white-space: nowrap; }
+  .t-diary .meal-fold { display: grid; grid-column: 4; grid-row: 1; place-items: center; width: 36px; height: 36px; margin-right: -6px; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+  .t-diary .meal-fold svg { transition: transform .2s var(--ease-out); }
+  .t-diary .meal.is-open .meal-fold svg { transform: rotate(180deg); }
+  .t-diary .meal-tools { grid-column: 2 / -1; grid-row: 2; justify-self: start; margin: .25rem 0 0 -8px; }
+  .t-diary .entry-list { grid-row: 3; }
+  .t-diary .meal:not(.is-open) .meal-tools, .t-diary .meal:not(.is-open) .meal-body { display: none; }
+  .t-check .check-row .check-btn { white-space: nowrap; }
+}
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) { .t-diary .meal-fold svg { transition: none; } }
+
+/* Today: the notification card (latest, unread) has a close button that marks it read. */
+.nudge-body { flex: 1; min-width: 0; }
+.nudge-close { flex: none; margin: -.5rem -.5rem 0 0; }
+.nudge-close .icon-btn { color: var(--muted); }
+.nudge-close .icon-btn:hover { color: var(--accent-strong); }
+
+/* Phones: only the Scan barcode button, full width, no card around it (remove the
+   t-check-solo class in today_check.html to bring back the "What would you like to check?" card). */
+@media (max-width: 767px) {
+  .t-check-solo { padding: 0; background: none; border: 0; box-shadow: none; border-radius: 0; }
+  .t-check-solo h2, .t-check-solo .check-row { display: none; }
+}
+
+/* Phones: the Daily summary title, the "partial" pill and the date always share one line. */
+@media (max-width: 767px) {
+  .t-summary .t-card-head { flex-wrap: nowrap; align-items: center; }
+  .t-summary .t-card-head h2 { white-space: nowrap; min-width: 0; }
+  .t-summary .t-card-head h2 .partial { margin-left: .25rem; top: 0; }
+  .t-summary .sum-day { white-space: nowrap; }
+}
+@media (max-width: 379px) { .t-summary:has(.partial) .sum-day-prefix { display: none; } }
+
+/* Product cards: data with gaps (catalog/quality.py) is marked, never silently shown as complete */
+.quality-pill { display: inline-block; margin-left: .35rem; vertical-align: 1px; white-space: nowrap; }
+.status-pill.status-name_incomplete, .status-pill.status-category_missing, .status-pill.status-photo_missing,
+.status-pill.status-not_listed { color: #9a3412; border-color: #f6d3b8; background: #fffaf5; }
+
+/* My account → Your stats: icon, number and label sit at the top of each mini card, whatever
+   the height of the tallest card in the row. */
+.stat-card { align-content: start; justify-items: start; }
+
+/* ---------- Product page: Add to diary (+ not my product), then a row of icon tiles ---------- */
+.hero-buttons { display: grid; grid-template-columns: 1fr; gap: .5rem; margin-top: .9rem; }
+.hero-buttons.has-two { grid-template-columns: 1fr 1fr; }
+.hero-buttons .add-diary { margin: 0; height: 48px; min-height: 48px; }
+.hero-buttons .not-mine { margin: 0; display: flex; }
+.hero-buttons .not-mine .btn { width: 100%; height: 48px; min-height: 48px; white-space: normal; line-height: 1.15; }
+.action-bar.action-icons { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .4rem; margin-top: .6rem; }
+.action-icons > form { display: flex; margin: 0; }
+.action-icons .act-icon {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2rem;
+  min-height: 56px; padding: .4rem .15rem; border-radius: 12px; cursor: pointer; font: inherit;
+  background: #fff; border: 1px solid var(--accent-line); color: var(--accent); text-decoration: none;
+}
+.action-icons .act-label { font-size: .7rem; line-height: 1.1; color: var(--text-soft); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.action-icons .act-icon:hover { background: var(--accent-soft); }
+.action-icons .act-icon[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.action-icons .act-avoid[aria-pressed="true"] { color: #c2410c; background: #fff4ed; border-color: #fdba74; }
+.action-icons form.htmx-request .act-icon { opacity: .6; }
+/* Phones: after the product card come Nutrition, Foodo Score, For you, Ingredients. */
+@media (max-width: 767px) {
+  .product .nutri-card { order: 2; }
+  .product .po-3 { order: 3; }
+  .product .foryou-card { order: 4; }
+  .product .ingredients-card { order: 5; }
+  .product .po-5 { order: 6; }
+}
+.hero-buttons .add-diary { white-space: nowrap; }
+@media (max-width: 400px) {
+  .hero-buttons.has-two .add-diary { font-size: .92rem; padding: 0 .5rem; gap: .25rem; }
+  .hero-buttons.has-two .not-mine .btn { font-size: .85rem; padding: 0 .4rem; }
+  .action-bar.action-icons { gap: .3rem; }
+  .action-icons .act-icon { padding: .4rem 0; }
+  .action-icons .act-label { font-size: .64rem; }
+}
+/* Long nutrient names (Carbohydrate) split over two lines instead of running into the value. */
+.nrow-name { hyphens: manual; overflow-wrap: break-word; }

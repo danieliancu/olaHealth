@@ -1,25 +1,30 @@
 {% load i18n ui %}
 <section class="card t-card t-diary" aria-labelledby="diary-h">
-  <div class="t-card-head"><h2 id="diary-h">{% translate "Food diary" %}</h2></div>
+  <div class="t-card-head"><h2 id="diary-h">{% translate "Food diary" %}</h2>{% if show_energy and entry_count and energy_row %}<span class="diary-total">{{ energy_row.display }} kcal</span>{% endif %}</div>
   {% if not entry_count %}<div class="diary-empty">
     {% icon "utensils" 28 %}
     <p>{% translate "Nothing logged for this day yet." %}</p>
     <p class="caption">{% translate "Scan a barcode, check the label, then add how much you had." %}</p>
     <a class="btn btn-primary" href="{{ scan_url }}">{% icon "scan-barcode" 18 %}<span>{% translate "Scan your first food" %}</span></a>
   </div>{% endif %}
-  {% for g in groups %}<section class="meal" aria-labelledby="meal-{{ g.key }}">
+  {% for g in groups %}<section class="meal{% if g.open %} is-open{% endif %}" aria-labelledby="meal-{{ g.key }}" data-meal="{{ g.key }}">
     <div class="meal-head">
       <span class="meal-icon">{% icon g.icon 22 %}</span>
       <h3 id="meal-{{ g.key }}">{{ g.label }}</h3>
+      {# Phones: each meal folds to one row (total + chevron); the tools and foods open below #}
+      <span class="meal-sum">{% if g.entries %}{% if show_energy %}{{ g.kcal_display }} kcal{% else %}{% blocktranslate count n=g.entries|length %}{{ n }} food{% plural %}{{ n }} foods{% endblocktranslate %}{% endif %}{% else %}{% translate "Add" %}{% endif %}</span>
       <span class="meal-tools">
         <button type="button" class="meal-add meal-quick" data-quick-toggle="quick-{{ g.key }}" aria-controls="quick-{{ g.key }}" aria-expanded="{% if g.quick_open %}true{% else %}false{% endif %}" aria-label="{% blocktranslate with meal=g.label %}Quick add to {{ meal }}{% endblocktranslate %}" title="{% translate 'Quick add' %}" hidden>{% icon "plus" 22 %}</button>
         <a class="meal-add" href="{{ g.scan_url }}" aria-label="{% blocktranslate with meal=g.label %}Scan a barcode for {{ meal }}{% endblocktranslate %}" title="{% translate 'Scan a barcode' %}">{% icon "scan-barcode" 22 %}</a>
         <a class="meal-add" href="{{ g.search_url }}" aria-label="{% blocktranslate with meal=g.label %}Search products for {{ meal }}{% endblocktranslate %}" title="{% translate 'Search products' %}">{% icon "search" 22 %}</a>
       </span>
+      <button type="button" class="meal-fold" data-meal-fold aria-controls="meal-body-{{ g.key }}" aria-expanded="{% if g.open %}true{% else %}false{% endif %}" aria-label="{% blocktranslate with meal=g.label %}Show {{ meal }}{% endblocktranslate %}">{% icon "chevron-down" 20 %}</button>
     </div>
+    <div class="meal-body" id="meal-body-{{ g.key }}">
     {% if g.entries %}<ul class="entry-list">
       {% for e in g.entries %}<li id="entry-{{ e.pk }}">{% if e.edit_form %}{% include "myola/partials/diary_entry_form.html" with form=e.edit_form %}{% else %}{% include "myola/partials/diary_entry_row.html" %}{% endif %}</li>{% endfor %}
     </ul>{% endif %}
     {% include "myola/partials/diary_quick_add.html" with f=g.quick_form %}
+    </div>
   </section>{% endfor %}
 </section>

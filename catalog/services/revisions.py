@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from assessments.models import AssessmentSnapshot
 from assessments.rules import IndicatorSpec, apply_packaging_conflict, inputs_hash
+from catalog import quality
 from catalog.models import NutrientFact, Product, ProductRevision
 from catalog.nutrition import CORE_NUTRIENTS, to_decimal
 
@@ -234,6 +235,12 @@ def apply_revision(
         if nova and nova.data_status == "available" and not nova.invalidated_by_local_change
         else None
     )
+    _set_front_and_quality(product, data)
+    product.save()
+
+
+def _set_front_and_quality(product: Product, data: dict) -> None:
+    """Front photo URL, completeness and quality from the active photos and ``data``."""
     front = product.images.filter(is_active=True, kind="front").order_by("-created_at").first()
     if front is None:
         product.front_image_url = ""
@@ -242,4 +249,20 @@ def apply_revision(
     else:
         product.front_image_url = reverse("public-image", args=[front.id])
     product.completeness = completeness(data, has_image=front is not None)
-    product.save()
+    product.quality_issues = quality.issues(data, has_front_image=front is not None)
+    product.listable = quality.listable(product.quality_issues)
+
+
+def refresh_photos(product: Product) -> None:
+    """After a photo was switched on or off: front photo, completeness and quality again."""
+    revision = product.current_revision
+    _set_front_and_quality(product, revision.data if revision else {})
+    product.save(
+        update_fields=[
+            "front_image_url",
+            "completeness",
+            "quality_issues",
+            "listable",
+            "updated_at",
+        ]
+    )

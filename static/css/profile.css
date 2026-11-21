@@ -79,7 +79,10 @@
 .weight-delete { margin: 0; }
 
 /* Settings → Daily targets → Calculate automatically (dialog; a page without JavaScript) */
-.targets-calc-btn { align-self: flex-start; }
+.targets-calc-btn { align-self: flex-start; white-space: nowrap; flex-wrap: nowrap; max-width: 100%; }
+.targets-calc-btn span { white-space: nowrap; }
+.targets-calc-btn svg { flex: none; }
+@media (max-width: 360px) { .targets-calc-btn { font-size: .85rem; padding-inline: .6rem; gap: .35rem; } }
 .targets-dialog { width: min(calc(100vw - 32px), 520px); max-height: calc(100dvh - 32px); overflow: auto; }
 .targets-calc { display: flex; flex-direction: column; gap: .9rem; }
 .targets-calc form { display: flex; flex-direction: column; gap: .9rem; margin: 0; }

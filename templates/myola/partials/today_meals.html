@@ -1,4 +1,4 @@
-{% load i18n ui %}<section class="dash-section" aria-labelledby="meals-h">
+{% load i18n ui %}<section class="dash-section t-meals" aria-labelledby="meals-h">
   <h2 class="dash-title" id="meals-h">{% if is_today %}{% translate "What did you eat today?" %}{% else %}{% translate "What you ate" %}{% endif %}</h2>
   <ul class="meal-tiles stagger">
     {% for g in groups %}<li>

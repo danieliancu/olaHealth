@@ -2,6 +2,7 @@ import httpx
 import pytest
 import respx
 from django.core.cache import cache
+from django.urls import reverse
 
 from assessments.score import VERSION, foodo_score, score_for_product
 from catalog.models import Category
@@ -170,11 +171,11 @@ def test_off_search_is_cached(reference, off_client):
     with respx.mock(assert_all_called=False) as mock:
         route = search_route(mock, [off_item("5000000000101", "a", 1, 3)])
         first = alternatives(reference, client=off_client)
-        # One search per reference category (yogurts, then the parent): fewer than 3 found.
-        assert route.call_count == 2
+        # One search: "yogurts" (its other tags, dairies and fermented foods, are too broad).
+        assert route.call_count == 1
         second = alternatives(reference, client=off_client)
     assert first == second and len(first) == 1
-    assert route.call_count == 2  # served from the cache
+    assert route.call_count == 1  # served from the cache
 
 
 def test_off_error_gives_local_results_only(reference, off_payload, off_client):
@@ -220,16 +221,25 @@ def test_restrictions_and_avoid_list(reference, off_payload, off_client, member)
 
 
 def test_parent_category_fallback(reference, off_client):
-    Category.objects.create(tag="en:yogurts", name="Yogurts", parents=["en:fermented-foods"])
-    assert reference_categories(reference) == ["en:yogurts", "en:fermented-foods"]
+    Category.objects.create(tag="en:yogurts", name="Yogurts", parents=["en:dairy-desserts"])
+    assert reference_categories(reference) == ["en:yogurts", "en:dairy-desserts"]
     with respx.mock(assert_all_called=False) as mock:
         route = mock.route(host="off.test", path="/api/v2/search").mock(
             side_effect=lambda request: httpx.Response(
                 200,
                 json={
                     "products": (
-                        [off_item("5000000000101", "a", 1, 3, name="Kefir")]
-                        if request.url.params["categories_tags"] == "en:fermented-foods"
+                        [
+                            off_item(
+                                "5000000000101",
+                                "a",
+                                1,
+                                3,
+                                name="Kefir",
+                                categories_tags=[*CATS, "en:dairy-desserts"],
+                            )
+                        ]
+                        if request.url.params["categories_tags"] == "en:dairy-desserts"
                         else []
                     )
                 },
@@ -239,7 +249,7 @@ def test_parent_category_fallback(reference, off_client):
     assert [r["name"] for r in result] == ["Kefir"]
     assert [c.request.url.params["categories_tags"] for c in route.calls] == [
         "en:yogurts",
-        "en:fermented-foods",
+        "en:dairy-desserts",
     ]
 
 
@@ -275,3 +285,42 @@ def test_search_uses_its_own_gate():
         with pytest.raises(OFFError) as exc:
             c.search("en:yogurts")
     assert exc.value.kind == "rate_limited" and route.call_count == 0
+
+
+# --- Alternatives must be the same kind of food ------------------------------------------
+PEANUT = ["en:plant-based-foods-and-beverages", "en:plant-based-foods", "en:spreads",
+          "en:plant-based-spreads", "en:legume-butters", "en:peanut-butters"]  # fmt: skip
+
+
+def test_unrelated_off_results_are_never_shown(db, off_payload, off_client):
+    cache.clear()
+    butter = make(off_payload, "5000000000301", "d", 4, 14, name="Crunchy peanut butter",
+                  categories_tags=PEANUT)  # fmt: skip
+    assert reference_categories(butter)[0] == "en:peanut-butters"
+    garlic = off_item("5000000000302", "a", 1, 1, name="Chopped garlic",
+                      categories_tags=["en:plant-based-foods", "en:garlic"])  # fmt: skip
+    passata = off_item("5000000000303", "a", 1, 3, name="Passata",
+                       categories_tags=["en:plant-based-foods", "en:tomato-sauces"])  # fmt: skip
+    good = off_item("5000000000304", "b", 3, 5, name="Smooth peanut butter", categories_tags=PEANUT)
+    unnamed = off_item("5000000000305", "a", 1, 3, name="", categories_tags=PEANUT)
+    with respx.mock(assert_all_called=False) as mock:
+        route = search_route(mock, [garlic, passata, good, unnamed])
+        result = alternatives(butter, client=off_client, limit=10)
+    assert [r["name"] for r in result] == ["Smooth peanut butter"]
+    sent = {c.request.url.params["categories_tags"] for c in route.calls}
+    assert not sent & {"en:plant-based-foods", "en:spreads", "en:plant-based-foods-and-beverages"}
+
+
+def test_broad_categories_only_give_no_alternatives(db, off_payload, off_client, client):
+    cache.clear()
+    vague = make(off_payload, "5000000000311", "d", 4, 14, name="Mystery spread",
+                 categories_tags=["en:plant-based-foods", "en:spreads"])  # fmt: skip
+    assert reference_categories(vague) == []
+    with respx.mock(assert_all_called=False) as mock:
+        route = search_route(mock, [off_item("5000000000312", "a", 1, 1, name="Garlic")])
+        assert alternatives(vague, client=off_client) == []
+        html = client.get(reverse("product-alternatives", args=[vague.pk])).content.decode()
+    assert not route.calls
+    assert "We haven&#x27;t found a suitable alternative yet." in html or (
+        "We haven't found a suitable alternative yet." in html
+    )

@@ -179,6 +179,8 @@ def target_rows(t: Totals, targets: dict[str, int | None], show_energy: bool = T
                 "display": fmt(value),
                 "target": target,
                 "pct": pct,
+                # Uncapped, for the "68%" label (the meter itself stops at 100).
+                "percent": int(value / target * 100 + Decimal("0.5")) if target else None,
                 "over": bool(target and value > target),
                 "level": meter_level(value, target),
                 "partial": t.partial[key],

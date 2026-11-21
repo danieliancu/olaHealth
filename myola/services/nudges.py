@@ -13,6 +13,7 @@ from django.utils.translation import gettext as _
 
 # A meal counts as "missed so far" only after this local hour (and only on today).
 MEAL_AFTER_HOUR = {"breakfast": 11, "lunch": 15, "dinner": 21}
+START_HOUR = 9  # "Your diary is open" when nothing is logged by then
 
 
 @dataclass(frozen=True)
@@ -50,7 +51,7 @@ def pick_nudge(
     if not is_today:
         return None
     logged = {g.key for g in groups if g.entries}
-    if not logged and now.hour >= 9:
+    if not logged and now.hour >= START_HOUR:
         return Nudge(
             "start",
             "notebook-pen",

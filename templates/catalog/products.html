@@ -45,7 +45,7 @@
   <li class="product-card">
     {% if p.front_image_url %}<img class="thumb" src="{{ p.front_image_url|img }}" alt="" width="64" height="64" loading="lazy">{% else %}<img class="thumb" src="{% asset 'img/placeholder' %}" alt="" width="64" height="64">{% endif %}
     <div class="grow">
-      <a href="{% if diary %}{{ p.diary_url }}{% else %}{% url 'product' p.pk %}{% endif %}" class="product-link">{{ p.name|default:_("Unnamed product") }}</a>
+      <a href="{% if diary %}{{ p.diary_url }}{% else %}{% url 'product' p.pk %}{% endif %}" class="product-link">{{ p.name|default:_("Unnamed product") }}</a>{% if p.quality_issues %} <span class="partial quality-pill" title="{{ p.quality_labels|join:', ' }}">{% translate "Incomplete data" %}</span>{% endif %}
       <p class="meta">{% if p.brand %}{{ p.brand }}{% endif %}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</p>
       <p class="scores">
         {% if p.nutriscore_grade %}<span class="grade grade-sm grade-{{ p.nutriscore_grade }}" title="Nutri-Score {{ p.nutriscore_grade|upper }}{% if p.nutriscore_version %} ({{ p.nutriscore_version }}){% endif %}"><span class="sr-only">Nutri-Score </span>{{ p.nutriscore_grade|upper }}</span>{% endif %}

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% load i18n ui %}
-{% block title %}{% translate "My Track" %}{% endblock %}
+{% block title %}{% translate "My account" %}{% endblock %}
 {% block content %}
 <div id="mytrack">
 <div class="page-head">
-  <div class="page-head-soft"><span class="soft-icon">{% icon "user-round" 20 %}</span><h1>{% translate "My Track" %}</h1></div>
+  <div class="page-head-soft"><span class="soft-icon">{% icon "user-round" 20 %}</span><h1>{% translate "My account" %}</h1></div>
 </div>
 {% include "myola/partials/mytrack_messages.html" %}
 
@@ -20,7 +20,7 @@
   </div>
 </section>
 
-<nav class="segmented seg-5 mytrack-tabs" aria-label="{% translate 'My Track sections' %}">
+<nav class="segmented seg-5 mytrack-tabs" aria-label="{% translate 'My account sections' %}">
   {% for key, label in tabs %}
   <a href="{% url 'ask-foodo' %}?tab={{ key }}" hx-get="{% url 'ask-foodo' %}?tab={{ key }}" hx-target="#mytrack" hx-select="#mytrack" hx-swap="outerHTML" hx-push-url="true"{% if key == tab %} aria-current="page"{% endif %}>{{ label }}</a>
   {% endfor %}
@@ -70,7 +70,7 @@
       <li><a href="{% url 'progress' %}">{% icon "chart-line" 18 %}<span>{% translate "Progress" %}</span>{% icon "chevron-right" 16 %}</a></li>
       <li><a href="{% url 'scan' %}">{% icon "scan-barcode" 18 %}<span>{% translate "Scan a product" %}</span>{% icon "chevron-right" 16 %}</a></li>
       <li><a href="{% url 'saved' %}">{% icon "heart" 18 %}<span>{% translate "Favourites & recently viewed" %}</span>{% icon "chevron-right" 16 %}</a></li>
-      <li><a href="{% url 'learn' %}">{% icon "book-open" 18 %}<span>{% translate "Learn: reading food labels" %}</span>{% icon "chevron-right" 16 %}</a></li>
+      <li><a href="{% url 'learn' %}">{% icon "book-open" 18 %}<span>{% translate "Magazine: reading food labels" %}</span>{% icon "chevron-right" 16 %}</a></li>
       <li><a href="{% url 'sources' %}">{% icon "info" 18 %}<span>{% translate "Sources & methodology" %}</span>{% icon "chevron-right" 16 %}</a></li>
     </ul>
   </div>

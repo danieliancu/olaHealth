@@ -12,6 +12,11 @@ urlpatterns = [
     path("products/", views.products, name="products"),
     path("products/<uuid:pk>/", views.product_detail, name="product"),
     path("products/<uuid:pk>/refresh/", views.product_refresh, name="product-refresh"),
+    path(
+        "products/<uuid:pk>/photos/<uuid:image_id>/toggle/",
+        views.product_image_toggle,
+        name="product-image-toggle",
+    ),
     path("users/", views.users, name="users"),
     path("users/<int:pk>/delete/", views.user_delete, name="user-delete"),
     re_path(

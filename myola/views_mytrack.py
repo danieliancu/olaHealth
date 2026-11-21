@@ -621,8 +621,8 @@ BACK_LABELS = {
     "saved": gettext_lazy("Saved products"),
     "compare": gettext_lazy("Compare"),
     "progress": gettext_lazy("Progress"),
-    "learn": gettext_lazy("Learn"),
-    "ask-foodo": gettext_lazy("My Track"),
+    "learn": gettext_lazy("Magazine"),
+    "ask-foodo": gettext_lazy("My account"),
     "notifications": gettext_lazy("Notifications"),
     "settings-edit": gettext_lazy("Settings"),
     "profile-edit": gettext_lazy("Profile"),
@@ -630,7 +630,7 @@ BACK_LABELS = {
 
 
 def _back_label(path: str) -> str:
-    """A short name for the page at ``path`` ("the product name", "Learn", "Home"...)."""
+    """A short name for the page at ``path`` ("the product name", "Magazine", "Home"...)."""
     from django.urls import Resolver404, resolve
 
     try:
@@ -645,7 +645,7 @@ def _back_label(path: str) -> str:
         from core.models import LearnArticle
 
         a = LearnArticle.objects.filter(slug=match.kwargs.get("slug")).only("title").first()
-        return a.title if a else str(_("Learn"))
+        return a.title if a else str(_("Magazine"))
     return str(BACK_LABELS.get(name, ""))
 
 

@@ -36,7 +36,7 @@ from myola.services.profiles import clear_health, finish_onboarding, get_profile
 STEPS = 4
 NOT_SAVED_HEALTH = gettext_lazy(
     "Your health answers were not saved, because you did not tick the consent box. "
-    "You can add them later in My Track."
+    "You can add them later in My account."
 )
 
 
@@ -347,7 +347,9 @@ def targets_save(request: HttpRequest) -> HttpResponse:
         setattr(profile, name, value)
     profile.save(update_fields=[*values, "updated_at"])
     messages.success(request, _("Targets saved."))
-    url = reverse("settings-edit") + "#targets"
+    # A different URL from the open Settings page: "/settings/#targets" alone only scrolls
+    # (same document), so the old values stayed on screen and the save looked lost.
+    url = reverse("settings-edit") + "?saved=targets#targets"
     if is_htmx(request):
         response = HttpResponse(status=204)
         response["HX-Redirect"] = url

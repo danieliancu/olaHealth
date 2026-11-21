@@ -83,12 +83,12 @@ def test_header_count_is_hidden_for_visitors(client):
 
 
 def test_buy_often_and_avoid_are_exclusive(member_client, member, product):
-    r = member_client.post(mark_url(product, "buy_often"), {"ui": "page", "more": "1"}, **HX)
+    r = member_client.post(mark_url(product, "buy_often"), {"ui": "page"}, **HX)
     assert kinds(member, product) == {"buy_often"}
     body = r.content.decode()
-    assert 'id="product-actions"' in body and '<details class="more" open>' in body
+    assert 'id="product-actions"' in body and 'class="more"' not in body
     assert 'data-list-toggle="buyOften" aria-pressed="true"' in body
-    r = member_client.post(mark_url(product, "avoid"), {"ui": "page", "more": "1"}, **HX)
+    r = member_client.post(mark_url(product, "avoid"), {"ui": "page"}, **HX)
     assert kinds(member, product) == {"avoid"}
     body = r.content.decode()
     assert 'data-list-toggle="avoid" aria-pressed="true"' in body
@@ -161,7 +161,7 @@ def test_compare_link_counts_the_selection(client, products):
     assert re.search(r'id="compare-open" href="/compare/" hidden>', html)
     r = client.post(reverse("compare-add", args=[b.pk]), {"ui": "page"}, **HX)
     body = r.content.decode()
-    assert 'id="product-actions"' in body and "<span>Added</span>" in body
+    assert 'id="product-actions"' in body and '<span class="act-label">Added</span>' in body
     assert re.search(r'id="compare-open" href="/compare/" hx-swap-oob="true">.*\(2\)', body)
 
 
@@ -276,7 +276,7 @@ def test_for_you_without_preferences_and_for_visitors(member_client, product):
 def test_product_page_add_to_diary_is_a_link(client, product):
     html = client.get(reverse("product", args=[product.pk])).content.decode()
     assert f'href="{reverse("add-food", args=[product.pk])}"' in html and "Add to diary" in html
-    assert '<details class="more">' in html
+    assert 'id="product-actions"' in html and 'class="act-label">Compare<' in html
 
 
 def test_product_note(member_client, member, product):

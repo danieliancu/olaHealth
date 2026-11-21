@@ -1,17 +1,13 @@
 {% load i18n ui %}<div class="chat chat-inline" id="chat-{{ chat_id }}">
   <ol class="chat-log" id="chat-log-{{ chat_id }}" role="log" aria-live="polite" aria-label="{% translate 'Conversation with Foodo' %}">{% if not chat_messages %}<li class="chat-welcome"><span class="chat-avatar" aria-hidden="true">{% icon "message-circle" 14 %}</span><p>{% if chat_product %}{% translate "Hi! Ask me about this product: its values, scores or how it fits your restrictions." %}{% else %}{% translate "Hi! I can help with your food lists, scans and preferences, and find any product by name or barcode (also in Open Food Facts). What would you like to know?" %}{% endif %}</p></li>{% endif %}{% include "myola/partials/chat_messages.html" with oob=False %}</ol>
-  <p class="caption" id="chat-empty-{{ chat_id }}"{% if chat_messages %} hidden{% endif %}>{% translate "Pick a question or type your own." %}</p>
+  <p class="caption" id="chat-empty-{{ chat_id }}"{% if chat_messages %} hidden{% endif %}>{% translate "Type your question." %}</p>
   <form class="chat-send" method="post" action="{% url 'chat-send' %}" hx-post="{% url 'chat-send' %}" hx-target="#chat-log-{{ chat_id }}" hx-swap="beforeend scroll:bottom" hx-disabled-elt="find button">
     {% csrf_token %}
     <input type="hidden" name="context" value="{{ chat_context }}">
-    {# The send button comes first so that Enter sends the typed question, not a suggestion. #}
     <div class="chat-form">
       <label for="chat-input-{{ chat_id }}" class="sr-only">{% translate "Your question" %}</label>
       {% include "myola/partials/chat_input.html" %}
       <button type="submit" class="btn btn-primary btn-send" aria-label="{% translate 'Send' %}">{% icon "send" 20 %}</button>
-    </div>
-    <div class="chat-suggest" role="group" aria-label="{% translate 'Suggested questions' %}">
-      {% for key, label in chat_suggestions %}<button type="submit" class="chip-btn" name="intent" value="{{ key }}">{% icon key|suggestion_icon 15 %}<span>{% translate label %}</span></button>{% endfor %}
     </div>
   </form>
 </div>

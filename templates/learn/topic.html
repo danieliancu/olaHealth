@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% load i18n ui %}
-{% block title %}{{ topic.title }} · {% translate "Learn" %}{% endblock %}
-{% block head %}<meta name="description" content="{% blocktranslate with t=topic.title %}{{ t }}: the latest articles on AskFoodo Learn.{% endblocktranslate %}">{% endblock %}
+{% block title %}{{ topic.title }} · {% translate "Magazine" %}{% endblock %}
+{% block head %}<meta name="description" content="{% blocktranslate with t=topic.title %}{{ t }}: the latest articles in the AskFoodo Magazine.{% endblocktranslate %}">{% endblock %}
 {% block content %}
 <div class="learn learn-topic">
-  <p class="back"><a href="{% url 'learn' %}">{% icon "chevron-left" 18 %}<span>{% translate "Learn" %}</span></a></p>
+  <p class="back"><a href="{% url 'learn' %}">{% icon "chevron-left" 18 %}<span>{% translate "Magazine" %}</span></a></p>
   <div class="page-head page-head-soft">
     <span class="soft-icon">{% icon topic.icon 20 %}</span>
     <div>

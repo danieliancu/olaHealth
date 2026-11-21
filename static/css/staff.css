@@ -235,3 +235,25 @@ a.staff-stat:hover { border-color: var(--accent); }
 .ai-log-q, .ai-log-a { margin: .5rem 0 0; font-size: .92rem; overflow-wrap: anywhere; }
 .ai-log-a { color: var(--text); }
 @media (max-width: 767px) { .ai-log-cost { margin-left: 0; flex-basis: 100%; } }
+
+/* Announcements: the form and history on the left, what is coming up automatically on the right */
+.announce-grid { display: grid; gap: 1.25rem; align-items: start; }
+@media (min-width: 1180px) { .announce-grid { grid-template-columns: minmax(0, 1fr) minmax(0, .85fr); } }
+.coming-up h2 { display: flex; align-items: center; gap: .45rem; margin: 0 0 .35rem; font-size: 1.1rem; }
+.coming-up h3 { margin: 1.1rem 0 .4rem; font-size: .95rem; }
+.coming-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .1rem; }
+.coming-list li { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr) auto; gap: .6rem; align-items: baseline; padding: .45rem 0; border-top: 1px solid var(--line); }
+.coming-list li:first-child { border-top: 0; }
+.coming-list time { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.coming-list li > span:not(.coming-tag) { display: grid; min-width: 0; }
+.coming-list .hint { margin: 0; font-size: .85rem; }
+.coming-tag { font-size: .75rem; font-weight: 600; color: var(--accent-strong); white-space: nowrap; }
+.coming-list .is-past { color: var(--muted); }
+.coming-list .is-past .coming-tag { color: var(--muted); font-weight: 400; }
+.coming-list .is-due time { color: var(--accent-strong); }
+
+/* Staff product page: photos with a switch to take an unsuitable one off */
+.staff-photos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; }
+.staff-photos li { display: grid; gap: .35rem; justify-items: start; }
+.staff-photos img { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: #f9fafb; }
+.staff-photos .is-off img { opacity: .4; filter: grayscale(1); }

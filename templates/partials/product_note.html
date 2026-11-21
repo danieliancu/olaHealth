@@ -9,6 +9,6 @@
     <label for="note-kind">{% translate "Kind" %}</label>
     <select id="note-kind" name="kind">{% for v, l in note_kinds %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
     <button class="btn btn-primary" type="submit">{% icon "check" 18 %}<span>{% translate "Save note" %}</span></button>
-    <p class="caption">{% translate "Notes are kept in My Track → Notes." %}</p>
+    <p class="caption">{% translate "Notes are kept in My account → Notes." %}</p>
   </form>
 </details>

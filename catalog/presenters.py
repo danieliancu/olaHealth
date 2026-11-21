@@ -274,9 +274,19 @@ def quality_pills(
     "Up to date with the source", "checked by a moderator" and "complete" are different things;
     none of them is implied by the absence of a pill.
     """
+    from catalog import quality
     from contributions.models import Contribution
 
     pills = []
+    issues = set(product.quality_issues or [])
+    if issues & {quality.NAME_MISSING, quality.NAME_INCOMPLETE}:
+        pills.append({"key": "name_incomplete", "label": _("Name incomplete")})
+    if quality.CATEGORY_MISSING in issues:
+        pills.append({"key": "category_missing", "label": _("Category unclear")})
+    if quality.PHOTO_MISSING in issues:
+        pills.append({"key": "photo_missing", "label": _("No photo")})
+    if not product.listable:
+        pills.append({"key": "not_listed", "label": _("Not shown in search")})
     if not ((data.get("ingredients") or {}).get("text") or "").strip():
         pills.append({"key": "ingredients_missing", "label": _("Ingredients missing")})
     nutrition = data.get("nutrition") or {}
@@ -416,7 +426,7 @@ ROW_META = {
     "energy-kcal": ("Energy", "flame", ""),
     "fat": ("Fat", "droplet", "fat"),
     "saturated-fat": ("Saturates", "droplets", "saturates"),
-    "carbohydrates": ("Carbohydrate", "wheat", ""),
+    "carbohydrates": ("Carbo\u00adhydrate", "wheat", ""),  # soft hyphen: splits when narrow
     "sugars": ("Sugars", "candy", "sugars"),
     "fiber": ("Fibre", "leaf", ""),
     "proteins": ("Protein", "egg", ""),

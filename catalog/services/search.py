@@ -32,11 +32,18 @@ class SearchParams:
     nutriscore: str = ""
     completeness: str = ""
     sort: str = "relevance"
+    # Staff only: also products kept out of listings for missing name or nutrition data.
+    include_unlisted: bool = False
+    unlisted_only: bool = False
 
 
 def _filtered(params: SearchParams, skip: str = "") -> QuerySet[Product]:
     """Published products matching every filter except ``skip`` (used for facets)."""
     qs = Product.objects.filter(current_revision__isnull=False)
+    if params.unlisted_only:
+        qs = qs.exclude(quality_issues=[])
+    elif not params.include_unlisted:
+        qs = qs.filter(listable=True)  # catalog/quality.py: no usable name or nutrition data
     if params.category and skip != "category":
         qs = qs.filter(categories__contains=[params.category])
     if params.country and skip != "country":
@@ -100,6 +107,8 @@ def search_products(params: SearchParams) -> QuerySet[Product]:
         "completeness",
         "front_image_url",
         "categories",
+        "quality_issues",
+        "listable",
         "updated_at",
         "current_revision__id",
         "current_revision__created_at",

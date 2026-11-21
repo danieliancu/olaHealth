@@ -1,8 +1,12 @@
-{% load i18n ui %}<section class="nudge" aria-labelledby="nudge-h">
+{% load i18n ui %}{# Top of Today: the latest notification while it is unread (notifications.home_card) #}
+<section class="nudge" id="home-note" aria-labelledby="nudge-h">
   <span class="nudge-icon">{% icon nudge.icon 20 %}</span>
   <div class="nudge-body">
     <h2 id="nudge-h">{{ nudge.title }}</h2>
-    <p>{{ nudge.text }}</p>
-    {% if nudge.url %}<a class="nudge-link" href="{{ nudge.url }}">{{ nudge.action }}{% icon "chevron-right" 16 %}</a>{% endif %}
+    {% if nudge.body %}<p>{{ nudge.body }}</p>{% endif %}
+    <a class="nudge-link" href="{% url 'notification-open' nudge.pk %}">{{ nudge.action }}{% icon "chevron-right" 16 %}</a>
   </div>
+  <form class="nudge-close" method="post" action="{% url 'notification-read' nudge.pk %}" hx-post="{% url 'notification-read' nudge.pk %}" hx-target="#home-note" hx-swap="delete">
+    {% csrf_token %}<button type="submit" class="icon-btn" aria-label="{% translate 'Mark as read' %}" title="{% translate 'Mark as read' %}">{% icon "x" 18 %}</button>
+  </form>
 </section>

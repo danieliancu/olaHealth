@@ -115,7 +115,7 @@ def test_chat_page_is_the_active_tab(member_client):
     nav = html.split('<nav class="tabbar"')[1].split("</nav>")[0]
     current = re.findall(r'<a href="([^"]+)" aria-current="page">', nav)
     assert current == ["/ask-foodo/chat/"]
-    assert 'class="chat-suggest"' in html
+    assert 'class="chat-suggest"' not in html  # no suggestion pills
 
 
 # ---------- Learn ----------

@@ -1,0 +1,9 @@
+{% load i18n ui %}{# Phones only: the three ways to check a food (the Quick actions list stays on larger screens) #}
+<section class="card t-card t-check t-check-solo" aria-labelledby="check-h">
+  <h2 id="check-h">{% translate "What would you like to check?" %}</h2>
+  <a class="check-btn check-primary" href="{{ scan_url }}">{% icon "scan-barcode" 22 %}<span>{% translate "Scan barcode" %}</span>{% icon "arrow-right" 20 %}</a>
+  <div class="check-row">
+    <a class="check-btn" href="{% url 'products' %}">{% icon "search" 20 %}<span>{% translate "Search food" %}</span>{% icon "arrow-right" 18 %}</a>
+    <a class="check-btn" href="{% url 'compare' %}">{% icon "scale" 20 %}<span>{% translate "Compare" %}</span>{% icon "arrow-right" 18 %}</a>
+  </div>
+</section>

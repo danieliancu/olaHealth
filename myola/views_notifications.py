@@ -57,6 +57,10 @@ def notifications_read_all(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_POST
 def notification_read(request: HttpRequest, pk: int) -> HttpResponse:
-    """Mark one notification read (sent in the background when its link is followed)."""
+    """Mark one notification read: sent in the background when its link is followed, or the
+    close button on the Today card (htmx: the card goes and the bell count updates)."""
     notes.mark_read(request.user, pk)
+    if request.headers.get("HX-Request") == "true":
+        ctx = {"notif_unread": notes.unread_count(request.user), "oob": True}
+        return render(request, "partials/notif_count.html", ctx)
     return HttpResponse(status=204)

@@ -1,5 +1,5 @@
 {% load i18n ui %}{% url 'today-activity-add' as add_url %}
-<section class="card t-card" aria-labelledby="act-h">
+<section class="card t-card t-activity" aria-labelledby="act-h">
   <div class="t-card-head"><h2 id="act-h">{% icon "activity" 20 %} {% translate "Activity" %}</h2><strong class="t-total">{{ activity_total }}</strong></div>
   <details class="log-more"{% if activity_form.errors %} open{% endif %}>
   <summary>{% icon "plus" 16 %}<span>{% translate "Log activity" %}</span></summary>

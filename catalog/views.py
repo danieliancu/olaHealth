@@ -25,6 +25,7 @@ from catalog.forms import FORMAT_CHOICES, LookupForm, ScanPhotoForm, SearchForm
 from catalog.models import Category, Country, Product
 from catalog.services.lookup import lookup
 from catalog.services.search import SearchParams, facets, search_products, tag_names
+from contributions.services import ownership
 from core.barcodes import decode_product_barcodes
 from core.coordination import check_request_limit, rate_limited
 from core.images import ImageRejected, validate_and_reencode
@@ -392,8 +393,19 @@ def product_detail(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
     context["chat_context"] = f"product:{product.pk}"
     context["note_open"] = request.GET.get("note") == "1"
     context["note_kinds"] = Note.Kind.choices
+    context["can_delete"] = ownership.can_delete(request.user, product)
     _record_visit(request, product, scanned)
     return render(request, "catalog/product.html", context)
+
+
+@require_POST
+def product_delete(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
+    """Delete a product the user added themselves (``ownership.can_delete``); 404 otherwise."""
+    product = get_object_or_404(Product, pk=pk)
+    if not ownership.delete_product(request.user, product):
+        raise Http404
+    messages.success(request, _("Product deleted."))
+    return redirect("saved")
 
 
 # ---------- Personal marks: favourite, buy often, avoid, hidden ----------
@@ -442,7 +454,6 @@ def _ui_response(request: HttpRequest, product: Product, *, compare: bool = Fals
         )
     elif ui == "page":
         ctx = _product_actions_context(request, product)
-        ctx["more_open"] = request.POST.get("more") == "1"
         ctx["next_url"] = next_url
         body = render_to_string("partials/product_actions.html", ctx, request=request)
     elif ui == "saved":  # Saved page hearts: both lists, so the product changes list at once
@@ -485,12 +496,12 @@ def product_note(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
     saved = bool(text) and not full
     if saved:
         Note.objects.create(user=request.user, product=product, kind=kind, text=text)
-        messages.success(request, _("Note saved in My Track → Notes."))
+        messages.success(request, _("Note saved in My account → Notes."))
     elif full:
         # Same rule as My Track: never delete an older note without asking.
         messages.error(
             request,
-            _("You have %(n)s notes, the maximum. Delete some in My Track → Notes first.")
+            _("You have %(n)s notes, the maximum. Delete some in My account → Notes first.")
             % {"n": LIMITS["notes"]},
         )
     else:

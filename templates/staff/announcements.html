@@ -1,18 +1,52 @@
-{% extends "staff/layout.html" %}{% load ui %}
+{% extends "staff/layout.html" %}{% load ui tz %}
 {% block staff_title %}Announcements{% endblock %}
 {% block staff_content %}
 <h1>Announcements</h1>
 <p class="hint">Sent as an in-app notification (the bell) to every active user who keeps “News from AskFoodo” switched on. No emails.</p>
-<form method="post" action="{% url 'staff:announcements' %}" class="card staff-form" novalidate>{% csrf_token %}
-  {% include "partials/form_fields.html" %}
-  <div class="row">
-    <button class="btn btn-primary" type="submit">{% icon "send" 18 %}<span>Send announcement</span></button>
+<div class="announce-grid">
+  <div>
+    <form method="post" action="{% url 'staff:announcements' %}" class="card staff-form" novalidate>{% csrf_token %}
+      {% include "partials/form_fields.html" %}
+      <div class="row">
+        <button class="btn btn-primary" type="submit">{% icon "send" 18 %}<span>Send announcement</span></button>
+      </div>
+    </form>
+    <h2>Sent</h2>
+    {% if recent %}
+    <ul class="plain-list">
+      {% for a in recent %}<li><strong>{{ a.title }}</strong> <span class="hint">· {{ a.created_at|date:"j M Y H:i" }}{% if a.created_by %} · {{ a.created_by.email|default:a.created_by }}{% endif %}</span>{% if a.body %}<br><span class="hint">{{ a.body }}</span>{% endif %}</li>{% endfor %}
+    </ul>
+    {% else %}<p class="hint">Nothing sent yet.</p>{% endif %}
   </div>
-</form>
-<h2>Sent</h2>
-{% if recent %}
-<ul class="plain-list">
-  {% for a in recent %}<li><strong>{{ a.title }}</strong> <span class="hint">· {{ a.created_at|date:"j M Y H:i" }}{% if a.created_by %} · {{ a.created_by.email|default:a.created_by }}{% endif %}</span>{% if a.body %}<br><span class="hint">{{ a.body }}</span>{% endif %}</li>{% endfor %}
-</ul>
-{% else %}<p class="hint">Nothing sent yet.</p>{% endif %}
+
+  <aside class="card coming-up" aria-labelledby="coming-h">
+    <h2 id="coming-h">{% icon "clock" 18 %}<span>Coming up automatically</span></h2>
+    <p class="hint">Preset notifications, by each user's local time (UK now: {{ schedule_now|date:"H:i" }}). Only users active in the last 14 days, set up, with reminders switched on. Each one is sent at most once.</p>
+
+    <h3>Every day</h3>
+    <ol class="coming-list">
+      {% for r in schedule %}<li class="{% if r.later %}is-later{% else %}is-past{% endif %}">
+        <time>{{ r.time }}</time>
+        <span><strong>{{ r.title }}</strong><span class="hint">{{ r.when }}</span></span>
+        <span class="coming-tag">{% if r.later %}Later today{% else %}Earlier{% endif %}</span>
+      </li>{% endfor %}
+    </ol>
+    <p class="hint">At most {{ reminders_per_day }} diary reminders a day (water not counted). They go out at the first run of the reminders job after the hour{% if reminders_next %}, next run {{ reminders_next|timezone:uk_tz|date:"H:i" }}{% endif %}.</p>
+
+    <h3>Other</h3>
+    <ul class="coming-list">
+      <li><time>{{ weigh_in_hour }}</time><span><strong>Weekly weigh-in, if you like</strong><span class="hint">On the day each user chose, with weight tracking on</span></span></li>
+      <li><time>Once</time><span><strong>Finish your profile in a minute</strong><span class="hint">A day after sign-up, profile under half complete</span></span></li>
+      <li><time>Any time</time><span><strong>Achievements</strong><span class="hint">When earned, at the next run</span></span></li>
+    </ul>
+
+    <h3>Magazine articles</h3>
+    {% if scheduled_articles %}<ul class="coming-list">
+      {% for a in scheduled_articles %}<li class="{% if a.due %}is-due{% else %}is-later{% endif %}">
+        <time>{{ a.local|date:"j M H:i" }}</time>
+        <span><strong>{{ a.title }}</strong><span class="hint">{% if a.due %}Goes out at the next check{% if articles_next %} ({{ articles_next|timezone:uk_tz|date:"H:i" }}){% endif %}{% else %}Scheduled{% endif %}</span></span>
+      </li>{% endfor %}
+    </ul>{% else %}<p class="hint">No articles waiting. A published article is announced within the hour after its publish date.</p>{% endif %}
+  </aside>
+</div>
 {% endblock %}

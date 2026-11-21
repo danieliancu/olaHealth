@@ -31,7 +31,11 @@ def reminder_for(user, profile, now: dt.datetime | None = None) -> Notification 
     local_now = (now or timezone.now()).astimezone(user_tz(profile))
     today = local_now.date()
     prefix = f"reminder:{today.isoformat()}:"
-    if Notification.objects.filter(user=user, key__startswith=prefix).count() >= REMINDERS_PER_DAY:
+    # The cap is for diary reminders only: water reminders share the prefix but have their own pace.
+    sent_today = Notification.objects.filter(user=user, key__startswith=prefix).exclude(
+        key__startswith=f"{prefix}water-"
+    )
+    if sent_today.count() >= REMINDERS_PER_DAY:
         return None
     groups, _totals = diary.day_diary(user, today)
     for g in groups:
@@ -80,6 +84,29 @@ def sync_achievements(user, profile=None) -> int:
 
 
 WATER_CHECKPOINTS = ((17, 1500), (14, 1000), (11, 500))  # local hour, ml expected by then
+WEIGH_IN_HOUR = 8
+
+
+def automatic_schedule() -> list[dict]:
+    """The preset reminders by local hour, for the staff Announcements page. Built from the
+    same constants the jobs use, so the page never drifts from what is sent."""
+    meals = {"breakfast": "Add breakfast?", "lunch": "Add lunch?", "dinner": "Add dinner?"}
+    rows = [
+        {
+            "hour": nudges.START_HOUR,
+            "title": "Your diary is open",
+            "when": "Nothing logged yet today",
+        }
+    ]
+    for meal, hour in nudges.MEAL_AFTER_HOUR.items():
+        rows.append(
+            {"hour": hour, "title": meals[meal], "when": f"Something logged, but no {meal}"}
+        )
+    for hour, ml in WATER_CHECKPOINTS:
+        rows.append(
+            {"hour": hour, "title": "Time for a glass of water", "when": f"Under {ml} ml so far"}
+        )
+    return sorted(rows, key=lambda r: r["hour"])
 
 
 def water_reminder_for(user, profile, now: dt.datetime | None = None) -> Notification | None:
@@ -116,7 +143,7 @@ def weigh_in_for(user, profile, now: dt.datetime | None = None) -> Notification 
         return None
     local_now = (now or timezone.now()).astimezone(user_tz(profile))
     today = local_now.date()
-    if today.weekday() != profile.weigh_day or local_now.hour < 8:
+    if today.weekday() != profile.weigh_day or local_now.hour < WEIGH_IN_HOUR:
         return None
     if WeightEntry.objects.filter(user=user, date=today).exists():
         return None
@@ -230,7 +257,7 @@ def notify_new_articles() -> int:
                 kind=Notification.Kind.ANNOUNCEMENT,
                 key=f"learn:{a.pk}",
                 # Same style as the other notifications: a short headline, then one sentence.
-                title="New article in Learn",
+                title="New article in the Magazine",
                 body=f"“{a.title}”: a {a.minutes}-minute read in {a.topic.title}.",
                 url=reverse("learn-article", args=[a.slug]),
                 icon="book-open",

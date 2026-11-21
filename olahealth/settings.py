@@ -219,6 +219,11 @@ UPLOADS_PER_CONTRIBUTION = env_int("UPLOADS_PER_CONTRIBUTION", 6)
 
 # Open Food Facts ---------------------------------------------------------------
 OFF_BASE_URL = env("OFF_BASE_URL", "https://world.openfoodfacts.org")
+
+# Ask Foodo personal context (myola/context): "django" reads the app's models; "local_db" is
+# the separate local database (personal data + products by location) once it is connected.
+AI_CONTEXT_SOURCE = env("AI_CONTEXT_SOURCE", "django")
+AI_CONTEXT_DB_URL = env("AI_CONTEXT_DB_URL", "")
 OFF_USER_AGENT = env("OFF_USER_AGENT", "olaHealth/0.1 (set OFF_USER_AGENT with a contact)")
 OFF_CONNECT_TIMEOUT = float(env("OFF_CONNECT_TIMEOUT", "3"))
 OFF_READ_TIMEOUT = float(env("OFF_READ_TIMEOUT", "10"))

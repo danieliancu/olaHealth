@@ -17,7 +17,7 @@
         </ul>
       </div>
       <div>
-        <h2>{% translate "Learn" %}</h2>
+        <h2>{% translate "Magazine" %}</h2>
         <ul>
           {% for key, title in learn_topics %}<li><a href="{% url 'learn-topic' key %}">{{ title }}</a></li>
           {% empty %}<li><a href="{% url 'learn' %}">{% translate "Reading labels" %}</a></li>{% endfor %}

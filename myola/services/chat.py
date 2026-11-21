@@ -239,7 +239,7 @@ def rule_answer(intent: str | None, facts: dict[str, Any]) -> str:
             )
         elif not facts["diets"] and not facts["allergens"]:
             lines.append(
-                "You haven't chosen any diet or allergy. You can set them in My Track → Profile."
+                "You haven't chosen any diet or allergy. You can set them in My account → Profile."
             )
         else:
             states = p["restrictions"]
@@ -260,7 +260,7 @@ def rule_answer(intent: str | None, facts: dict[str, Any]) -> str:
         else:
             lines.append(
                 "I don't remember anything yet. You can add or confirm memories in "
-                "My Track → Notes → Foodo remembers."
+                "My account → Notes → Foodo remembers."
             )
         summary = _prefs_summary(facts)
         if summary:
@@ -413,7 +413,10 @@ def _followups(user, context: str) -> list[dict[str, str]]:
             context=context,
             outcome=AIAnswer.Outcome.ANSWERED,
             created_at__gte=timezone.now() - timedelta(minutes=FOLLOWUP_MINUTES),
-        ).order_by("-created_at")[:FOLLOWUP_PAIRS]
+        )
+        .exclude(answer="")  # personal answers are not kept, so they cannot be followed up
+        .exclude(kind=AIAnswer.Kind.TRANSLATION)
+        .order_by("-created_at")[:FOLLOWUP_PAIRS]
     )
     turns: list[dict[str, str]] = []
     for row in reversed(rows):
@@ -429,27 +432,46 @@ def _answer(user, context: str, text: str, product=None):
     label (and general food questions in the general chat) the AI provider may answer from an
     allow-list of facts (see ``ai_facts_for``). Any AI problem (off, limits, errors, a blocked
     answer) silently falls back to the rule-based answer, and the model may hand a question
-    about allergies, diets or the user's own data back to the rules."""
+    about allergies, diets or the user's own data back to the rules.
+
+    Every answer is in the language of the question: the rule answers are written in English,
+    so they are translated (``_localise``); English with a short note only when that fails."""
+    from ai import language
     from myola.services import chat_products
+
+    lang = language.detect(text)
+    profile = get_profile(user)
+
+    def localise(answer: str, log=None, *, kind: str = "public"):
+        return _localise(user, profile, answer, log, lang, text, context, kind=kind)
 
     found = chat_products.answer(text)
     if found:
-        return found, None  # product search: facts only, never phrased by the AI provider
+        # Product search: facts only, never phrased by the AI provider (only translated).
+        return localise(found)
     intent = detect_intent(text)
+    # Questions about the user, with their consent: answered from their own data. An allergy
+    # or diet check of a product always stays with the rules (safety).
+    product_check = product is not None and intent == "restrictions"
+    if profile.ai_use_my_data and not product_check and is_personal(text, intent):
+        personal = _personal_answer(user, profile, context, text)
+        if personal is not None:
+            return personal
     facts = build_facts(user, context, product, question=text)
     baseline = rule_answer(intent, facts)
+    kind = _personal_data(intent, facts)
     if intent in RULE_ONLY_INTENTS:
-        return baseline, None
+        return localise(baseline, kind=kind)
+    from ai.models import AIAnswer
     from ai.service import ask
     from staff.models import SiteSettings
 
-    profile = get_profile(user)
     site = SiteSettings.load()
     if product is None:
         # General chat: general food and nutrition questions may go to the AI (only the
         # question is sent). Not for people who told us about an eating disorder.
         if not site.ai_general_questions or profile.eating_disorder:
-            return baseline, None
+            return localise(baseline, kind=kind)
         result = ask(user, {}, text, _followups(user, context), general=True, context=context)
     else:
         ai_facts = ai_facts_for(
@@ -461,8 +483,99 @@ def _answer(user, context: str, text: str, product=None):
         # Rule answers never go out: they can contain notes and memories.
         result = ask(user, ai_facts, text, _followups(user, context), context=context)
     if result.route:
-        return rule_answer(result.route, facts), result.log
-    return (result.text or baseline), result.log
+        routed = rule_answer(result.route, facts)
+        return localise(routed, result.log, kind=_personal_data(result.route, facts))
+    if result.text:
+        return result.text, result.log
+    if result.log and result.log.outcome == AIAnswer.Outcome.FAILED:
+        return _english_only(baseline, lang, "busy"), result.log  # the provider is failing now
+    return localise(baseline, result.log, kind=kind)
+
+
+# "my", "I", "me" in the app's languages: a question about the user themselves.
+_FIRST_PERSON = re.compile(
+    r"\b(my|me|i|i'm|i've|i'd|mine|myself|meu|mea|mei|mele|eu|mi|[iî]mi|am|mine|"
+    r"mio|mia|miei|mie|mon|ma|mes|je|j'ai|moi|mein|meine|meinen|ich|mir|m[oó]j|moje|moja|"
+    r"yo|he|mis)\b",
+    re.IGNORECASE,
+)
+
+
+def is_personal(text: str, intent: str | None) -> bool:
+    """A question about the user's own data (diary, water, weight, lists, memories, …)."""
+    from myola.context.django_source import sections_for, wants_products
+
+    if intent in ("remember", "avoid", "scans", "prefs"):
+        return True
+    if not _FIRST_PERSON.search(text or ""):
+        return False
+    return bool(sections_for(text)) or wants_products(text)
+
+
+def _personal_answer(user, profile, context: str, text: str):
+    """``(answer, log)`` from the user's own data (``myola.context``), or None when the AI
+    cannot answer now (the rules answer instead)."""
+    from ai.service import ask
+    from myola.context import get_source
+    from myola.context.django_source import wants_products
+    from myola.services.profiles import local_today
+
+    source = get_source()
+    facts = {"me": source.user_context(user, text, today=local_today(profile))}
+    if wants_products(text):
+        facts["available_products"] = source.available_products(user, query=text)
+    own = (
+        frozenset(int(v) for v in profile.targets.values() if v)
+        if profile.show_targets
+        else frozenset()
+    )
+    result = ask(
+        user, facts, text, _followups(user, context), context=context, mode="personal",
+        own_targets=own,
+    )  # fmt: skip
+    return (result.text, result.log) if result.text else None
+
+
+def _personal_data(intent: str | None, facts: dict) -> str:
+    """What of the user's own data a rule answer holds, for translating it (see the privacy
+    page): "private" (notes, memories, lists, scans, goal: sent to the AI provider only with
+    "Let Ask Foodo use my diary, lists, notes and memories" on), "diets" (diet and allergy
+    names: with that switch or "Use my diets and allergies in AI answers") or "public"."""
+    if facts.get("notes") or intent in ("remember", "avoid", "scans"):
+        return "private"
+    if intent == "prefs":
+        return "private" if facts.get("goal") else "diets"
+    if intent == "restrictions":
+        return "diets"
+    return "public"
+
+
+def _english_only(answer: str, lang: str, why: str) -> str:
+    from ai import language
+
+    return language.english_only(answer, lang, why) if lang and lang != "en" else answer
+
+
+def _localise(user, profile, answer, log, lang, question, context, *, kind):
+    """A rule answer (English) in the question's language, translated by the AI provider.
+    ``kind`` (``_personal_data``): "private" answers are sent only with the user's consent
+    ("Let Ask Foodo use my diary, lists, notes and memories"); "diets" with that switch or
+    "Use my diets and allergies in AI answers". Otherwise, or when the AI is off, out of
+    messages or failing, the English answer with a one-line note in their language. Answers
+    with the user's data are never kept in the log."""
+    if not lang or lang == "en":
+        return answer, log
+    if kind == "private" and not profile.ai_use_my_data:
+        return _english_only(answer, lang, "private"), log
+    if kind == "diets" and not (profile.ai_use_preferences or profile.ai_use_my_data):
+        return _english_only(answer, lang, "consent"), log
+    from ai.service import translate
+
+    private = kind != "public"
+    out, tlog = translate(user, answer, lang, question=question, private=private, context=context)
+    if out:
+        return out, log or tlog
+    return _english_only(answer, lang, "busy"), log or tlog
 
 
 # ---------- History ----------

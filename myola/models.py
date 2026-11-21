@@ -91,6 +91,9 @@ class Profile(models.Model):
     use_notes = models.BooleanField(default=False)
     # Separate, explicit consent: diets and allergies may be sent to the AI provider.
     ai_use_preferences = models.BooleanField(default=False)
+    # Ask Foodo may read the user's own data (diary, water, activity, weight, lists, scans,
+    # memories, notes) to answer questions about them (myola/context). Off by default.
+    ai_use_my_data = models.BooleanField(default=False)
     show_energy = models.BooleanField(default=True)
     show_targets = models.BooleanField(default=True)
     track_weight = models.BooleanField(default=False)

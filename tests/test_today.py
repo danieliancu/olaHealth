@@ -206,7 +206,8 @@ def test_targets_show_a_meter_unless_switched_off(member_client, member):
     profile.show_targets = False
     profile.save()
     html = member_client.get(reverse("today")).content.decode()
-    assert 'class="meter' not in html
+    # No filled meters; on phones the bars stay, grey (track only).
+    assert 'class="meter-fill"' not in html and "of 2000 kcal" not in html
 
 
 @pytest.mark.django_db
@@ -590,3 +591,55 @@ def test_delete_from_the_edit_form_sends_one_request(member_client, member):
     assert f'hx-post="{delete_url}"' not in html
     r = member_client.post(delete_url, **HX)
     assert r.status_code == 200 and not DiaryEntry.objects.filter(pk=e.pk).exists()
+
+
+# ---------- Phones: ring, bars, calendar, folding meals ----------
+@pytest.mark.django_db
+def test_phone_summary_ring_bars_and_calendar(member_client, member):
+    profile = get_profile(member)
+    profile.target_kcal, profile.target_protein = 2000, 60
+    profile.save()
+    make_entry(member, meal="breakfast")  # 194 kcal, 18.4 g protein
+    html = member_client.get(reverse("today")).content.decode()
+    assert 'class="sum-ring' in html and 'stroke-dasharray="9 100"' in html
+    assert "18 g / 60 g" in html and "31%" not in html  # no percentage on the bars
+    assert 'name="date"' in html and 'type="date"' in html and "data-day-pick" in html
+    assert "What would you like to check?" in html and reverse("compare") in html
+    assert 'data-meal-fold aria-controls="meal-body-breakfast"' in html
+
+
+@pytest.mark.django_db
+def test_phone_summary_without_targets_is_grey_with_a_button(member_client, member):
+    profile = get_profile(member)
+    profile.target_kcal = profile.target_protein = profile.target_carbs = profile.target_fat = None
+    profile.save()
+    make_entry(member)
+    html = member_client.get(reverse("today")).content.decode()
+    assert 'class="sum-ring is-empty" href="' + reverse("settings-edit") + '#targets"' in html
+    assert "Set your targets" in html and "ring-fill" not in html
+    bars = html[html.index('class="sum-bars"') :]
+    assert "%" not in bars[: bars.index("</ul>")]  # no percentages, no fill
+    assert 'class="meter-fill"' not in bars[: bars.index("</ul>")]
+
+
+@pytest.mark.django_db
+def test_phone_summary_hides_energy_when_calories_are_hidden(member_client, member):
+    profile = get_profile(member)
+    profile.conditions = ["eating_disorder"]
+    profile.save()
+    html = member_client.get(reverse("today")).content.decode()
+    assert "sum-ring" not in html.replace("sum-ring-layout", "") and "no-ring" in html
+
+
+@pytest.mark.django_db
+def test_set_targets_link_stays_until_every_target_is_set(member_client, member):
+    profile = get_profile(member)
+    profile.target_kcal, profile.target_protein = 2000, 60
+    profile.target_carbs = profile.target_fat = None
+    profile.save()
+    html = member_client.get(reverse("today")).content.decode()
+    assert "ring-fill" in html and 'class="link-btn sum-set"' in html  # kcal set, carbs/fat not
+    profile.target_carbs, profile.target_fat = 250, 70
+    profile.save()
+    html = member_client.get(reverse("today")).content.decode()
+    assert "sum-set" not in html and "Set your targets" not in html

@@ -1,6 +1,9 @@
 """Better alternatives for a product (V2, docs/mvp-api-contracts.md §3).
 
-* Reference category: the product's most specific category, then its parent.
+* Reference category: the product's most specific category, then its parent; broad ones
+  ("plant-based foods", "spreads", …) are never used.
+* Every candidate is checked before it is shown: it must be filed under that category and
+  have a usable name and nutrition data. Same-category candidates rank before the parent's.
 * Candidates: published local products (a current revision exists, so contributions still
   under review are never used) and an Open Food Facts search in that category for the UK,
   cached per (category, country) for 24 h. OFF results are normalised with
@@ -21,6 +24,7 @@ from django.core.cache import cache
 from django.urls import reverse
 
 from assessments.score import foodo_score, indicators_from_snapshots
+from catalog import quality
 from catalog.models import Category, Product
 from catalog.nutrition import BASIS_LABELS
 from catalog.presenters import format_value
@@ -44,19 +48,50 @@ COMPARED_NUTRIENTS = (
 )
 
 
+def _depth(tag: str, parents_of: dict[str, list[str]]) -> int:
+    """How many ancestors ``tag`` has in the taxonomy (first parent chain, bounded)."""
+    depth, seen = 0, {tag}
+    while (parents := parents_of.get(tag)) and depth < 12:
+        tag = parents[0]
+        if tag in seen:
+            break
+        seen.add(tag)
+        depth += 1
+    return depth
+
+
 def reference_categories(product: Product) -> list[str]:
-    """Most specific category first, then its parent (when known)."""
-    tags = list((product.data or {}).get("categories") or product.categories or [])
+    """The product's most specific category, then its parent (when known), never a broad one.
+
+    Broad tags ("plant-based foods", "spreads", …: ``quality.BROAD_CATEGORIES``) say nothing
+    about what kind of food it is, so they are never used: peanut butter must not be matched
+    with garlic or passata. With the OFF taxonomy synced the deepest tag wins; otherwise the
+    last one (OFF lists tags from general to specific)."""
+    tags = [
+        t
+        for t in (product.data or {}).get("categories") or product.categories or []
+        if not quality.is_broad(t)
+    ]
     if not tags:
         return []
-    specific = tags[-1]  # OFF orders category tags from general to specific
-    parents = Category.objects.filter(tag=specific).values_list("parents", flat=True).first()
-    parent = None
+    parents_of: dict[str, list[str]] = {}
+    pending = set(tags)
+    for _ in range(12):  # load the ancestors of the product's tags, level by level
+        rows = dict(Category.objects.filter(tag__in=pending).values_list("tag", "parents"))
+        parents_of.update(rows)
+        pending = {p for ps in rows.values() for p in ps or []} - set(parents_of)
+        if not pending:
+            break
+    # Deepest tag in the taxonomy wins; without it, the last one (OFF: general to specific).
+    deepest = max(reversed(tags), key=lambda t: _depth(t, parents_of))
+    specific = deepest if parents_of else tags[-1]
+    parents = [p for p in parents_of.get(specific) or [] if not quality.is_broad(p)]
     if parents:
         # Prefer a parent the product itself is filed under.
         parent = next((p for p in parents if p in tags), parents[0])
-    elif len(tags) > 1:
-        parent = tags[-2]
+    else:
+        earlier = [t for t in tags if t != specific]
+        parent = earlier[-1] if earlier and specific not in parents_of else None
     return [specific] + ([parent] if parent and parent != specific else [])
 
 
@@ -104,8 +139,13 @@ def _off_candidate(raw: dict[str, Any], category: str) -> dict[str, Any] | None:
     code = str(raw.get("code") or "").strip()
     if not code.isdigit():
         return None
+    # Never trust the search alone: the result must really be filed under that category.
+    if category not in (raw.get("categories_tags") or []):
+        return None
     code = off_normalize(code)
     data = map_product(raw)
+    if not quality.listable(quality.issues(data, has_front_image=True)):
+        return None  # no usable name or nutrition data: never suggested
     image = image_urls(raw, settings.OFF_IMAGE_HOSTS).get("front", "")
     facts = ProductFacts(
         id=code,
@@ -230,13 +270,14 @@ def alternatives(
 
     chosen: dict[str, dict[str, Any]] = {}
     seen: set[str] = {str(product.pk)} | ({own_code} if own_code else set())
-    for category in reference_categories(product):
+    for level, category in enumerate(reference_categories(product)):
         candidates: list[dict[str, Any]] = []
         local = (
             Product.objects.filter(
                 categories__contains=[category],
                 countries__contains=[country],
                 current_revision__isnull=False,
+                listable=True,
             )
             .exclude(pk=product.pk)
             .select_related("current_revision")
@@ -268,13 +309,19 @@ def alternatives(
             if _blocked(cand["facts"], prefs):
                 continue
             key = cand["product_id"] or cand["off_code"]
+            cand["level"] = level  # 0: same category, 1: its parent
             chosen.setdefault(key, cand)
         if len(chosen) >= limit:
             break
 
     ranked = sorted(
         chosen.values(),
-        key=lambda c: (-c["score"]["score"], c["facts"].name.lower(), c["off_code"] or ""),
+        key=lambda c: (
+            c["level"],
+            -c["score"]["score"],
+            c["facts"].name.lower(),
+            c["off_code"] or "",
+        ),
     )[:limit]
     results = []
     for cand in ranked:

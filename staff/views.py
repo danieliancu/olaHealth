@@ -314,8 +314,20 @@ def products(request: HttpRequest) -> HttpResponse:
         ).values("product_id")
         qs = Product.objects.filter(Q(off_code=q) | Q(pk__in=ids)).order_by("-updated_at", "pk")
     else:
-        qs = search_products(SearchParams(q=q, sort="relevance" if q else "updated"))
-    context = {"q": q, "page": page_of(request, qs), "query": query_without_page(request)}
+        qs = search_products(
+            SearchParams(
+                q=q,
+                sort="relevance" if q else "updated",
+                include_unlisted=True,
+                unlisted_only=request.GET.get("quality") == "incomplete",
+            )
+        )
+    context = {
+        "q": q,
+        "quality": request.GET.get("quality", ""),
+        "page": page_of(request, qs),
+        "query": query_without_page(request),
+    }
     return staff_render(
         request, "staff/products.html", context, "products", "staff/partials/product_results.html"
     )
@@ -335,8 +347,31 @@ def product_detail(request: HttpRequest, pk) -> HttpResponse:
             "-submitted_at"
         )[:10],
         "can_refresh": request.user.has_perm(access.PERM_MODERATE) and bool(product.off_code),
+        "can_moderate": request.user.has_perm(access.PERM_MODERATE),
+        "images": product.images.order_by("kind", "-created_at"),
     }
     return staff_render(request, "staff/product.html", context, "products")
+
+
+@staff_view(access.PERM_MODERATE)
+@require_POST
+def product_image_toggle(request: HttpRequest, pk, image_id) -> HttpResponse:
+    """Switch a photo off as unsuitable (or back on). Logged; an OFF refresh keeps it off."""
+    from catalog.models import ProductImage
+    from catalog.services.revisions import refresh_photos
+
+    product = get_object_or_404(Product.objects.select_related("current_revision"), pk=pk)
+    image = get_object_or_404(ProductImage, pk=image_id, product=product)
+    image.hidden_by_staff = not image.hidden_by_staff
+    image.is_active = not image.hidden_by_staff
+    image.save(update_fields=["hidden_by_staff", "is_active"])
+    refresh_photos(product)
+    action = "product_photo_hidden" if image.hidden_by_staff else "product_photo_restored"
+    services.log(request.user, action, product.name or str(product.pk), image=str(image.pk))
+    messages.success(
+        request, "Photo switched off." if image.hidden_by_staff else "Photo shown again."
+    )
+    return redirect("staff:product", pk=product.pk)
 
 
 @require_POST
@@ -632,8 +667,54 @@ def announcements(request: HttpRequest) -> HttpResponse:
         return redirect("staff:announcements")
     recent = Announcement.objects.select_related("created_by")[:20]
     return staff_render(
-        request, "staff/announcements.html", {"form": form, "recent": recent}, "announcements"
+        request,
+        "staff/announcements.html",
+        {"form": form, "recent": recent, **_coming_up()},
+        "announcements",
     )
+
+
+UK = "Europe/London"  # every profile's default time zone; reminders follow each user's own
+
+
+def _coming_up() -> dict:
+    """The side column: preset reminders by hour, when the jobs next run, scheduled articles."""
+    from zoneinfo import ZoneInfo
+
+    from django_q.models import Schedule
+
+    from core.models import LearnArticle
+    from myola import tasks
+
+    tz = ZoneInfo(UK)
+    now = timezone.now().astimezone(tz)
+    rows = tasks.automatic_schedule()
+    for r in rows:
+        r["time"] = f"{r['hour']:02d}:00"
+        r["later"] = r["hour"] > now.hour
+    runs = dict(
+        Schedule.objects.filter(
+            name__in=("notification-reminders", "notify-new-articles")
+        ).values_list("name", "next_run")
+    )
+    articles = list(
+        LearnArticle.objects.filter(
+            published=True, notified_at__isnull=True, published_at__isnull=False
+        ).order_by("published_at")[:8]
+    )
+    for a in articles:
+        a.local = a.published_at.astimezone(tz)
+        a.due = a.published_at <= timezone.now()
+    return {
+        "schedule": rows,
+        "schedule_now": now,
+        "reminders_next": runs.get("notification-reminders"),
+        "articles_next": runs.get("notify-new-articles"),
+        "scheduled_articles": articles,
+        "weigh_in_hour": f"{tasks.WEIGH_IN_HOUR:02d}:00",
+        "reminders_per_day": tasks.REMINDERS_PER_DAY,
+        "uk_tz": tz,
+    }
 
 
 # ---------- Learn CMS (articles and topics) ----------

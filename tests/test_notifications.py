@@ -87,6 +87,19 @@ def test_reminder_uses_local_time_and_at_most_two_a_day(member):
     assert tasks.reminder_for(member, profile, now=noon.replace(hour=22)) is None  # daily cap
 
 
+def test_water_reminders_do_not_use_up_the_meal_reminders(member):
+    # Regression: two water reminders used to fill the daily cap, so "Add lunch?" never came.
+    profile = onboard(member, timezone="Europe/London")
+    today = local_today(profile)
+    assert tasks.reminder_for(member, profile, now=_local(profile, 10)).key.endswith(":start")
+    tasks.water_reminder_for(member, profile, now=_local(profile, 11))
+    tasks.water_reminder_for(member, profile, now=_local(profile, 14))
+    make_entry(member, day=today, meal="breakfast")
+    lunch = tasks.reminder_for(member, profile, now=_local(profile, 15))
+    assert lunch is not None and lunch.key.endswith(":meal-lunch")
+    assert Notification.objects.filter(user=member, key__contains="meal-lunch").exists()
+
+
 def test_no_reminders_when_switched_off_or_not_onboarded(member):
     profile = get_profile(member)
     assert tasks.reminder_for(member, profile) is None  # not onboarded yet
@@ -179,6 +192,29 @@ def test_staff_can_send_an_announcement(client, admin_user, queued_tasks):
     assert queued_tasks[-1][0] == "myola.tasks.fan_out_announcement"
     r = client.post(reverse("staff:announcements"), {"title": "Bad", "url": "https://evil.test/"})
     assert r.status_code == 200 and not Announcement.objects.filter(title="Bad").exists()
+
+
+def test_announcements_page_lists_what_is_coming_up(client, admin_user):
+    from core.models import LearnArticle, LearnTopic
+
+    topic = LearnTopic.objects.create(key="t", title="Topic")
+    LearnArticle.objects.create(
+        topic=topic, slug="soon", title="Coming soon", summary="s", body="b", published=True,
+        published_at=timezone.now() + dt.timedelta(days=2),
+    )  # fmt: skip
+    client.force_login(admin_user)
+    html = client.get(reverse("staff:announcements")).content.decode()
+    assert "Coming up automatically" in html
+    for time, title in (
+        ("09:00", "Your diary is open"),
+        ("15:00", "Add lunch?"),
+        ("17:00", "Time for a glass of water"),
+        ("21:00", "Add dinner?"),
+    ):
+        assert f"<time>{time}</time>" in html and title in html
+    assert "Weekly weigh-in" in html and "Coming soon" in html
+    hours = [r["hour"] for r in tasks.automatic_schedule()]
+    assert hours == sorted(hours) and len(hours) == 7
 
 
 # ---------- Pages ----------
@@ -275,3 +311,31 @@ def test_incomplete_profile_reminder_only_once(member):
     n = tasks.profile_nudge_for(member, profile)
     assert n and n.url == reverse("profile-edit")
     assert tasks.profile_nudge_for(member, profile) is None
+
+
+# ---------- Top of Today: the latest notification while unread ----------
+@pytest.mark.django_db
+def test_today_card_is_the_latest_notification_only_while_unread(member_client, member):
+    onboard(member)
+    today = reverse("today")
+    assert 'id="home-note"' not in member_client.get(today).content.decode()  # none yet
+    older = notes.notify(member, "announcement", "a:1", "New feature", "Try it.", "/learn/")
+    lunch = notes.notify(
+        member, "reminder", f"reminder:{local_today(get_profile(member))}:meal-lunch",
+        "Add lunch?", "If you had lunch, you can still add it.", "/scan/?add=lunch",
+    )  # fmt: skip
+    html = member_client.get(today).content.decode()
+    assert "Add lunch?" in html and "Scan for lunch" in html and "New feature" not in html
+    assert reverse("notification-open", args=[lunch.pk]) in html  # opening marks it read
+    # Read (here: the close button) → no card, and the older unread one does not take its place.
+    r = member_client.post(reverse("notification-read", args=[lunch.pk]), HTTP_HX_REQUEST="true")
+    assert r.status_code == 200 and 'id="notif-count"' in r.content.decode()
+    html = member_client.get(today).content.decode()
+    assert 'id="home-note"' not in html and "New feature" not in html
+    older.refresh_from_db()
+    assert older.read_at is None
+    # A newer unread one shows again; never on past days.
+    notes.notify(member, "achievement", "ach:1", "First scan", "", "")
+    assert "First scan" in member_client.get(today).content.decode()
+    yesterday = local_today(get_profile(member)) - dt.timedelta(days=1)
+    assert "First scan" not in member_client.get(f"{today}?date={yesterday}").content.decode()
