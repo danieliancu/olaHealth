@@ -17,7 +17,13 @@ from django.utils.translation import gettext as _
 
 from assessments.models import AssessmentSnapshot
 from catalog.models import NutrientFact, Product
-from catalog.nutrition import BASIS_LABELS, NUTRIENT_BY_KEY, NUTRIENTS, PREPARATION_LABELS
+from catalog.nutrition import (
+    BASIS_LABELS,
+    NUTRIENT_BY_KEY,
+    NUTRIENTS,
+    PREPARATION_LABELS,
+    basis_label,
+)
 from catalog.presenters import NOVA_LABELS, format_value, humanize_tag
 
 MIN_PRODUCTS, MAX_PRODUCTS = 2, 3
@@ -259,7 +265,10 @@ def _add_group(result, products, facts, prep, column_basis, *, comparable):
         comparable,
         rows,
         missing_for,
-        column_bases=[BASIS_LABELS[b] if b else "" for b in column_basis],
+        column_bases=[
+            basis_label(b, p.current_revision.data if p.current_revision else None) if b else ""
+            for p, b in zip(products, column_basis, strict=True)
+        ],
         mixed_bases=comparable and len(present) > 1,
     )
     result.groups.append(group)

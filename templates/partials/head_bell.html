@@ -1,0 +1,2 @@
+{% load i18n ui %}{# The notifications bell at the top of Today, Progress and My account #}
+<a class="icon-btn head-tool head-bell" href="{% url 'notifications' %}" aria-label="{% if notif_unread %}{% blocktranslate count n=notif_unread %}Notifications: {{ n }} unread{% plural %}Notifications: {{ n }} unread{% endblocktranslate %}{% else %}{% translate 'Notifications' %}{% endif %}" title="{% translate 'Notifications' %}">{% icon "bell" 20 %}{% include "partials/notif_count.html" %}</a>

@@ -14,7 +14,7 @@
           <span class="soft-icon tone-{{ n.tone }}">{% icon n.icon|default:"bell" 18 %}</span>
           <span class="notif-text">
             <strong>{{ n.title }}</strong>
-            {% if n.body %}<span class="notif-body">{{ n.body }}</span>{% endif %}
+            {% if n.body %}{% with parts=n.body|notif_parts %}<span class="notif-body">{{ parts.0 }}{% if parts.1 %}<span class="notif-detail">{{ parts.1 }}</span>{% endif %}</span>{% endwith %}{% endif %}
             <small>{% blocktranslate with t=n.created_at|timesince %}{{ t }} ago{% endblocktranslate %}</small>
           </span>
           {% if not n.read_at %}<span class="notif-dot"><span class="sr-only">{% translate "Unread" %}</span></span>{% endif %}

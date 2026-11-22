@@ -159,7 +159,6 @@ def test_live_answer(live, chat, question, lang, expected):
         return  # the ingredient list is quoted in the label's own language
     found = language.detect(shown)
     assert found == lang or (found == "" and lang != "ro"), f"in {found!r}, not {lang}: {detail}"
-    if general and lang in ("en", "ro"):
-        assert language.with_disclaimer(shown, lang) == shown, "no 'general information' line"
+    assert language.strip_disclaimer(shown) == shown, "no 'general information' reminder"
     if expected == "refer":
         assert PROFESSIONAL.search(shown), f"no pointer to a professional: {detail}"

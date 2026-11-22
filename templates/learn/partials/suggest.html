@@ -1,0 +1,13 @@
+{% load i18n ui %}{# Magazine cover: suggestions under the search box (core.learn.learn_suggest) #}
+{% if q|length >= 2 %}
+<div class="mag-suggest-box">
+  {% if articles %}
+  <ul class="mag-suggest-list">
+    {% for a in articles %}<li><a href="{% url 'learn-article' a.slug %}"><span class="mag-suggest-topic">{{ a.topic.title }}</span><span class="mag-suggest-title">{{ a.title }}</span></a></li>{% endfor %}
+  </ul>
+  <a class="mag-suggest-all" href="{% url 'learn-search' %}?q={{ q|urlencode }}">{% blocktranslate %}All results for “{{ q }}”{% endblocktranslate %}{% icon "chevron-right" 16 %}</a>
+  {% else %}
+  <p class="mag-suggest-none">{% blocktranslate %}No article matches “{{ q }}” yet.{% endblocktranslate %}</p>
+  {% endif %}
+</div>
+{% endif %}

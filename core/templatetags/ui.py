@@ -217,3 +217,14 @@ def breakable(text) -> str:
     for word, soft in _SOFT_BREAKS.items():
         out = re.sub(rf"\b{word}\b", soft, out)
     return out
+
+
+@register.filter
+def notif_parts(body) -> tuple[str, str]:
+    """A notification body split into what every screen shows and the detail shown only on
+    wider screens: '“Title”: a 4-minute read in Topic.' -> ('“Title”', ': a 4-minute read…')."""
+    text = str(body or "")
+    if text.startswith("“") and "”: " in text:
+        lead, _sep, rest = text.partition("”: ")
+        return f"{lead}”", f": {rest}"
+    return text, ""

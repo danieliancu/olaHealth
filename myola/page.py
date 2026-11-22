@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from catalog import presenters
-from catalog.nutrition import BASIS_LABELS
+from catalog.nutrition import basis_label
 from myola.facts import ProductFacts
 from myola.portions import portions
 from myola.restrictions import all_statuses
@@ -50,7 +50,7 @@ def chat_facts(p: ProductFacts) -> dict[str, Any]:
     basis, values = p.per_100()
     return {
         "basis": basis,
-        "basis_label": BASIS_LABELS.get(basis, "") if basis else "",
+        "basis_label": basis_label(basis, p.data) if basis else "",
         "values": {
             k: {
                 "value": str(v.value),

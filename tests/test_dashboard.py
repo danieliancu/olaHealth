@@ -122,9 +122,13 @@ def test_chat_page_is_the_active_tab(member_client):
 @pytest.mark.django_db
 def test_learn_index_topic_and_article(client):
     html = client.get(reverse("learn")).content.decode()
-    assert "Featured articles" in html and html.count('class="topic-card') == 4
+    # The cover: 4 topics in their places (left: topics 1 and 4, right: 3 and 2).
+    topics = re.findall(r'class="mag-topic" href="/learn/topic/([\w-]+)/"', html)
+    assert topics == ["labels", "allergens", "ingredients", "scores"]
+    assert 'href="/learn/nutri-score/">Nutri-Score, explained</a>' in html
+    assert html.count('class="mag-title mag-lead"') == 1
+    assert 'action="/learn/search/"' in html and 'style="' not in html
     assert "Latest" not in html and "News" not in html
-    assert 'style="' not in html
     r = client.get(reverse("learn") + "?topic=allergens")
     assert r.status_code == 301 and r["Location"] == "/learn/topic/allergens/"
     html = client.get(reverse("learn-topic", args=["allergens"])).content.decode()
@@ -132,7 +136,7 @@ def test_learn_index_topic_and_article(client):
     assert 'class="article-date"' in html and 'style="' not in html
     assert client.get(reverse("learn-topic", args=["nope"])).status_code == 404
     html = client.get(reverse("learn-article", args=["nutri-score"])).content.decode()
-    assert "Nutri-Score, explained" in html and "Information, not medical advice" in html
+    assert "Nutri-Score, explained" in html and "not medical advice" not in html
     assert "<script" not in html.split("</head>")[1]
     assert client.get(reverse("learn") + "?topic=nope").status_code == 200
     assert client.get(reverse("learn-article", args=["nope"])).status_code == 404
@@ -238,3 +242,62 @@ def test_achievements_show_an_even_number_on_desktop(member, yogurt):
     make_entry(member, day=today)  # first day
     out = stats.overview_stats(member, profile, today)
     assert len(out["achievements"]) == 3 and out["ach_shown"] == 2
+
+
+@pytest.mark.django_db
+def test_magazine_cover_titles_follow_featured_articles(client):
+    from core.models import LearnArticle
+
+    def cover_titles(topic):
+        html = client.get(reverse("learn")).content.decode()
+        block = html.split(f'href="/learn/topic/{topic}/"')[1].split("mag-slot")[0]
+        return re.findall(r'class="mag-title[^"]*" href="/learn/([\w-]+)/"', block)
+
+    # No featured article in Allergens: its newest article shows.
+    LearnArticle.objects.filter(topic__key="allergens").update(featured=False)
+    newest = LearnArticle.objects.filter(topic__key="allergens").latest("published_at")
+    assert cover_titles("allergens") == [newest.slug]
+    # At most 2 per topic, featured only, never unpublished ones.
+    labels = LearnArticle.objects.filter(topic__key="labels")
+    labels.update(featured=True)
+    shown = cover_titles("labels")
+    assert len(shown) == min(2, labels.count())
+    hidden = labels.get(slug=shown[0])
+    hidden.published = False
+    hidden.save()
+    assert hidden.slug not in cover_titles("labels")
+
+
+@pytest.mark.django_db
+def test_magazine_search_page(client):
+    r = client.get(reverse("learn") + "?q=sugar")
+    assert r.status_code == 302 and r["Location"] == "/learn/search/?q=sugar"
+    html = client.get(reverse("learn-search"), {"q": "Nutri-Score"}).content.decode()
+    assert 'href="/learn/nutri-score/"' in html and 'href="/learn/">' in html
+    html = client.get(reverse("learn-search"), {"q": "zzzz"}).content.decode()
+    assert "No article matches that search yet." in html
+
+
+@pytest.mark.django_db
+def test_daily_summary_day_arrows(member_client, member):
+    today = local_today(get_profile(member))
+    html = member_client.get(reverse("today")).content.decode()
+    nav = html.split('class="sum-nav"')[1].split("</div>")[0]
+    yesterday = (today - dt.timedelta(days=1)).isoformat()
+    assert f'href="/today/?date={yesterday}"' in nav and "sum-arrow is-disabled" in nav
+    html = member_client.get(reverse("today"), {"date": yesterday}).content.decode()
+    nav = html.split('class="sum-nav"')[1].split("</div>")[0]
+    assert f'href="/today/?date={today.isoformat()}"' in nav and "is-disabled" not in nav
+
+
+@pytest.mark.django_db
+def test_magazine_search_suggestions(client):
+    html = client.get(reverse("learn")).content.decode()
+    assert 'hx-get="/learn/suggest/"' in html and 'id="mag-suggest"' in html
+    assert client.get(reverse("learn-suggest"), {"q": "s"}).content.decode().strip() == ""
+    html = client.get(reverse("learn-suggest"), {"q": "sugar"}).content.decode()
+    titles = re.findall(r'class="mag-suggest-title">([^<]+)<', html)
+    assert 0 < len(titles) <= 6 and "sugar" in titles[0].lower()  # title matches first
+    assert 'href="/learn/search/?q=sugar"' in html
+    html = client.get(reverse("learn-suggest"), {"q": "zzzz"}).content.decode()
+    assert "No article matches" in html

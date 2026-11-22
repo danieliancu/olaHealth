@@ -155,3 +155,48 @@ def test_publishing_an_article_notifies_once(client, editor, member):
     client.post(reverse("staff:learn-new"), {**data, "title": "Soon", "published_at": later})
     assert notify_new_articles() == 0
     assert not Notification.objects.filter(body__contains="“Soon”").exists()
+
+
+@pytest.mark.django_db
+def test_magazine_cover_month_photo_and_place(editor, client, settings, tmp_path):
+    import io
+
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from PIL import Image
+
+    from core.models import MagazineCover
+
+    settings.MEDIA_ROOT = tmp_path
+    html = client.get(reverse("learn")).content.decode()
+    assert "<span data-cover-month>November 2026</span>" in html  # from the migration
+    assert "cover-head.webp" in html  # the built-in photo and its head cut-out
+
+    buf = io.BytesIO()
+    Image.new("RGB", (1400, 626), "#0e290d").save(buf, "PNG")
+    photo = SimpleUploadedFile("c.png", buf.getvalue(), content_type="image/png")
+    data = {"month": "2027-01", "photo_size": "100", "photo_x": "-112", "photo_y": "4",
+            "mobile_x": "65", "mobile_y": "20", "mobile_zoom": "110"}  # fmt: skip
+    r = client.post(reverse("staff:learn-covers"), {**data, "image": photo})
+    assert r.status_code == 302
+    assert MagazineCover.objects.count() == 1  # one issue, no archive
+    cover = MagazineCover.load()
+    assert cover.month.isoformat() == "2027-01-01" and cover.image.name.endswith(".webp")
+
+    html = client.get(reverse("learn")).content.decode()
+    assert "<span data-cover-month>January 2027</span>" in html
+    assert "cover-head.webp" not in html and 'src="/learn/cover/photo/?v=' in html
+    assert client.get(reverse("learn-cover-image"))["Content-Type"] == "image/webp"
+    css = client.get(reverse("learn-cover-style")).content.decode()
+    assert (
+        css == ".mag-cover{--photo-h:100;--photo-x:-112;--photo-y:4;--m-x:65;--m-y:20;--m-zoom:110}"
+    )
+
+    r = client.post(reverse("staff:learn-covers"), {**data, "photo_size": "900"})
+    assert r.status_code == 200  # out of range: not saved
+    page = client.get(reverse("staff:learn-covers")).content.decode()
+    assert 'form="cover-form"' in page and 'data-photo="mx"' in page
+    # The phone preview: the only page that may be framed, by this site only.
+    r = client.get(reverse("staff:learn-cover-preview"))
+    assert "frame-ancestors 'self'" in r["Content-Security-Policy"]
+    assert r["X-Frame-Options"] == "SAMEORIGIN"
+    assert "frame-ancestors 'none'" in client.get(reverse("learn"))["Content-Security-Policy"]

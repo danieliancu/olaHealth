@@ -2,7 +2,7 @@
 {% load i18n ui %}
 {% block title %}{% translate "Saved" %}{% endblock %}
 {% block content %}
-<div class="page-head page-head-soft"><span class="soft-icon">{% icon "heart" 20 %}</span><h1>{% translate "Saved products" %}</h1></div>
+<div class="page-head"><div class="page-head-soft"><span class="soft-icon">{% icon "heart" 20 %}</span><h1>{% translate "Saved products" %}</h1></div>{% if user.is_authenticated %}{% include "partials/head_bell.html" %}{% endif %}</div>
 
 {% if not user.is_authenticated %}
 <section class="card">

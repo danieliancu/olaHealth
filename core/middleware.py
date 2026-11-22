@@ -6,6 +6,23 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 
 
+def build_csp(frame_ancestors: str = "'none'") -> str:
+    """The site's Content-Security-Policy. Only the staff cover preview is framed (by staff
+    pages of the same site: ``frame_ancestors="'self'"``)."""
+    img_hosts = " ".join(f"https://{h}" for h in settings.OFF_IMAGE_HOSTS)
+    return (
+        "default-src 'self'; "
+        f"img-src 'self' data: blob: {img_hosts}; "
+        "script-src 'self' 'wasm-unsafe-eval'; "
+        "style-src 'self'; "
+        "connect-src 'self'; "
+        "media-src 'self' blob:; "
+        "worker-src 'self' blob:; "
+        "object-src 'none'; base-uri 'self'; form-action 'self'; "
+        f"frame-ancestors {frame_ancestors}"
+    )
+
+
 class SecurityHeadersMiddleware:
     """Content-Security-Policy and Permissions-Policy for the public pages.
 
@@ -15,17 +32,7 @@ class SecurityHeadersMiddleware:
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
-        img_hosts = " ".join(f"https://{h}" for h in settings.OFF_IMAGE_HOSTS)
-        self.csp = (
-            "default-src 'self'; "
-            f"img-src 'self' data: blob: {img_hosts}; "
-            "script-src 'self' 'wasm-unsafe-eval'; "
-            "style-src 'self'; "
-            "connect-src 'self'; "
-            "media-src 'self' blob:; "
-            "worker-src 'self' blob:; "
-            "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
-        )
+        self.csp = build_csp()
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
         response = self.get_response(request)

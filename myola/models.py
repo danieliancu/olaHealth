@@ -94,6 +94,9 @@ class Profile(models.Model):
     # Ask Foodo may read the user's own data (diary, water, activity, weight, lists, scans,
     # memories, notes) to answer questions about them (myola/context). Off by default.
     ai_use_my_data = models.BooleanField(default=False)
+    # Separate, explicit consent: the names of the saved health conditions (and the "Other"
+    # note) may be sent to the AI provider, for relevance and tone only (ai.service). Off.
+    ai_use_health = models.BooleanField(default=False)
     show_energy = models.BooleanField(default=True)
     show_targets = models.BooleanField(default=True)
     track_weight = models.BooleanField(default=False)

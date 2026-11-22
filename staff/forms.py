@@ -5,7 +5,7 @@ from django.utils.html import format_html
 from django.utils.text import slugify
 
 from contributions.models import Contribution
-from core.models import LearnArticle, LearnTopic
+from core.models import LearnArticle, LearnTopic, MagazineCover
 from staff.models import Announcement, SiteSettings
 
 
@@ -331,3 +331,75 @@ class LearnTopicForm(forms.ModelForm):
                 "Unknown icon. Try book-open, scan-barcode, leaf, flask-conical…"
             )
         return icon
+
+
+def _slider(low: int, high: int, key: str) -> forms.NumberInput:
+    return forms.NumberInput(
+        attrs={"type": "range", "min": low, "max": high, "step": 1, "data-photo": key}
+    )
+
+
+class MagazineCoverForm(forms.ModelForm):
+    """The Magazine cover (one issue): month and year, photo, and where the photo sits."""
+
+    month = forms.DateField(
+        label="Month and year",
+        input_formats=["%Y-%m", "%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "month"}, format="%Y-%m"),
+        help_text="Shown as “MAGAZINE • NOVEMBER 2026” on the desktop cover.",
+    )
+
+    class Meta:
+        model = MagazineCover
+        fields = ["month", "image", "photo_size", "photo_x", "photo_y", "mobile_x", "mobile_y",
+                  "mobile_zoom"]  # fmt: skip
+        labels = {
+            "image": "Cover photo",
+            "photo_size": "Size",
+            "photo_x": "Left / right",
+            "photo_y": "Up / down",
+            "mobile_x": "Left / right",
+            "mobile_y": "Up / down",
+            "mobile_zoom": "Zoom",
+        }
+        help_texts = {
+            "photo_size": "Height of the photo, % of the cover's height.",
+            "photo_x": "Its left edge from the middle of the screen, % of the cover's height "
+            "(minus: further left).",
+            "photo_y": "Its top edge, % of the cover's height (minus: higher).",
+            "mobile_x": "The photo fills the phone screen: which part stays in view "
+            "(0 left, 100 right).",
+            "mobile_y": "Moves the photo up or down, % of the screen's height (minus: higher).",
+            "mobile_zoom": "100: the whole height of the photo.",
+        }
+        widgets = {
+            "photo_size": _slider(40, 300, "h"),
+            "photo_x": _slider(-300, 200, "x"),
+            "photo_y": _slider(-100, 100, "y"),
+            "mobile_x": _slider(0, 100, "mx"),
+            "mobile_y": _slider(-100, 100, "my"),
+            "mobile_zoom": _slider(100, 250, "mz"),
+        }
+
+    def clean_month(self):
+        return self.cleaned_data["month"].replace(day=1)
+
+    def clean_image(self):
+        """Checked, stripped of metadata and saved as a WebP no wider than the cover is shown."""
+        image = self.cleaned_data.get("image")
+        if not image or not hasattr(image, "content_type"):
+            return image  # unchanged or cleared
+        if getattr(image, "size", 0) > MAX_IMAGE_BYTES:
+            raise forms.ValidationError("The image is larger than 15 MB.")
+        from django.core.files.base import ContentFile
+
+        from core.images import ImageRejected, upload_to_webp
+
+        try:
+            data = upload_to_webp(image, COVER_MAX_WIDTH, MAX_IMAGE_BYTES)
+        except ImageRejected as exc:
+            raise forms.ValidationError(str(exc)) from exc
+        return ContentFile(data, name="cover.webp")
+
+
+COVER_MAX_WIDTH = 2000

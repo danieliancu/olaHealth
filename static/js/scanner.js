@@ -142,6 +142,7 @@ function init(root) {
   });
 
   async function start() {
+    unlockBeep(); // the tap on "Start" lets the page play the beep later
     busy = false;
     startBtn.disabled = true;
     setStatus("Starting camera…", true);
@@ -211,13 +212,47 @@ function init(root) {
     busy = true;
     stop();
     if (navigator.vibrate) navigator.vibrate(60);
+    const beeped = beep();
     setStatus(`Barcode ${found.text} read. Looking it up…`, true);
     // The server decides: product page, "not found", or the diary's "how much?" step.
     const params = new URLSearchParams({ code: found.text, format: found.format || "manual" });
     const diary = new URLSearchParams(root.dataset.diaryQuery || "");
     diary.forEach((value, key) => params.set(key, value));
-    window.location.assign(`${lookupUrl}?${params}`);
+    // Let the beep finish before the page changes.
+    setTimeout(() => window.location.assign(`${lookupUrl}?${params}`), beeped ? BEEP_MS + 40 : 0);
   }
+}
+
+// ---------- The till beep when a barcode is read ----------
+// A short, bright tone like a supermarket scanner, made in the browser (no sound file).
+const BEEP_MS = 110;
+let audio = null;
+
+function unlockBeep() {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === "suspended") audio.resume();
+  } catch {
+    audio = null; // no Web Audio: scanning works silently
+  }
+}
+
+function beep() {
+  if (!audio || audio.state !== "running") return false;
+  const t = audio.currentTime;
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.type = "square";
+  osc.frequency.setValueAtTime(2700, t);
+  // Quick fade in and out: a clean "bip", no click.
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(0.12, t + 0.005);
+  gain.gain.setValueAtTime(0.12, t + BEEP_MS / 1000 - 0.015);
+  gain.gain.linearRampToValueAtTime(0, t + BEEP_MS / 1000);
+  osc.connect(gain).connect(audio.destination);
+  osc.start(t);
+  osc.stop(t + BEEP_MS / 1000 + 0.01);
+  return true;
 }
 
 function cameraErrorMessage(err) {

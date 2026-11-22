@@ -575,8 +575,6 @@ main { padding-bottom: 2.5rem; }
 .footer-bottom { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #f3f4f6; display: grid; gap: .5rem; }
 .footer-bottom p { margin: 0; font-size: var(--fs-xs); line-height: 1.6; color: var(--muted); }
 .footer-bottom a { color: var(--text-soft); }
-.footer-note { white-space: nowrap; }
-.footer-note::before { content: "·"; margin: 0 .4rem 0 .15rem; }
 /* Phones: two columns; App then Legal on the left, Learn on the right. */
 @media (max-width: 767px) {
   .footer-cols { grid-template-columns: 1fr 1fr; grid-template-areas: "app learn" "legal learn"; gap: 1.25rem 1rem; }
@@ -762,6 +760,8 @@ svg.meter.level-over .meter-fill { fill: #e5484d; }
 .log-more[open] > summary { margin-bottom: .5rem; }
 
 /* Daily summary: one quiet "partial" pill next to the title. */
+/* "partial" leads the sentence under the Daily summary that explains it */
+.sum-partial .partial { display: inline-block; margin-right: .3rem; vertical-align: 1px; line-height: 1.5; }
 .t-card-head h2 .partial { align-self: center; margin-left: .375rem; line-height: 1.5; position: relative; top: 2px; }
 
 /* My Track: identity card (avatar, name, member since, profile completeness). */
@@ -1254,6 +1254,47 @@ a:hover .ticker-track, a:focus-visible .ticker-track { animation-play-state: pau
   .home-hero-actions .btn-primary:hover { background: #2f9a6f; border-color: #2f9a6f; }
   .home-hero-actions .btn-light { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .55); color: #fff; }
   .home-hero-actions .btn-light:hover { background: #fff; border-color: #fff; color: var(--accent-strong); }
+  /* The app on a phone (a 430px-wide phone screenshot), on the right of the photo (its right
+     edge on the page column's right edge). It stands out of the photo's bottom edge, whole,
+     on a soft grey shadow, as if standing on the page; the page below makes room for it.
+     Beside it, on the photo's bottom line, a short caption pointing to it. */
+  .home-public > .home-hero { z-index: 1; }
+  /* The sections below sit over the phone's foot (the Magazine card's icon in front of it). */
+  .home-public > .home-hero ~ * { position: relative; z-index: 2; }
+  .home-hero-phone {
+    --phone-top: 2rem;
+    position: absolute; right: var(--hero-gutter); top: var(--phone-top); margin: 0;
+    height: calc((100% - var(--phone-top)) * 1.39); display: flex; align-items: stretch;
+  }
+  .phone-mock {
+    height: 100%; aspect-ratio: 616 / 1244; padding: 8px; border-radius: 44px; background: #0f1512;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .16); /* no wall shadow: only the floor one below */
+  }
+  .phone-mock img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 34px; }
+  /* The floor shadow it stands on: a flat oval under its base, dark where it touches (the
+     contact line) and spreading out softly on the floor. */
+  .home-hero-phone::before, .home-hero-phone::after {
+    content: ""; position: absolute; z-index: -1; border-radius: 50%; pointer-events: none;
+  }
+  .home-hero-phone::after {
+    left: -8%; right: -8%; bottom: -15px; height: 30px;
+    background: radial-gradient(closest-side, rgba(17, 24, 39, .26), rgba(17, 24, 39, .1) 60%, transparent);
+    filter: blur(5px);
+  }
+  .home-hero-phone::before {
+    left: 6%; right: 6%; bottom: -5px; height: 10px;
+    background: radial-gradient(closest-side, rgba(17, 24, 39, .55), rgba(17, 24, 39, .2) 70%, transparent);
+    filter: blur(2px);
+  }
+  /* The caption: on the photo beside the phone, on the photo's bottom line; one step smaller
+     than the lead text, ending with an arrow to the phone. The phone runs 28% of its height
+     below the photo, hence the 28%. */
+  .home-hero-phone-note {
+    position: absolute; right: calc(100% + 1.5rem); bottom: calc(28% + 1.25rem); width: 13rem;
+    color: rgba(255, 255, 255, .82); font-size: var(--fs-sm); font-weight: 500; line-height: 1.45;
+    text-align: right; text-shadow: 0 1px 3px rgba(0, 0, 0, .55);
+  }
+  .home-hero-arrow { margin-left: .3rem; opacity: .8; }
 
   /* Signed in: greeting + day picker sit on the photo */
   /* Signed in, the hero is just the greeting + date with the day picker right under them (no fixed height). */
@@ -1470,20 +1511,20 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
 
 /* Learn → article → "More on this topic": title, reading time, chevron */
 .related-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
-.related-card { display: flex; align-items: center; gap: .75rem; padding: 1rem 1.1rem; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); color: var(--text); text-decoration: none; transition: background-color .15s var(--ease-out), border-color .15s var(--ease-out); }
-.related-card:hover { border-color: var(--line-strong); background: var(--accent-tint); }
+.related-card { display: flex; align-items: center; gap: .75rem; padding: 1rem 1.1rem; border-radius: var(--radius); background: var(--accent-tint); border: 1px solid #cfe9db; color: var(--text); text-decoration: none; transition: background-color .15s var(--ease-out), border-color .15s var(--ease-out); }
+.related-card:hover { border-color: #b9dfcb; background: #d7eee2; }
 .related-card:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 2px; }
 .related-text { flex: 1; min-width: 0; display: grid; gap: .2rem; }
 .related-text strong { font-size: var(--fs-md); font-weight: 700; line-height: 1.35; }
 .related-time { font-size: var(--fs-sm); color: var(--muted); }
-.related-card > svg { flex: none; color: var(--muted); }
+.related-card > svg { flex: none; color: var(--accent-strong); }
 .related-card:hover > svg { color: var(--accent-fill); }
 @media (min-width: 900px) { .related-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ===== Today on phones (under 768px): Daily summary (ring + bars, calendar), "What would you
    like to check?", then a folding Food diary. Layout only: the type and colours above are reused.
    Tablets and desktop keep the week strip, meal tiles, Quick actions and the summary grid. ===== */
-.sum-day, .sum-ring-layout, .t-check, .meal-sum, .meal-fold, .diary-total { display: none; }
+.sum-nav, .sum-ring-layout, .t-check, .meal-sum, .meal-fold, .diary-total { display: none; }
 .t-diary .meal-body { display: contents; }
 @media (max-width: 767px) {
   .today:not(.home-public) { display: flex; flex-direction: column; }
@@ -1582,8 +1623,15 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
   .t-summary .t-card-head h2 { white-space: nowrap; min-width: 0; }
   .t-summary .t-card-head h2 .partial { margin-left: .25rem; top: 0; }
   .t-summary .sum-day { white-space: nowrap; }
+  /* Previous / next day arrows around the date */
+  .sum-nav { display: inline-flex; align-items: center; gap: 0; flex: none; margin: 0 -.35rem 0 .5rem; }
+  .sum-arrow { display: inline-grid; place-items: center; width: 30px; height: 32px; border-radius: 50%; color: var(--accent-strong); }
+  .sum-arrow:hover { background: var(--accent-tint); }
+  .sum-arrow.is-disabled { color: #c3cfca; pointer-events: none; }
 }
-@media (max-width: 379px) { .t-summary:has(.partial) .sum-day-prefix { display: none; } }
+@media (max-width: 379px) {
+  .t-summary .sum-day svg { display: none; } /* the date itself still opens the calendar */
+}
 
 /* Product cards: data with gaps (catalog/quality.py) is marked, never silently shown as complete */
 .quality-pill { display: inline-block; margin-left: .35rem; vertical-align: 1px; white-space: nowrap; }
@@ -1630,3 +1678,311 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
 }
 /* Long nutrient names (Carbohydrate) split over two lines instead of running into the value. */
 .nrow-name { hyphens: manual; overflow-wrap: break-word; }
+
+/* ==========================================================================
+   Magazine cover (/learn/): a fixed page, the cover between the header and the tab bar.
+   Sizes are in container units of the cover (cqw / cqh), measured on the printed cover
+   (1055 × 1491), so phone and desktop keep its proportions.
+   Fonts: Source Serif 4 (titles), Montserrat (topics) — OFL, self-hosted.
+   ========================================================================== */
+@font-face {
+  font-family: "Source Serif 4"; font-style: normal; font-weight: 600 700; font-display: swap;
+  src: url("../fonts/sourceserif4-latin-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Source Serif 4"; font-style: normal; font-weight: 600 700; font-display: swap;
+  src: url("../fonts/sourceserif4-latin-ext-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Montserrat"; font-style: normal; font-weight: 500 600; font-display: swap;
+  src: url("../fonts/montserrat-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Montserrat"; font-style: normal; font-weight: 500 600; font-display: swap;
+  src: url("../fonts/montserrat-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+.is-mag-page { --mag-green: #0e290d; --mag-cream: #fcf0e2; --mag-yellow: #fff200; --mag-white: #fffffa; overflow: hidden; }
+.is-mag-page .site-footer { display: none; }
+.is-mag-page main { padding: 0; max-width: none; }
+.mag-stage {
+  position: fixed; left: 0; right: 0; z-index: 5; overflow: hidden; background: var(--mag-green);
+  top: calc(var(--vv-top, 0px) + var(--header-h, 57px));
+  height: calc(var(--vv-h, 100dvh) - var(--header-h, 57px) - var(--tabbar-h) - env(safe-area-inset-bottom));
+  display: flex; justify-content: center;
+}
+.mag-bg { display: none; }
+.mag-cover { position: relative; width: 100%; height: 100%; container-type: size; overflow: hidden; color: var(--mag-white); }
+.mag-photo { position: absolute; }
+/* Phones: the whole photo, never cropped beforehand: its height is the zoom (100 = the
+   cover's height); the point at --m-x % of its width sits at the same % of the cover's width,
+   and --m-y moves it up or down (% of the cover's height), so zooming and moving push the
+   photo out past the screen's edges (Staff → Magazine → Cover).
+   Too narrow to fill the width: it is widened (and only then trimmed top and bottom). */
+@media (max-width: 767px) {
+  .mag-photo {
+    left: calc(var(--m-x, 50) * 1%); top: calc(var(--m-y, 0) * 1%);
+    width: auto; min-width: 100%; height: calc(var(--m-zoom, 100) * 1%); max-width: none;
+    object-fit: cover; transform: translateX(calc(var(--m-x, 50) * -1%));
+  }
+}
+/* Layers: photo, logo, her head over the logo, then search and titles. */
+.mag-panel, .mag-photo-box { display: contents; }
+.mag-topic-go { display: none; } /* the ">" after a topic: desktop only */
+.mag-issue { display: none; } /* "• NOVEMBER" after MAGAZINE: desktop only */ /* phones: the logo, search and titles sit on the cover itself */
+.mag-photo { z-index: 0; }
+.mag-logo { z-index: 1; }
+.mag-head { z-index: 2; pointer-events: none; }
+.mag-search, .mag-col { z-index: 3; }
+.mag-cover a { color: inherit; text-decoration: none; }
+.mag-cover a:hover, .mag-cover a:focus-visible { text-decoration: underline; text-decoration-thickness: .06em; text-underline-offset: .12em; }
+.mag-cover a:focus-visible { outline: 2px solid var(--mag-yellow); outline-offset: 3px; border-radius: 2px; }
+
+/* Logo: "Foodo" heavy and rounded, "MAGAZINE" widely spaced under it. */
+.mag-logo { position: absolute; left: 4.1cqw; top: 1.6cqh; margin: 0; display: flex; flex-direction: column; color: var(--mag-cream); line-height: 1; }
+.mag-logo-word { font-family: "Nunito", sans-serif; font-weight: 1000; font-size: 19.4cqw; letter-spacing: -.035em; line-height: .8; }
+.mag-logo-sub {
+  font-family: "Montserrat", sans-serif; font-weight: 500; font-size: 2.15cqw; letter-spacing: 1.02em;
+  text-transform: uppercase; margin: .2cqw 0 0 .6cqw;
+}
+
+/* Search: an outlined pill, top right. */
+.mag-search {
+  position: absolute; right: 3cqw; top: 6.4cqh; width: 29cqw; height: 4.4cqw;
+  display: flex; align-items: center; gap: 2cqw; padding: 0 2.2cqw; margin: 0;
+  border: max(1.5px, .19cqw) solid var(--mag-cream); border-radius: 999px; color: var(--mag-cream);
+}
+.mag-search .icon { flex: none; width: max(14px, 2.3cqw); height: max(14px, 2.3cqw); }
+.mag-search input {
+  flex: 1; min-width: 0; height: 100%; border: 0; padding: 0; background: transparent; color: var(--mag-cream);
+  font-family: "Montserrat", sans-serif; font-weight: 500; font-size: 2cqw; outline: none; box-shadow: none;
+}
+.mag-search input::placeholder { color: var(--mag-cream); opacity: 1; }
+.mag-search input:focus::placeholder { color: transparent; }
+.mag-search-link { display: none; }
+.mag-search-link span { font-family: "Montserrat", sans-serif; font-weight: 500; white-space: nowrap; }
+.mag-search input::-webkit-search-cancel-button { filter: invert(1); }
+.mag-search:focus-within { outline: 2px solid var(--mag-yellow); outline-offset: 2px; }
+
+/* Two columns of topic slots. The lower slot sits where it is on the printed cover, and moves
+   down only when the titles above it are longer (grid row with a minimum height). */
+.mag-col { position: absolute; top: 17.9cqh; display: grid; }
+.mag-col-left { left: 4cqw; width: 33cqw; grid-template-rows: minmax(25.1cqh, auto) auto; text-align: left; }
+.mag-col-right { right: 3.6cqw; width: 25cqw; grid-template-rows: minmax(19.7cqh, auto) auto; text-align: right; }
+.mag-slot { display: flex; flex-direction: column; gap: .5cqw; padding-bottom: 2.5cqh; }
+.mag-col-left .mag-slot { align-items: flex-start; }
+.mag-col-right .mag-slot { align-items: flex-end; }
+.mag-col-left .mag-slot + .mag-slot { width: 20cqw; }
+.mag-col .mag-slot + .mag-slot { padding-top: 2.8cqh; } /* air above the lower topic */
+.mag-col-right .mag-slot:first-child { width: 25cqw; justify-self: end; }
+.mag-col-right .mag-title { -webkit-line-clamp: 6; line-clamp: 6; } /* the narrow column: more lines before clamping */
+.mag-topic {
+  font-family: "Montserrat", sans-serif; font-weight: 600; font-size: 2.05cqw; line-height: 1.38;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--mag-yellow) !important; margin-bottom: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .55), 0 0 10px rgba(0, 0, 0, .35);
+}
+.mag-title {
+  font-family: "Source Serif 4", "Iowan Old Style", Georgia, serif; font-weight: 700; font-size: 4.4cqw;
+  font-variation-settings: "opsz" 60; line-height: .95; letter-spacing: -.015em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .6), 0 2px 10px rgba(0, 0, 0, .45), 0 0 22px rgba(0, 0, 0, .3);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden;
+}
+.mag-title + .mag-title { margin-top: 2.2cqw; }
+.mag-lead { font-size: 5.3cqw; }
+/* At the foot of the cover, a permanent floating message in the style of the app's messages
+   (dark pill, white text, mint icon): the titles are links. */
+.mag-cta {
+  position: absolute; left: 50%; bottom: 3.5cqh; transform: translateX(-50%); z-index: 3; margin: 0;
+  display: flex; align-items: center; gap: .625rem; width: max-content; max-width: calc(100% - 32px);
+  padding: .75rem 1rem; border-radius: 12px; background: #1f2937; color: #fff;
+  font-size: var(--fs-sm); font-weight: 500; line-height: 1.4; white-space: nowrap;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35); pointer-events: none;
+}
+.mag-cta .icon { color: #7fe0c2; flex: none; }
+/* "Tap" on touch screens, "Click" with a mouse. */
+.mag-cta-tap { display: none; }
+@media (hover: none) { .mag-cta-tap { display: inline; } .mag-cta-click { display: none; } }
+/* Phones: the search keeps 16px text (no zoom on focus), drawn at the cover's size. */
+@media (max-width: 767px) {
+  .mag-topic { font-size: max(9px, 2.05cqw); letter-spacing: .08em; }
+  /* Phones: everything a little lower (the logo no longer touches the top); the search is a
+     link to the search page, centred on the logo word. */
+  .mag-logo { top: 3.4cqh; }
+  .mag-col { top: 21cqh; }
+  .mag-search-form { display: none; }
+  .mag-search-link {
+    display: flex; width: auto; right: 3cqw; height: 26px; padding: 0 9px 0 8px; gap: 5px;
+    top: calc(3.4cqh + 7.8cqw - 13px); font-size: 10.5px; letter-spacing: .01em;
+    border-width: 1px; border-color: rgba(252, 240, 226, .75);
+  }
+  .mag-search-link .icon { width: 12px; height: 12px; }
+  .mag-search-link::after { content: ""; position: absolute; inset: -9px -4px; } /* 44px tap area */
+  .mag-search-link:hover, .mag-search-link:focus-visible { text-decoration: none; }
+  .mag-col-right { width: 27cqw; right: 3cqw; }
+  .mag-col-right .mag-slot:first-child { width: 27cqw; }
+  .mag-title { font-size: max(15px, 4.4cqw); }
+  .mag-lead { font-size: max(17px, 5.3cqw); }
+  .mag-cta { bottom: 2.5cqh; }
+}
+
+/* Desktop: no magazine frame. The photo on the right, from top to bottom; on the left, in one
+   column as wide as the logo: the logo, the search and every title, left-aligned. The type keeps
+   the sizes it had on the cover: --u is 1% of the former cover's width (its height, minus the
+   room around it, times 1055/1491). */
+@media (min-width: 768px) {
+  .mag-stage { height: calc(var(--vv-h, 100dvh) - var(--header-h, 61px)); }
+  .mag-cover {
+    --u: calc((var(--vv-h, 100dvh) - var(--header-h, 61px) - 9vh - 10px) * .0070758);
+    container-type: normal; display: flex; justify-content: flex-start; align-items: stretch;
+    gap: calc(7 * var(--u)); width: 100%; height: 100%; overflow: hidden;
+    /* the column where it was when the column and the photo were centred together */
+    padding: 0 0 0 max(1.5rem, calc(50% - 105 * var(--u)));
+  }
+  /* Two layers: the photo under everything, over the whole cover (only the screen's edges cut
+     it), and the logo, search and titles above it. The photo is placed per issue (Staff →
+     Magazine → Cover) in % of the cover's height, so it keeps its place whatever the width:
+     --photo-h its height, --photo-x its left edge from the middle of the screen, --photo-y its
+     top edge. Defaults: the built-in photo, larger than the page, the orange near the foot. */
+  .mag-photo-box { display: block; position: absolute; inset: 0; z-index: 0; overflow: hidden; container-type: size; }
+  .mag-panel { position: relative; z-index: 1; }
+  .mag-photo {
+    position: absolute; inset: auto; left: calc(50% + var(--photo-x, -26) * 1cqh); top: calc(var(--photo-y, -7) * 1cqh);
+    width: auto; height: calc(var(--photo-h, 133) * 1cqh); max-width: none; object-fit: fill; transform: none;
+    /* her own background melts into the page's green at the left and right edges */
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+  }
+  .mag-head, .mag-cta { display: none; }
+  /* The column: as wide as the logo (titles and search never widen it), centred top to bottom;
+     scrolls on its own only if a very short window cannot hold every title. */
+  .mag-panel {
+    /* logo and search at the top; the titles sit on the bottom and grow upwards (row 3 takes
+       the free space between them) */
+    display: grid; grid-template-columns: min-content; grid-template-rows: auto auto 1fr auto auto;
+    flex: none; padding: 4.5vh 0 5.5vh; overflow-y: auto; scrollbar-width: none; order: -1;
+  }
+  .mag-panel > * { position: static; }
+  /* One rhythm: the same space between every topic, whichever column it came from. */
+  .mag-panel { gap: 0; }
+  .mag-panel > .mag-search-form { position: relative; inset: auto; z-index: 4; margin-top: calc(3.2 * var(--u)); }
+  .mag-logo { grid-row: 1; }
+  .mag-panel > .mag-search-form { grid-row: 2; }
+  .mag-col-left { grid-row: 4; margin-top: calc(6 * var(--u)); }
+  .mag-col-right { grid-row: 5; margin-top: calc(5.2 * var(--u)); }
+
+  /* Suggestions as you type: a dark green card under the search, in the cover's type
+     (yellow Montserrat topic, cream serif title). Hidden when the search loses focus. */
+  .mag-suggest { position: absolute; top: calc(100% + 8px); left: 0; right: 0; }
+  .mag-suggest:empty, .mag-search-form:not(:focus-within) .mag-suggest { display: none; }
+  .mag-suggest-box {
+    background: rgba(10, 32, 10, .96); border: 1px solid rgba(252, 240, 226, .35); border-radius: 18px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, .45); padding: .4rem; color: var(--mag-cream);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  .mag-suggest-list { list-style: none; margin: 0; padding: 0; }
+  .mag-suggest-list li + li { border-top: 1px solid rgba(252, 240, 226, .12); }
+  .mag-suggest-box a { display: flex; flex-direction: column; gap: .15rem; padding: .6rem .75rem; border-radius: 12px; }
+  .mag-cover .mag-suggest-box a:hover, .mag-cover .mag-suggest-box a:focus-visible { background: rgba(252, 240, 226, .09); text-decoration: none; }
+  .mag-suggest-topic {
+    font-family: "Montserrat", sans-serif; font-weight: 600; font-size: .66rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--mag-yellow);
+  }
+  .mag-suggest-title {
+    font-family: "Source Serif 4", Georgia, serif; font-weight: 700; font-size: 1.12rem; line-height: 1.15;
+    font-variation-settings: "opsz" 60; color: var(--mag-white);
+  }
+  .mag-cover .mag-suggest-all {
+    flex-direction: row; align-items: center; gap: .25rem; margin-top: .2rem;
+    border-top: 1px solid rgba(252, 240, 226, .12); border-radius: 0 0 12px 12px;
+    font-family: "Montserrat", sans-serif; font-weight: 500; font-size: .82rem; color: var(--mag-cream);
+  }
+  .mag-suggest-none { margin: 0; padding: .7rem .8rem; font-family: "Montserrat", sans-serif; font-size: .85rem; }
+  .mag-logo-word { font-size: calc(19.4 * var(--u)); padding-right: .05em; } /* room for the last "o" */
+  .mag-logo-sub {
+    font-size: calc(1.6 * var(--u)); margin: calc(.5 * var(--u)) 0 0 calc(.6 * var(--u));
+    letter-spacing: .9em; white-space: nowrap;
+  }
+  .mag-issue { display: inline; }
+  .mag-dot { color: var(--mag-yellow); letter-spacing: 0; margin: 0 .25em 0 -.3em; }
+  .mag-search {
+    width: auto; min-width: 100%; height: max(38px, calc(5 * var(--u))); gap: calc(1.6 * var(--u));
+    padding: 0 calc(2.2 * var(--u)); border-width: 1.5px; margin-bottom: calc(1 * var(--u));
+  }
+  .mag-search .icon { width: max(14px, calc(2.3 * var(--u))); height: max(14px, calc(2.3 * var(--u))); }
+  .mag-search input { font-size: max(14px, calc(2 * var(--u))); }
+  .mag-col, .mag-col-left, .mag-col-right {
+    display: flex; flex-direction: column; gap: calc(5.2 * var(--u)); width: 0; min-width: 100%;
+    text-align: left;
+  }
+  .mag-col .mag-slot, .mag-col .mag-slot + .mag-slot, .mag-col-right .mag-slot:first-child {
+    width: auto; padding: 0; align-items: flex-start; gap: calc(1 * var(--u));
+  }
+  .mag-topic { display: inline-flex; align-items: center; gap: .3em; font-size: calc(2.3 * var(--u)); }
+  .mag-topic-go { display: inline-flex; }
+  .mag-topic-go .icon { width: 1.25em; height: 1.25em; stroke-width: 2.5; }
+  .mag-title, .mag-col-right .mag-title { font-size: calc(4.8 * var(--u)); -webkit-line-clamp: 4; line-clamp: 4; }
+  .mag-title + .mag-title { margin-top: calc(1.8 * var(--u)); }
+  .mag-lead { font-size: calc(7.2 * var(--u)); line-height: .93; }
+}
+/* Staff → Magazine → Covers: the real cover in a 16:9 box; --u follows the box, not the window.
+   Full width of the staff page; full screen with its sliders (the stage). */
+.mag-preview {
+  position: relative; container-type: size; aspect-ratio: 16 / 9; width: 100%;
+  border-radius: 14px; overflow: hidden; background: var(--mag-green);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+}
+.mag-preview-inner { position: absolute; inset: 0; }
+.mag-preview .mag-cover { --u: .644cqh; }
+.mag-preview .mag-panel { padding: 4.5cqh 0 5.5cqh; }
+.mag-preview .mag-search { height: calc(5 * var(--u)); }
+.mag-preview .mag-search input { font-size: calc(2 * var(--u)); }
+.cover-previews { display: grid; gap: 1.25rem; margin: 0 0 1.25rem; }
+@media (min-width: 1200px) { .cover-previews { grid-template-columns: minmax(0, 1fr) 254px; align-items: start; } }
+.cover-h { margin: 0 0 .5rem; font-size: 1rem; }
+/* Phone preview: the cover page at 390 × 844, shown at 62%. */
+.cover-phone-frame {
+  box-sizing: content-box; width: 242px; height: 523px; overflow: hidden; border: 6px solid #111827; border-radius: 30px;
+  background: #0e290d; box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+}
+.cover-phone-frame iframe { width: 390px; height: 844px; border: 0; transform: scale(.62); transform-origin: 0 0; }
+.cover-tools.cover-tools-phone { grid-template-columns: 1fr; width: 254px; box-sizing: border-box; }
+.cover-tools {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem 1.25rem; align-items: start;
+  margin-top: .75rem; padding: .9rem 1rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+}
+.cover-slider label { display: flex; gap: .3rem; font-weight: 600; font-size: .9rem; }
+.cover-slider output { font-variant-numeric: tabular-nums; color: #0b7a5e; }
+.cover-slider input[type="range"] { width: 100%; accent-color: #0b7a5e; }
+.cover-slider .hint { margin: .1rem 0 0; font-size: .78rem; }
+.cover-tools-buttons { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+@media (max-width: 767px) { .cover-tools { grid-template-columns: 1fr; } }
+/* Full screen: the cover fills the screen, the sliders float at the foot. */
+.cover-stage:fullscreen { display: grid; place-items: center; background: #0a200a; }
+.cover-stage:fullscreen .mag-preview { width: min(100vw, calc(100vh * 16 / 9)); border-radius: 0; box-shadow: none; }
+.cover-stage:fullscreen .cover-tools {
+  position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); width: min(900px, calc(100vw - 2rem));
+  margin: 0; background: rgba(255, 255, 255, .94); box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+}
+
+/* Notifications: on phones only the headline and the article title; where and how long on wider screens. */
+@media (max-width: 767px) { .notif-detail { display: none; } }
+/* Phones: the "×" sits in the corner; only the headline keeps clear of it, the text below
+   runs to the edge of the card. */
+@media (max-width: 767px) {
+  .nudge { position: relative; }
+  .nudge-close { position: absolute; top: .35rem; right: .35rem; margin: 0; }
+  .nudge-body h2 { padding-right: 2.25rem; }
+}
+/* An empty result in a list: the card spans the list, its message centred. */
+.article-list > li > .empty-card { width: 100%; box-sizing: border-box; }
+.article-list > li:has(> .empty-card) { grid-column: 1 / -1; }
+/* Phones: the bell on the title row (Progress), the 7 / 30 days switch on its own row below */
+@media (max-width: 767px) {
+  .page-head:has(> .head-tools) { flex-wrap: wrap; row-gap: .75rem; }
+  .page-head > .head-tools { display: contents; }
+  .page-head > .head-tools .head-bell { order: 1; margin-left: auto; }
+  .page-head > .head-tools .range-switch { order: 2; flex: 1 1 100%; }
+}

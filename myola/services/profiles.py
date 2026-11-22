@@ -24,7 +24,33 @@ def clear_health(profile: Profile) -> None:
     profile.conditions = []
     profile.conditions_note = ""
     profile.health_consent_at = None
-    profile.save(update_fields=["conditions", "conditions_note", "health_consent_at", "updated_at"])
+    profile.ai_use_health = False
+    profile.save(
+        update_fields=[
+            "conditions", "conditions_note", "health_consent_at", "ai_use_health", "updated_at"
+        ]
+    )  # fmt: skip
+
+
+# Answers that are not conditions: never sent.
+_NOT_CONDITIONS = {"none", "prefer_not"}
+
+
+def health_for_ai(profile: Profile | None) -> list[str]:
+    """The health conditions the AI provider may see: only with the stored consent and the
+    separate switch "Share my health conditions with Ask Foodo" (``ai_use_health``). Names in
+    English, plus the user's own "Other" note (shortened)."""
+    if profile is None or not profile.ai_use_health or not profile.health_consent_at:
+        return []
+    out = [
+        str(P.CONDITIONS[c])
+        for c in profile.conditions
+        if c in P.CONDITIONS and c not in _NOT_CONDITIONS and c != "other"
+    ]
+    note = " ".join((profile.conditions_note or "").split())[:200]
+    if "other" in profile.conditions:
+        out.append(f"Other: {note}" if note else "Other")
+    return out
 
 
 def finish_onboarding(profile: Profile, selected_conditions: list[str]) -> None:

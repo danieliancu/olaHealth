@@ -339,3 +339,11 @@ def test_today_card_is_the_latest_notification_only_while_unread(member_client, 
     assert "First scan" in member_client.get(today).content.decode()
     yesterday = local_today(get_profile(member)) - dt.timedelta(days=1)
     assert "First scan" not in member_client.get(f"{today}?date={yesterday}").content.decode()
+
+
+def test_article_notification_detail_is_for_wider_screens():
+    from core.templatetags.ui import notif_parts
+
+    lead, detail = notif_parts("“Sweeteners on the label”: a 4-minute read in Ingredients.")
+    assert lead == "“Sweeteners on the label”" and detail == ": a 4-minute read in Ingredients."
+    assert notif_parts("Plain text: no title.") == ("Plain text: no title.", "")

@@ -1,10 +1,10 @@
 {% extends "staff/layout.html" %}{% load ui %}
 {% block staff_title %}Magazine articles{% endblock %}
 {% block staff_content %}
+{% include "staff/partials/learn_tabs.html" with tab="articles" %}
 <div class="cms-head">
   <h1>Magazine articles</h1>
   <div class="row">
-    <a class="btn btn-outline btn-small" href="{% url 'staff:learn-topics' %}">{% icon "settings" 16 %}<span>Topics</span></a>
     <a class="btn btn-primary btn-small" href="{% url 'staff:learn-new' %}">{% icon "plus" 16 %}<span>New article</span></a>
   </div>
 </div>

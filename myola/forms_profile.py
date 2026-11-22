@@ -319,6 +319,9 @@ class SettingsForm(ProfileForm):
     ai_use_my_data = forms.BooleanField(
         label=_("Let Ask Foodo use my diary, lists, notes and memories"), required=False
     )
+    ai_use_health = forms.BooleanField(
+        label=_("Share my health conditions with Ask Foodo"), required=False
+    )
     timezone = forms.ChoiceField(label=_("Time zone"), choices=timezone_choices)
     notify_reminders = forms.BooleanField(label=_("Daily reminders"), required=False)
     notify_achievements = forms.BooleanField(label=_("New achievements"), required=False)

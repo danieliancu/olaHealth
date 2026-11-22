@@ -51,6 +51,18 @@ BASIS_LABELS = {
     "per_100_unspecified": "per 100 g or ml (not stated by the source)",
     "per_serving": "per serving",
 }
+
+
+def basis_label(basis: str, data: dict | None = None) -> str:
+    """The basis label; "(from the product type)" when the source does not state g or ml and
+    it was worked out from the kind of product (``off.basis``, ``nutrition.basis_inferred``)."""
+    label = BASIS_LABELS.get(basis, "")
+    inferred = bool(((data or {}).get("nutrition") or {}).get("basis_inferred"))
+    if inferred and basis in ("per_100g", "per_100ml"):
+        return f"{label} (from the product type)"
+    return label
+
+
 PREPARATION_LABELS = {"as_sold": "as sold", "prepared": "as prepared"}
 
 

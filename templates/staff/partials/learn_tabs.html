@@ -1,0 +1,6 @@
+{# Staff → Magazine: its three tabs #}
+<nav class="staff-tabs" aria-label="Magazine">
+  <a href="{% url 'staff:learn' %}"{% if tab == "articles" %} aria-current="page"{% endif %}>Articles</a>
+  <a href="{% url 'staff:learn-topics' %}"{% if tab == "topics" %} aria-current="page"{% endif %}>Topics</a>
+  <a href="{% url 'staff:learn-covers' %}"{% if tab == "covers" %} aria-current="page"{% endif %}>Cover</a>
+</nav>

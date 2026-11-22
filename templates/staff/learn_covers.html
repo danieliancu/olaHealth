@@ -1,0 +1,43 @@
+{% extends "staff/layout.html" %}{% load static ui %}
+{% block staff_title %}Magazine cover{% endblock %}
+{% block head %}{{ block.super }}<script type="module" src="{% static 'js/cover-preview.js' %}"></script><link rel="stylesheet" href="{{ cover_style_url }}">{% endblock %}
+{% block staff_content %}
+{% include "staff/partials/learn_tabs.html" with tab="covers" %}
+<h1>Magazine cover</h1>
+<p class="caption">One cover: the photo you upload and the month you set. The titles still come from each topic’s featured articles. Move the sliders to place the photo; the previews follow, and everything is saved with “Save cover”.</p>
+
+<div class="cover-previews">
+  {# Desktop: the real cover at a smaller scale; it can go full screen with its sliders. #}
+  <section class="cover-stage" data-cover-stage aria-label="Desktop preview">
+    <h2 class="cover-h">Desktop</h2>
+    <div class="mag-preview is-mag-page" data-cover-preview><div class="mag-preview-inner" inert>{% include "learn/partials/cover.html" %}</div></div>
+    <div class="cover-tools">
+      {% include "staff/partials/cover_slider.html" with field=form.photo_size key="h" %}
+      {% include "staff/partials/cover_slider.html" with field=form.photo_x key="x" %}
+      {% include "staff/partials/cover_slider.html" with field=form.photo_y key="y" %}
+      <div class="cover-tools-buttons">
+        <button class="btn btn-outline btn-small" type="button" data-photo-reset="desktop">Reset</button>
+        <button class="btn btn-outline btn-small" type="button" data-cover-fullscreen>Full screen</button>
+        <button class="btn btn-primary btn-small" type="submit" form="cover-form">{% icon "check" 16 %}<span>Save cover</span></button>
+      </div>
+    </div>
+  </section>
+  {# Phones: the cover page itself in a phone-sized frame. #}
+  <section class="cover-phone" aria-label="Phone preview">
+    <h2 class="cover-h">Phone</h2>
+    <div class="cover-phone-frame"><iframe src="{% url 'staff:learn-cover-preview' %}" title="Phone preview of the Magazine cover" data-cover-phone tabindex="-1"></iframe></div>
+    <div class="cover-tools cover-tools-phone">
+      {% include "staff/partials/cover_slider.html" with field=form.mobile_x key="mx" %}
+      {% include "staff/partials/cover_slider.html" with field=form.mobile_y key="my" %}
+      {% include "staff/partials/cover_slider.html" with field=form.mobile_zoom key="mz" %}
+      <div class="cover-tools-buttons"><button class="btn btn-outline btn-small" type="button" data-photo-reset="phone">Reset</button></div>
+    </div>
+  </section>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="card staff-form" id="cover-form" novalidate>{% csrf_token %}
+  {% include "partials/field.html" with field=form.month %}
+  {% include "partials/field.html" with field=form.image %}
+  <div class="row"><button class="btn btn-primary" type="submit">{% icon "check" 18 %}<span>Save cover</span></button></div>
+</form>
+{% endblock %}

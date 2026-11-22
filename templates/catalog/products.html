@@ -3,7 +3,7 @@
 {% block title %}{% translate "Products" %}{% endblock %}
 {% block content %}
 <div id="catalog">
-<div class="page-head page-head-soft"><span class="soft-icon">{% icon "search" 20 %}</span><h1>{% translate "Products" %}</h1></div>
+<div class="page-head"><div class="page-head-soft"><span class="soft-icon">{% icon "search" 20 %}</span><h1>{% translate "Products" %}</h1></div>{% if user.is_authenticated %}{% include "partials/head_bell.html" %}{% endif %}</div>
 
 {% include "partials/diary_banner.html" %}
 {# Filters apply on change through htmx (the Apply button stays for no-JS). #}

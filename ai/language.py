@@ -65,22 +65,20 @@ LANGUAGES: dict[str, tuple[str, re.Pattern]] = {
     ),
 }
 
-# The last line of a general answer, in each language (added when the model leaves it out).
-DISCLAIMERS = {
-    "en": "This is general information, not personal advice.",
-    "ro": "Acestea sunt informații generale, nu sfaturi personalizate.",
-    "es": "Esta es información general, no un consejo personal.",
-    "fr": "Ceci est une information générale, pas un conseil personnalisé.",
-    "it": "Queste sono informazioni generali, non consigli personali.",
-    "de": "Dies sind allgemeine Informationen, keine persönliche Beratung.",
-    "pt": "Esta é uma informação geral, não um conselho pessoal.",
-    "pl": "To są informacje ogólne, a nie porada osobista.",
-}
-_HAS_DISCLAIMER = re.compile(
-    r"general information|informa[țţt]i[ei]? general[ăe]|ghid general|"
-    r"nu (?:este )?(?:un )?sfat(?:uri)? personal|información general|"
-    r"information(s)? générale|informazioni generali|allgemeine Information|"
-    r"informaç(ão|ões) gera|informacje ogólne",
+# "This is general information, not personal advice" in the app's languages: never shown under
+# an answer (no reminder each time; see strip_disclaimer).
+_DISCLAIMER = (
+    r"general information|not (?:a )?(?:personal|personali[sz]ed|individual) advice|"
+    r"informa[țţt]i[ei]? general[ăe]|ghid general|"
+    r"nu (?:este |sunt )?(?:un |o )?sfat(?:uri)? personal|información general|"
+    r"information(?:s)? générale|informazioni generali|allgemeine Information|"
+    r"informaç(?:ão|ões) gera|informacje ogólne"
+)
+_HAS_DISCLAIMER = re.compile(_DISCLAIMER, re.IGNORECASE)
+# The whole sentence (or bullet line) holding it, with an optional "Note:" in front.
+_DISCLAIMER_SENTENCE = re.compile(
+    r"[ \t]*(?:[-*•][ \t]*)?\(?(?:\*\*)?(?:note|notă|nota|remarque|hinweis|uwaga)?:?(?:\*\*)?"
+    r"[^.!?\n]*?(?:" + _DISCLAIMER + r")[^.!?\n]*[.!?]?\)?",
     re.IGNORECASE,
 )
 
@@ -115,36 +113,16 @@ def name(code: str) -> str:
     return LANGUAGES[code][0] if code in LANGUAGES else ""
 
 
-# The English "general information" sentence, wherever the model puts it: on its own line, as
-# a bullet, in brackets or right after the same sentence in another language.
-_ENGLISH_LINE = re.compile(
-    r"[ \t]*(?:[-*•][ \t]*)?\(?\bthis is (?:only |just )?general information,? (?:and )?"
-    r"not (?:a )?(?:personal|personali[sz]ed|individual) advice\b\.?\)?",
-    re.IGNORECASE,
-)
-
-
-def strip_english(text: str, code: str = "") -> str:
-    """``text`` without the English "general information" sentence when the answer is in
-    another language (``code``, else detected from the answer itself)."""
-    if not _ENGLISH_LINE.search(text):
+def strip_disclaimer(text: str) -> str:
+    """``text`` without any "this is general information, not personal advice" sentence, in
+    any of the app's languages, wherever the model put it (own line, bullet, brackets,
+    "Note: …")."""
+    if not _HAS_DISCLAIMER.search(text):
         return text
-    rest = _ENGLISH_LINE.sub("", text)
-    code = code or detect(rest)
-    if not code or code == "en":
-        return text
+    rest = _DISCLAIMER_SENTENCE.sub("", text)
     rest = re.sub(r"[ \t]+\n", "\n", rest)
-    return re.sub(r"\n{3,}", "\n\n", rest).strip()
-
-
-def with_disclaimer(text: str, code: str) -> str:
-    """``text`` ending with the "general information" line in its language, and only in it
-    (an English copy under an answer in another language is removed)."""
-    text = strip_english(text, code)
-    code = code or detect(text)
-    if not code or code not in DISCLAIMERS or _HAS_DISCLAIMER.search(text):
-        return text
-    return f"{text.rstrip()}\n\n{DISCLAIMERS[code]}"
+    rest = re.sub(r"\n{3,}", "\n\n", rest).strip()
+    return rest or text
 
 
 def refer(code: str) -> str:

@@ -47,7 +47,6 @@
     </aside>{% endif %}
     </div>
   </div>
-  <p class="notice">{% icon "info" 18 %}<span>{% translate "Information, not medical advice. The label on the package is always the reference." %} <a href="{% url 'sources' %}">{% translate "Sources & methodology" %}</a></span></p>
   {% if related %}<section aria-labelledby="related-h">
     <h2 class="dash-title dash-title-sm" id="related-h">{% translate "More on this topic" %}</h2>
     <ul class="related-list stagger">{% for a in related %}<li><a class="related-card" href="{% url 'learn-article' a.slug %}">

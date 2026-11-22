@@ -49,6 +49,7 @@ from staff.forms import (
     FlagFilterForm,
     LearnArticleForm,
     LearnTopicForm,
+    MagazineCoverForm,
     SiteSettingsForm,
     UserFilterForm,
 )
@@ -896,6 +897,42 @@ def learn_topics(request: HttpRequest, pk: int | None = None) -> HttpResponse:
     topics = LearnTopic.objects.annotate(n=Count("articles"))
     ctx = {"form": form, "topic": topic, "topics": topics}
     return staff_render(request, "staff/learn_topics.html", ctx, "learn")
+
+
+# ---------- Magazine cover ----------
+@staff_view(access.PERM_MANAGE_LEARN)
+def learn_covers(request: HttpRequest) -> HttpResponse:
+    """The Magazine cover (one issue, no archive): month, photo and where the photo sits, with
+    a desktop and a phone preview (a tab of Magazine)."""
+    from core.learn import cover_context
+    from core.models import MagazineCover
+
+    cover = MagazineCover.load()
+    old_image = cover.image.name
+    form = MagazineCoverForm(request.POST or None, request.FILES or None, instance=cover)
+    if request.method == "POST" and form.is_valid():
+        saved = form.save()
+        if old_image and old_image != saved.image.name:
+            saved.image.storage.delete(old_image)  # replaced or removed: no orphan file
+        services.log(request.user, "magazine_cover_save", str(saved))
+        messages.success(request, f"Cover saved: {saved.month:%B %Y}.")
+        return redirect("staff:learn-covers")
+    ctx = {"form": form, "cover": cover, **cover_context()}
+    return staff_render(request, "staff/learn_covers.html", ctx, "learn")
+
+
+@staff_view(access.PERM_MANAGE_LEARN)
+@require_GET
+def learn_cover_preview(request: HttpRequest) -> HttpResponse:
+    """The cover page itself, for the phone preview frame of the Cover tab (the only page
+    that may be framed, and only by this site)."""
+    from core.learn import cover_context
+    from core.middleware import build_csp
+
+    response = render(request, "learn/index.html", {**cover_context(), "cover_preview": True})
+    response["Content-Security-Policy"] = build_csp("'self'")
+    response["X-Frame-Options"] = "SAMEORIGIN"
+    return response
 
 
 # ---------- AI answers ----------

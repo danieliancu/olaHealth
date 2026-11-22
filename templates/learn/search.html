@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load i18n ui %}
+{% block title %}{% if q %}{% blocktranslate %}“{{ q }}”{% endblocktranslate %} · {% endif %}{% translate "Search articles" %}{% endblock %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="learn learn-search-page">
+  <p class="back"><a href="{% url 'learn' %}">{% icon "chevron-left" 18 %}<span>{% translate "Magazine" %}</span></a></p>
+  <div class="page-head page-head-soft"><div><h1>{% translate "Search articles" %}</h1></div></div>
+  <form class="learn-search" method="get" action="{% url 'learn-search' %}" role="search">
+    <label for="learn-q" class="sr-only">{% translate "Search articles" %}</label>
+    <span class="search-icon">{% icon "search" 18 %}</span>
+    <input type="search" id="learn-q" name="q" value="{{ q }}" placeholder="{% translate 'Search articles' %}" maxlength="80" enterkeyhint="search"{% if not q %} autofocus{% endif %}>
+  </form>
+  {% if q %}
+  <section aria-labelledby="results-h">
+    <h2 class="dash-title dash-title-sm" id="results-h">{% blocktranslate count n=articles|length %}{{ n }} result for “{{ q }}”{% plural %}{{ n }} results for “{{ q }}”{% endblocktranslate %}</h2>
+    <ul class="article-list stagger">
+      {% for a in articles %}<li>{% include "learn/article_card.html" %}</li>{% empty %}<li>{% translate "No article matches that search yet." as t %}{% include "partials/empty.html" with icon="search" text=t %}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

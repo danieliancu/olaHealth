@@ -5,3 +5,6 @@ nutri-score.webp       https://unsplash.com/photos/yogurt-and-milk-on-supermarke
 nova.webp              https://unsplash.com/photos/a-close-up-of-a-pile-of-corn-chips-4jUffy7Sx2w
 additives.webp         https://unsplash.com/photos/jars-of-spices-and-seasonings-neatly-arranged-on-shelves-PDBnKupmi7E
 allergens-traces.webp  https://unsplash.com/photos/pile-of-peanuts-13lLAWadKwU
+
+cover.webp, cover-800.webp  Magazine cover photo, supplied by AskFoodo (not Unsplash). 1055x1491 and 800 wide WebP.
+sweeteners.webp        https://unsplash.com/photos/person-holding-white-ceramic-mug-N2n01mhpbmg

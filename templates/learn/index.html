@@ -1,41 +1,15 @@
 {% extends "base.html" %}
-{% load i18n ui %}
+{% load i18n ui static %}
 {% block title %}{% translate "Magazine" %}{% endblock %}
-{% block head %}<meta name="description" content="{% translate 'Food news and short, calm reads: Nutri-Score, NOVA, E numbers, allergens and hidden sugar.' %}">{% endblock %}
+{% block head %}<meta name="description" content="{% translate 'Food news and short, calm reads: Nutri-Score, NOVA, E numbers, allergens and hidden sugar.' %}">
+<link rel="preload" href="{% static 'fonts/sourceserif4-latin-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{% static 'fonts/montserrat-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+{% if cover_style_url %}<link rel="stylesheet" href="{{ cover_style_url }}">{% endif %}{% endblock %}
+{% block body_class %}is-mag-page{% endblock %}
 {% block content %}
-<div class="learn">
-  <div class="page-head page-head-soft">
-    <div>
-      <h1>{% translate "Magazine" %}</h1>
-      <p class="page-sub">{% translate "The latest food news and short reads" %}</p>
-    </div>
-  </div>
-
-  <form class="learn-search" method="get" action="{% url 'learn' %}" role="search">
-    <label for="learn-q" class="sr-only">{% translate "Search articles" %}</label>
-    <span class="search-icon">{% icon "search" 18 %}</span>
-    <input type="search" id="learn-q" name="q" value="{{ q }}" placeholder="{% translate 'Search articles' %}" maxlength="80">
-  </form>
-
-  <section aria-labelledby="topics-h">
-    <h2 class="dash-title dash-title-sm" id="topics-h">{% translate "Explore by topic" %}</h2>
-    <ul class="topic-grid stagger">
-      {% for row in topics %}<li><a class="topic-card{% if topic and topic.key == row.topic.key %} is-current{% endif %}" href="{% url 'learn-topic' row.topic.key %}"{% if topic and topic.key == row.topic.key %} aria-current="true"{% endif %}>
-        <span class="soft-icon">{% icon row.topic.icon 20 %}</span>
-        <strong>{{ row.topic.title }}</strong>
-        <small>{% blocktranslate count n=row.count %}{{ n }} article{% plural %}{{ n }} articles{% endblocktranslate %}</small>
-      </a></li>{% endfor %}
-    </ul>
-  </section>
-
-  <section aria-labelledby="articles-h">
-    <div class="section-head">
-      <h2 class="dash-title dash-title-sm" id="articles-h">{% if q %}{% translate "Search results" %}{% elif topic %}{{ topic.title }}{% else %}{% translate "Featured articles" %}{% endif %}</h2>
-      {% if topic or q %}<a class="btn btn-link" href="{% url 'learn' %}">{% translate "All topics" %}</a>{% endif %}
-    </div>
-    <ul class="article-list stagger">
-      {% for a in articles %}<li>{% include "learn/article_card.html" %}</li>{% empty %}<li>{% translate "No article matches that search yet." as t %}{% include "partials/empty.html" with icon="search" text=t %}</li>{% endfor %}
-    </ul>
-  </section>
+{# The Magazine cover: fixed, no scrolling. Topics keep their places; their titles are the featured articles. #}
+<div class="mag-stage">
+  <div class="mag-bg" aria-hidden="true"></div>
+  {% include "learn/partials/cover.html" %}
 </div>
 {% endblock %}

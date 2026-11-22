@@ -123,6 +123,9 @@ def _context(request: HttpRequest, profile, day: dt.date, **extra) -> dict:
         "day_title": diary.day_title(day, today),
         "day_sub": date_format(day, "j F Y"),
         "week": diary.week(user, day, today),
+        # Phones: the arrows beside the date in the Daily summary (no next day after today).
+        "day_prev": (day - dt.timedelta(days=1)).isoformat(),
+        "day_next": (day + dt.timedelta(days=1)).isoformat() if day < today else None,
         "groups": groups,
         "entry_count": day_totals.count,
         "rows": rows,

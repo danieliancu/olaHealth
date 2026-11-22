@@ -1,12 +1,16 @@
 {% load i18n ui %}{% url 'today' as today_url %}{% url 'settings-edit' as targets_url %}
 <section class="card t-card t-summary" aria-labelledby="sum-h">
-  <div class="t-card-head"><h2 id="sum-h">{% translate "Daily summary" %}{% if any_partial %} <span class="partial" title="{% translate 'Some foods have unknown values' %}">{% translate "partial" %}</span>{% endif %}</h2>{% if targets_url %}<a class="link-btn targets-edit" href="{{ targets_url }}">{% if has_targets %}{% translate "Edit targets" %}{% else %}{% translate "Set targets" %}{% endif %}</a>{% endif %}
-    {# Phones: the day and a calendar to pick another one (replaces the week strip) #}
+  <div class="t-card-head"><h2 id="sum-h">{% translate "Daily summary" %}</h2>{% if targets_url %}<a class="link-btn targets-edit" href="{{ targets_url }}">{% if has_targets %}{% translate "Edit targets" %}{% else %}{% translate "Set targets" %}{% endif %}</a>{% endif %}
+    {# Phones: the day between two arrows (previous / next day) and a calendar to pick another one (replaces the week strip) #}
+    <div class="sum-nav">
+    <a class="sum-arrow" href="{{ today_url }}?date={{ day_prev }}" hx-get="{{ today_url }}?date={{ day_prev }}" hx-target="#today" hx-swap="outerHTML" hx-push-url="true" aria-label="{% translate 'Previous day' %}">{% icon "chevron-left" 20 %}</a>
     <form class="sum-day" action="{{ today_url }}" method="get" hx-get="{{ today_url }}" hx-trigger="change" hx-target="#today" hx-swap="outerHTML" hx-push-url="true">
       <span class="sum-day-label">{% if is_today %}<span class="sum-day-prefix">{% translate "Today" %}, </span>{{ day|date:"M j" }}{% else %}{{ day|date:"D, M j" }}{% endif %}</span>{% icon "calendar-days" 18 %}
       <input class="sum-day-input" type="date" name="date" value="{{ day_iso }}" max="{{ today|date:'Y-m-d' }}" required data-day-pick aria-label="{% translate 'Choose a day' %}">
       <noscript><button type="submit" class="link-btn">{% translate "Go" %}</button></noscript>
     </form>
+    {% if day_next %}<a class="sum-arrow" href="{{ today_url }}?date={{ day_next }}" hx-get="{{ today_url }}?date={{ day_next }}" hx-target="#today" hx-swap="outerHTML" hx-push-url="true" aria-label="{% translate 'Next day' %}">{% icon "chevron-right" 20 %}</a>{% else %}<span class="sum-arrow is-disabled" aria-hidden="true">{% icon "chevron-right" 20 %}</span>{% endif %}
+    </div>
   </div>
   <div class="sum-grid">
     {% for r in rows %}<div class="sum-cell">
@@ -35,5 +39,5 @@
     {# Until every target is set (the empty ring already says it when kcal is the one missing) #}
     {% if targets_missing and energy_row.target or targets_missing and not energy_row %}<a class="link-btn sum-set" href="{{ targets_url }}#targets">{% icon "plus" 16 %}<span>{% translate "Set your targets" %}</span></a>{% endif %}
   </div>
-  {% if not entry_count %}<p class="caption">{% translate "No entries yet for this day." %}</p>{% elif any_partial %}<p class="caption">{% translate "Some foods have unknown values, which are not counted." %}</p>{% endif %}
+  {% if not entry_count %}<p class="caption">{% translate "No entries yet for this day." %}</p>{% elif any_partial %}<p class="caption sum-partial"><span class="partial">{% translate "partial" %}</span> {% translate "Some foods have unknown values, which are not counted." %}</p>{% endif %}
 </section>

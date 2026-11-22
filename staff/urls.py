@@ -39,6 +39,8 @@ urlpatterns = [
         name="learn-products-remove",
     ),
     path("learn/topics/", views.learn_topics, name="learn-topics"),
+    path("learn/cover/", views.learn_covers, name="learn-covers"),
+    path("learn/cover/preview/", views.learn_cover_preview, name="learn-cover-preview"),
     path("learn/topics/<int:pk>/", views.learn_topics, name="learn-topic"),
     path("ai-answers/", views.ai_answers, name="ai-answers"),
     path("audit/", views.audit, name="audit"),

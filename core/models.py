@@ -1,5 +1,6 @@
 """Small coordination tables shared by web and worker processes (PostgreSQL only, no Redis)."""
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -78,7 +79,9 @@ class LearnArticle(models.Model):
         related_name="learn_articles",
         help_text="Products shown at the end of the article.",
     )
-    featured = models.BooleanField(default=False, help_text="Shown under “Featured articles”.")
+    featured = models.BooleanField(
+        default=False, help_text="Shown on the Magazine cover under its topic (up to 2 per topic)."
+    )
     published = models.BooleanField(default=True)
     order = models.PositiveSmallIntegerField(default=0)
     published_at = models.DateTimeField(
@@ -133,3 +136,76 @@ class LearnArticle(models.Model):
                 f"{reverse('learn-image', args=[self.slug])}?v={int(self.updated_at.timestamp())}"
             )
         return static(self.image_static) if self.image_static else ""
+
+
+class MagazineCover(models.Model):
+    """The Magazine cover: one issue only (no archive). Its month ("MAGAZINE • NOVEMBER 2026"),
+    its photo and where the photo sits on desktop and on phones. The titles still follow the
+    topics' featured articles (core.learn). Managed in Staff → Magazine → Cover."""
+
+    month = models.DateField(help_text="The month and year shown on the cover.")
+    image = models.ImageField(
+        upload_to="learn/covers/",
+        blank=True,
+        help_text="Any photo with plain space beside the person. Empty: the built-in photo.",
+    )
+    # Desktop: the photo lies under the logo and titles, over the whole cover; in % of the
+    # cover's height: its height, its left edge from the middle of the screen, its top edge.
+    photo_size = models.PositiveSmallIntegerField(
+        default=133, validators=[MinValueValidator(40), MaxValueValidator(300)]
+    )
+    photo_x = models.SmallIntegerField(
+        default=-26, validators=[MinValueValidator(-300), MaxValueValidator(200)]
+    )
+    photo_y = models.SmallIntegerField(
+        default=-7, validators=[MinValueValidator(-100), MaxValueValidator(100)]
+    )
+    # Phones: the photo fills the cover; which part stays in view (0 left … 100 right), how far
+    # it is moved up or down (% of the cover's height) and zoom.
+    mobile_x = models.PositiveSmallIntegerField(
+        default=50, validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+    mobile_y = models.SmallIntegerField(
+        default=0, validators=[MinValueValidator(-100), MaxValueValidator(100)]
+    )
+    mobile_zoom = models.PositiveSmallIntegerField(
+        default=100, validators=[MinValueValidator(100), MaxValueValidator(250)]
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return self.month.strftime("%B %Y")
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  # one issue only
+        self.month = self.month.replace(day=1)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls) -> "MagazineCover":
+        cover = cls.objects.filter(pk=1).first()
+        if cover is None:
+            cover = cls(month=timezone.localdate())
+            cover.save()
+        return cover
+
+    def image_url(self) -> str:
+        from django.urls import reverse
+
+        if not self.image:
+            return ""
+        version = int(self.updated_at.timestamp())
+        return f"{reverse('learn-cover-image')}?v={version}"
+
+    def style_url(self) -> str:
+        from django.urls import reverse
+
+        return f"{reverse('learn-cover-style')}?v={int(self.updated_at.timestamp())}"
+
+    def style_css(self) -> str:
+        """Where the photo sits, as CSS variables (a stylesheet: no inline styles, CSP)."""
+        return (
+            f".mag-cover{{--photo-h:{int(self.photo_size)};--photo-x:{int(self.photo_x)};"
+            f"--photo-y:{int(self.photo_y)};--m-x:{int(self.mobile_x)};"
+            f"--m-y:{int(self.mobile_y)};--m-zoom:{int(self.mobile_zoom)}}}"
+        )

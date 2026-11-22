@@ -1,0 +1,33 @@
+{% load i18n ui static %}{# The Magazine cover (learn/index.html; also the preview in Staff → Magazine → Covers). Needs sides, issue_month, cover_url. #}
+  <section class="mag-cover" aria-labelledby="mag-h">
+    <div class="mag-photo-box">{# desktop: the photo's area, to the right edge of the screen #}
+    {% if cover_url %}<img class="mag-photo" data-cover-photo src="{{ cover_url }}" alt="" fetchpriority="high" decoding="async">{% else %}<img class="mag-photo" data-cover-photo src="{% static 'img/learn/cover.webp' %}" srcset="{% static 'img/learn/cover-800.webp' %} 800w, {% static 'img/learn/cover.webp' %} 1055w" sizes="(min-width: 768px) 70vh, 100vw" alt="" fetchpriority="high" decoding="async">
+    {# Phones: her head cut out and laid over the logo, as on a printed cover (same size as the photo, so it lines up). #}
+    <img class="mag-photo mag-head" src="{% static 'img/learn/cover-head.webp' %}" srcset="{% static 'img/learn/cover-head-800.webp' %} 800w, {% static 'img/learn/cover-head.webp' %} 1055w" sizes="(min-width: 768px) 70vh, 100vw" alt="" decoding="async">{% endif %}
+    </div>
+    {# Desktop: this panel is the left column (logo, search, every title); phones: no box of its own (display: contents). #}
+    <div class="mag-panel">
+    <h1 class="mag-logo" id="mag-h"><span class="mag-logo-word">Foodo</span><span class="mag-logo-sub">{% translate "Magazine" %}<span class="mag-issue"> <span class="mag-dot" aria-hidden="true">•</span> <span data-cover-month>{{ issue_month|date:"F Y" }}</span></span></span></h1>
+    <a class="mag-search mag-search-link" href="{% url 'learn-search' %}">{% icon "search" 18 %}<span>{% translate "Search articles" %}</span></a>
+    <form class="mag-search mag-search-form" method="get" action="{% url 'learn-search' %}" role="search">
+      <label for="mag-q" class="sr-only">{% translate "Search articles" %}</label>
+      {% icon "search" 18 %}
+      <input type="search" id="mag-q" name="q" placeholder="{% translate 'Search articles' %}" maxlength="80" enterkeyhint="search" autocomplete="off"
+             hx-get="{% url 'learn-suggest' %}" hx-trigger="input changed delay:180ms, search" hx-target="#mag-suggest" hx-swap="innerHTML" hx-sync="this:replace" aria-controls="mag-suggest">
+      {# Suggestions as you type, under the box (desktop) #}
+      <div class="mag-suggest" id="mag-suggest" aria-live="polite"></div>
+    </form>
+    {% for side in sides %}
+    <div class="mag-col mag-col-{{ side.name }}">
+      {% for slot in side.slots %}
+      <div class="mag-slot">
+        <a class="mag-topic" href="{% url 'learn-topic' slot.topic.key %}">{{ slot.topic.title }}<span class="mag-topic-go" aria-hidden="true">{% icon "chevron-right" 16 %}</span></a>
+        {% for a in slot.articles %}<a class="mag-title{% if slot.lead and forloop.first %} mag-lead{% endif %}" href="{% url 'learn-article' a.slug %}">{{ a.title }}</a>{% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    </div>
+    {# A permanent floating message at the foot of the cover, like the app's messages: the titles are links. #}
+    <p class="mag-cta">{% icon "book-open" 18 %}<span class="mag-cta-tap">{% translate "Tap any title to read it" %}</span><span class="mag-cta-click">{% translate "Click any title to read it" %}</span></p>
+  </section>

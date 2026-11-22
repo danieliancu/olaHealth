@@ -8,7 +8,7 @@
       <p class="eyebrow">{{ day|date:"l, F j" }}</p>{% else %}<p class="eyebrow">{{ day_sub }}</p>
       <h1>{{ day_title }}</h1>{% endif %}
     </div>
-    <a class="icon-btn head-tool head-bell" href="{% url 'notifications' %}" aria-label="{% if notif_unread %}{% blocktranslate count n=notif_unread %}Notifications: {{ n }} unread{% plural %}Notifications: {{ n }} unread{% endblocktranslate %}{% else %}{% translate 'Notifications' %}{% endif %}" title="{% translate 'Notifications' %}">{% icon "bell" 20 %}{% include "partials/notif_count.html" %}</a>
+    {% include "partials/head_bell.html" %}
   </div>
   <div class="day-band">
     <nav class="day-strip" aria-label="{% translate 'Choose a day' %}">

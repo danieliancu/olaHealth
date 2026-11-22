@@ -478,32 +478,20 @@ def test_old_ai_answers_are_deleted(site, fake, member):
     assert purge_old_ai_answers() == 1 and AIAnswer.objects.count() == 1
 
 
-def test_one_language_only_in_the_general_information_line():
-    from ai.language import strip_english, with_disclaimer
+def test_no_general_information_reminder_under_answers():
+    from ai.language import strip_disclaimer
 
-    seen = (
+    ro = (
         "Ouăle pot face parte dintr-o dietă echilibrată. Acesta este un ghid general, nu un "
         "sfat personal. this is general information, not personal advice."
     )
-    out = with_disclaimer(seen, "ro")
-    assert "general information" not in out and out.count("ghid general") == 1
-    assert "Acestea sunt informații generale" not in out  # no second Romanian line
-    # Question language unknown: the answer's own language decides.
-    assert "general information" not in with_disclaimer(seen, "")
-    own_line = (
-        "Da, sunt buni pentru sănătate.\n\n- This is general information, not personal advice."
-    )
-    out = with_disclaimer(own_line, "ro")
-    assert out.startswith("Da, sunt buni") and "general information" not in out
-    assert out.endswith("Acestea sunt informații generale, nu sfaturi personalizate.")
-    english = "Eggs are fine for most people. This is general information, not personal advice."
-    assert with_disclaimer(english, "en") == english and strip_english(english) == english
-    assert (
-        strip_english(
-            "Are 5,1 g de proteine la 100 g. This is general information, not personal advice."
-        )
-        == "Are 5,1 g de proteine la 100 g."
-    )
+    assert strip_disclaimer(ro) == "Ouăle pot face parte dintr-o dietă echilibrată."
+    note = "Da, sunt buni.\n\nNotă: aceasta este informație generală, nu un sfat personal."
+    assert strip_disclaimer(note) == "Da, sunt buni."
+    bullet = "Eggs are fine for most people.\n\n- This is general information, not personal advice."
+    assert strip_disclaimer(bullet) == "Eggs are fine for most people."
+    plain = "Are 5,1 g de proteine la 100 g."
+    assert strip_disclaimer(plain) == plain
 
 
 # ---------- Rule answers in the language of the question ----------

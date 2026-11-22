@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n ui %}
+{% load i18n ui static %}
 {% block title %}{% translate "Home" %}{% endblock %}
 {% block content %}
 {# Visitors. Signed-in users get the Today dashboard on this same address (catalog.views.home). #}
@@ -17,6 +17,13 @@
         <a class="btn btn-light" href="{% url 'scan' %}">{% icon "scan-barcode" 18 %}{% translate "Scan a barcode" %}</a>
       </div>
     </div>
+    {# Desktop: the app on a phone, hanging a little below the photo, with a short caption and an arrow. #}
+    <figure class="home-hero-phone">
+      <div class="phone-mock"><img src="{% static 'img/home/phone-home.webp' %}" width="600" height="1228" alt="{% translate 'AskFoodo on a phone: the home page with Scan, Search, Compare and Magazine' %}" loading="lazy" decoding="async"></div>
+      <figcaption class="home-hero-phone-note">
+        {% translate "Best on your phone: scan in the shop, log at the table." %}<span class="home-hero-arrow" aria-hidden="true">➔</span>
+      </figcaption>
+    </figure>
   </section>
 
   <section class="nudge home-nudge" aria-labelledby="welcome-h">

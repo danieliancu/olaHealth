@@ -257,3 +257,12 @@ a.staff-stat:hover { border-color: var(--accent); }
 .staff-photos li { display: grid; gap: .35rem; justify-items: start; }
 .staff-photos img { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: #f9fafb; }
 .staff-photos .is-off img { opacity: .4; filter: grayscale(1); }
+
+/* Magazine: Articles / Topics / Covers tabs */
+.staff-tabs { display: flex; gap: .25rem; flex-wrap: wrap; margin: 0 0 1rem; padding: .25rem; background: #eef3f0; border-radius: 12px; width: max-content; max-width: 100%; }
+.staff-tabs a { padding: .4rem .9rem; border-radius: 9px; color: #374151; font-weight: 600; text-decoration: none; }
+.staff-tabs a:hover { background: rgba(255, 255, 255, .7); }
+.staff-tabs a[aria-current="page"] { background: #fff; color: #0b7a5e; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+
+/* Dashboard: open review flags by kind, one per line */
+.staff-stat-lines { display: flex; flex-direction: column; gap: .1rem; }

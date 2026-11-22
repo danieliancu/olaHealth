@@ -17,6 +17,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from catalog.nutrition import DECLARED, NOT_ON_LABEL, NUTRIENTS, decimal_str, to_decimal
+from off import basis as basis_rules
 
 DATA_FIELDS = (
     "name",
@@ -75,11 +76,22 @@ def per_100_basis(product: dict[str, Any]) -> str:
     return "per_100_unspecified"
 
 
+def basis_with_source(product: dict[str, Any]) -> tuple[str, bool]:
+    """The per-100 basis and whether it was worked out from the product type (``off.basis``)
+    because the quantity does not say."""
+    stated = per_100_basis(product)
+    if stated != "per_100_unspecified":
+        return stated, False
+    name = _text(product.get("product_name")) or _text(product.get("product_name_en")) or ""
+    inferred = basis_rules.infer(_ordered_tags(product.get("categories_tags")), name)
+    return (inferred, True) if inferred else (stated, False)
+
+
 def _facts(product: dict[str, Any]) -> list[dict[str, Any]]:
     nutriments = product.get("nutriments")
     if not isinstance(nutriments, dict):
         return []
-    base = per_100_basis(product)
+    base, _inferred = basis_with_source(product)
     label_per_serving = product.get("nutrition_data_per") == "serving"
     variants = [("_100g", base, "as_sold"), ("_prepared_100g", base, "prepared")]
     if label_per_serving:
@@ -158,6 +170,8 @@ def map_product(product: dict[str, Any]) -> dict[str, Any]:
         nutrition = {"status": "not_on_package", "facts": []}
     elif facts:
         nutrition = {"status": "available", "facts": facts}
+        if basis_with_source(product)[1] and any(f["basis"] != "per_serving" for f in facts):
+            nutrition["basis_inferred"] = True  # shown as "worked out from the product type"
     else:
         nutrition = {"status": "unknown", "facts": []}
     ingredients_text = _text(product.get("ingredients_text"))

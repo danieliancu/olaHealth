@@ -2,9 +2,12 @@
 <div class="progress-page" id="progress">
   <div class="page-head">
     <div class="page-head-soft"><span class="soft-icon">{% icon "chart-line" 20 %}</span><h1>{% translate "Progress" %}</h1></div>
+    <div class="head-tools">
     <nav class="segmented seg-2 range-switch" aria-label="{% translate 'Period' %}">
       {% for r in ranges %}<a href="{{ progress_url }}?range={{ r }}" hx-get="{{ progress_url }}?range={{ r }}" hx-target="#progress" hx-swap="outerHTML"{% if r == span %} aria-current="page"{% endif %}>{% blocktranslate %}{{ r }} days{% endblocktranslate %}</a>{% endfor %}
     </nav>
+    {% include "partials/head_bell.html" %}
+    </div>
   </div>
   <p class="lead-small progress-sub">{% if data.logged_days %}{% blocktranslate with n=data.logged_days %}You logged food on {{ n }} of the last {{ span }} days.{% endblocktranslate %}{% else %}{% blocktranslate %}No food logged in the last {{ span }} days yet. A scan a day is a good start.{% endblocktranslate %}{% endif %}<a class="stats-link" href="{% url 'ask-foodo' %}?tab=overview#stats-h">{% icon "award" 14 %}<span>{% translate "Your stats & achievements" %}</span>{% icon "chevron-right" 14 %}</a></p>
   <div class="progress-grid">

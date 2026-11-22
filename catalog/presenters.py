@@ -15,7 +15,7 @@ from django.utils.translation import gettext as _
 from assessments.models import AssessmentSnapshot
 from catalog import explanations
 from catalog.models import Product, ProductImage, ReviewFlag
-from catalog.nutrition import BASIS_LABELS, NUTRIENTS, PREPARATION_LABELS, to_decimal
+from catalog.nutrition import NUTRIENTS, PREPARATION_LABELS, basis_label, to_decimal
 
 INDICATOR_LABELS = {
     "nutriscore": "Nutri-Score",
@@ -243,7 +243,7 @@ def nutrition_groups(data: dict[str, Any]) -> list[NutritionGroup]:
         ]
         if not rows:
             continue
-        title = f"{BASIS_LABELS[basis]}, {PREPARATION_LABELS[prep]}"
+        title = f"{basis_label(basis, data)}, {PREPARATION_LABELS[prep]}"
         groups.append(NutritionGroup(basis, prep, title, rows))
     return groups
 
@@ -537,4 +537,4 @@ def nutrient_rows(
         rows.append(row)
     # Levelled nutrients first (as on the label: fat, saturates, sugars, salt), then the rest.
     rows.sort(key=lambda r: (r.level == "", list(ROW_META).index(r.key)))
-    return rows, BASIS_LABELS[basis]
+    return rows, basis_label(basis, data)
