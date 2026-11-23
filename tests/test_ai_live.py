@@ -49,7 +49,17 @@ YOGURT = {
         "ingredients": "Milk, cream (milk), live cultures.",
         "additives": [],
     },
-    "foodo_score": {"status": "ok", "score": 62, "points": None},
+    "foodo_score": {
+        "version": "score.v2",
+        "status": "ok",
+        "nutriscore_grade": "c",
+        "nutriscore_points": 5,
+        "nutriscore_version": "2023",
+        "reasons": [
+            "Official Nutri-Score computed by Open Food Facts with the 2023 algorithm. It is an "
+            "orientative indicator; the label on the product is the reference."
+        ],
+    },
 }
 
 # (chat, question, language, expected): expected is "answer", "route", "refer" (health:

@@ -1,0 +1,125 @@
+{
+ "_fixture": {
+  "fetched_at": "2026-11-23",
+  "license": "ODbL 1.0, Open Food Facts contributors",
+  "source": "https://world.openfoodfacts.org/product/3033490004743"
+ },
+ "additives_tags": [],
+ "allergens_tags": [
+  "en:milk"
+ ],
+ "brands": "Danone",
+ "categories_tags": [
+  "en:dairies",
+  "en:fermented-foods",
+  "en:desserts",
+  "en:fermented-milk-products",
+  "en:cheeses",
+  "en:dairy-desserts",
+  "en:fermented-dairy-desserts",
+  "en:yogurts",
+  "en:fromages-blancs-petit-suisses-and-skyr",
+  "en:plain-fermented-dairy-desserts",
+  "en:skyrs",
+  "en:plain-skyrs"
+ ],
+ "code": "3033490004743",
+ "countries_tags": [
+  "en:france",
+  "en:germany",
+  "en:italy",
+  "en:spain",
+  "en:switzerland"
+ ],
+ "ingredients_analysis_tags": [
+  "en:palm-oil-free",
+  "en:non-vegan",
+  "en:vegetarian"
+ ],
+ "ingredients_text": "Lait écrémé, ferments lactiques (lait).",
+ "lang": "fr",
+ "last_modified_t": 1792580005,
+ "misc_tags": [
+  "en:ecobalyse-api-not-called",
+  "en:ecobalyse-ingredients-matched-between-70-and-79",
+  "en:environmental-score-computed",
+  "en:environmental-score-missing-data-labels",
+  "en:environmental-score-missing-data-packagings",
+  "en:environmental-score-missing-data-warning",
+  "en:estimated-ingredients-with-recipe-estimator-cvxpy",
+  "en:forest-footprint-not-computed",
+  "en:nutrients-not-estimated-from-ingredients-too-few-ingredients-with-nutrition-data",
+  "en:nutriscore-2021-a-2023-a",
+  "en:nutriscore-2021-same-as-2023",
+  "en:nutriscore-computed",
+  "en:nutriscore-missing-fiber",
+  "en:nutrition-data-per-100g",
+  "en:nutrition-fruits-vegetables-legumes-estimate-from-ingredients",
+  "en:nutrition-fruits-vegetables-nuts-estimate-from-ingredients",
+  "en:nutrition-no-fiber-or-fruits-vegetables-nuts",
+  "en:packagings-not-complete",
+  "en:packagings-not-empty",
+  "en:packagings-not-empty-but-not-complete",
+  "en:packagings-number-of-components-3",
+  "en:storage-conditions-not-set",
+  "en:number-of-uploaded-images-51-to-100",
+  "en:main-countries-de-unexpectedly-low-scans",
+  "en:main-countries-de-unexpectedly-low-scans-0-10-percent-of-expected",
+  "en:main-countries-de-unexpectedly-low-scans-and-no-data-in-country-language",
+  "en:main-countries-de-product-name-not-in-country-language",
+  "en:main-countries-de-ingredients-not-in-country-language",
+  "en:main-countries-de-no-data-in-country-language",
+  "en:main-countries-it-unexpectedly-low-scans",
+  "en:main-countries-it-unexpectedly-low-scans-0-10-percent-of-expected",
+  "en:main-countries-it-unexpectedly-low-scans-and-no-data-in-country-language",
+  "en:main-countries-it-product-name-not-in-country-language",
+  "en:main-countries-it-ingredients-not-in-country-language",
+  "en:main-countries-it-no-data-in-country-language",
+  "en:main-countries-es-unexpectedly-low-scans",
+  "en:main-countries-es-unexpectedly-low-scans-0-10-percent-of-expected",
+  "en:main-countries-es-unexpectedly-low-scans-and-only-1-field-in-country-language",
+  "en:main-countries-es-ingredients-not-in-country-language",
+  "en:main-countries-es-only-1-field-in-country-language"
+ ],
+ "nova_group": 3,
+ "nova_groups_tags": [
+  "en:3-processed-foods"
+ ],
+ "nutrient_levels": {
+  "fat": "low",
+  "salt": "low",
+  "saturated-fat": "low",
+  "sugars": "low"
+ },
+ "nutriments": {
+  "carbohydrates_100g": 3.9,
+  "energy-kcal_100g": 57,
+  "energy-kj_100g": 243.7,
+  "fat_100g": 0.2,
+  "proteins_100g": 10,
+  "salt_100g": 0.09,
+  "saturated-fat_100g": 0.1,
+  "sugars_100g": 3.9
+ },
+ "nutriscore": {
+  "2021": {
+   "grade": "a",
+   "score": -5
+  },
+  "2023": {
+   "grade": "a",
+   "score": -3
+  }
+ },
+ "nutriscore_grade": "a",
+ "nutriscore_score": -3,
+ "nutriscore_version": "2023",
+ "nutrition_data": "on",
+ "nutrition_data_per": "100g",
+ "nutrition_data_prepared_per": "100g",
+ "product_name": "Skyr",
+ "product_quantity": 140,
+ "product_quantity_unit": "g",
+ "quantity": "140 g",
+ "traces_tags": []
+}

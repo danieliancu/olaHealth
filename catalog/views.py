@@ -870,15 +870,22 @@ def off_image(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
 def product_alternatives(request: HttpRequest, pk) -> HttpResponse:
     """Foodo Score of a product and up to 3 better alternatives (htmx fragment or full page)."""
     from assessments.score import score_for_product
+    from catalog.presenters import additive_label
     from catalog.services.alternatives import alternatives
 
     product = get_object_or_404(
         Product.objects.select_related("current_revision"), pk=pk, current_revision__isnull=False
     )
-    score = score_for_product(product)
+    score = score_for_product(product)  # stored with the revision (score.v2)
     user = request.user if request.user.is_authenticated else None
     items = alternatives(product, user=user) if score.get("status") == "ok" else []
-    context = {"product": product, "score": score, "alternatives": items}
+    tags = score["separate"]["additives"]["tags"] or []
+    context = {
+        "product": product,
+        "score": score,
+        "additive_names": [additive_label(t) for t in tags],
+        "alternatives": items,
+    }
     if request.headers.get("HX-Request"):
         return render(request, "catalog/partials/alternatives.html", context)
     return render(request, "catalog/alternatives.html", context)

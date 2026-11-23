@@ -63,7 +63,13 @@ SEARCH_FIELDS = (
     "nutrition_data_per",
     "no_nutrition_data",
     "nutriscore_grade",
+    # The Foodo Score compares grades only within one Nutri-Score version (score.v2).
+    "nutriscore_score",
+    "nutriscore_version",
+    "nutriscore",
+    "misc_tags",
     "nova_group",
+    "nova_groups_tags",
     "nutrient_levels",
     "ingredients_analysis_tags",
     "image_front_url",

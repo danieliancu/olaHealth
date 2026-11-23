@@ -63,8 +63,9 @@ by this repository.
 * Personal data is stored in PostgreSQL per account (`myola/models.py`) and deleted with the
   account; **Download my data** exports it as JSON. Pages are server-rendered Django + htmx;
   the only JavaScript left is the camera scanner and the confirm dialog.
-* **Foodo Score** (0–100, `assessments/score.py`, rule in `docs/assessment-rules.md`) and up to
-  three better alternatives sold in the UK on each product page.
+* **Foodo Score** (`score.v2`: the official Nutri-Score with its version, or why there is none;
+  `assessments/score.py`, rule in `docs/assessment-rules.md`) and up to three alternatives sold
+  in the UK with a better grade in the same Nutri-Score version, on each product page.
 * **Ask Foodo** answers from Python-computed facts; when enabled in the staff panel an AI model
   (Claude Haiku 5.5 by default, or OpenAI) only rephrases them, within per-user daily and
   monthly budget limits. API keys: `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`.

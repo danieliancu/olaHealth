@@ -4,7 +4,7 @@ import respx
 from django.core.cache import cache
 from django.urls import reverse
 
-from assessments.score import VERSION, foodo_score, score_for_product
+from assessments.score import VERSION_V1, foodo_score_v1, score_for_product
 from catalog.models import Category
 from catalog.services.alternatives import alternatives, reference_categories
 from catalog.services.importer import import_off_product
@@ -15,20 +15,20 @@ UK = "en:united-kingdom"
 CATS = ["en:dairies", "en:fermented-foods", "en:yogurts"]
 
 
-# --- Foodo Score -------------------------------------------------------------------------
+# --- Foodo Score score.v1 (retired; kept for reference, see test_score_v2.py) -------------
 
 
 def test_not_enough_data_without_nutriscore_and_nova():
-    assert foodo_score({})["status"] == "not_enough_data"
-    assert foodo_score({"nutriscore_grade": "unknown", "nova_group": None})["status"] == (
+    assert foodo_score_v1({})["status"] == "not_enough_data"
+    assert foodo_score_v1({"nutriscore_grade": "unknown", "nova_group": None})["status"] == (
         "not_enough_data"
     )
     # Nutrient levels alone are not enough.
-    assert foodo_score({"nutrient_levels": {"sugars": "high"}})["status"] == "not_enough_data"
+    assert foodo_score_v1({"nutrient_levels": {"sugars": "high"}})["status"] == "not_enough_data"
 
 
 def test_points_are_reconstructible():
-    result = foodo_score(
+    result = foodo_score_v1(
         {
             "nutriscore_grade": "D",
             "nova_group": "4",
@@ -36,7 +36,7 @@ def test_points_are_reconstructible():
             "additives_tags": ["en:e250"],
         }
     )
-    assert result["status"] == "ok" and result["version"] == VERSION == "score.v1"
+    assert result["status"] == "ok" and result["version"] == VERSION_V1 == "score.v1"
     assert result["score"] == 100 - 40 - 20 - 5 - 5 == 30
     assert result["score"] == 100 + sum(p["points"] for p in result["points"])
     assert [p["reason"] for p in result["points"]] == [
@@ -49,10 +49,10 @@ def test_points_are_reconstructible():
 
 
 def test_partial_data_lists_missing_and_clamps():
-    result = foodo_score({"nova_group": 2})
+    result = foodo_score_v1({"nova_group": 2})
     assert result["score"] == 100
     assert result["missing"] == ["nutriscore", "nutrient_levels", "additives"]
-    worst = foodo_score(
+    worst = foodo_score_v1(
         {
             "nutriscore_grade": "e",
             "nova_group": 4,
@@ -64,10 +64,11 @@ def test_partial_data_lists_missing_and_clamps():
 
 
 def test_score_for_product_uses_current_snapshots(db, off_payload):
-    product = import_off_product(off_payload())  # Nutri-Score B, NOVA 1, high saturates
+    product = import_off_product(off_payload())  # Nutri-Score B (2023, 1 point), NOVA 1
     result = score_for_product(product)
-    assert result["score"] == 100 - 10 - 5
-    assert result["missing"] == []
+    assert result["version"] == "score.v2" and result["status"] == "ok"
+    assert (result["nutriscore"]["grade"], result["nutriscore"]["points"]) == ("b", 1)
+    assert result["separate"]["nova"]["group"] == 1 and result["missing"] == []
 
 
 # --- Alternatives ------------------------------------------------------------------------
@@ -102,6 +103,7 @@ def off_item(code, grade, nova, sugars, **changes):
         "traces_tags": [],
         "nutriments": {"sugars_100g": sugars, "salt_100g": 0.1},
         "nutriscore_grade": grade,
+        "nutriscore_version": "2023",
         "nova_group": nova,
         "nutrient_levels": {"sugars": "high" if sugars > 12.5 else "low"},
         "image_front_url": "https://images.openfoodfacts.org/x/front.jpg",
@@ -117,7 +119,7 @@ def off_client():
 @pytest.fixture
 def reference(db, off_payload):
     cache.clear()
-    # Nutri-Score D, NOVA 4, high sugars: 100 - 40 - 20 - 5 = 35.
+    # Nutri-Score D (2023), NOVA 4, high sugars.
     return make(off_payload, "5000000000001", "d", 4, 14, name="Sweet yogurt")
 
 
@@ -150,14 +152,31 @@ def test_ranking_advantages_and_trade_offs(reference, off_payload, off_client):
     best, local = result
     assert best["source"] == "off" and best["off_code"] == "5000000000101"
     assert best["url"] == "/lookup/?code=5000000000101&via=alternative"
-    assert best["score"] == 100 and best["reference_score"] == 35
+    assert best["grade"] == "a" and best["reference_grade"] == "d"
+    assert best["nutriscore_version"] == "2023"
     assert best["advantage"] == "Nutri-Score A vs D"
     assert "NOVA group 1 vs 4" in best["advantages"]
     assert "less sugar per 100 g: 3 g vs 14 g" in best["advantages"]
     assert local["source"] == "local" and local["product_id"] == str(better_local.pk)
-    assert local["score"] == 90
+    assert local["grade"] == "b"
     # Saturates: 2 g in both the reference and the local product, so not mentioned.
     assert not any("saturated" in t for t in local["advantages"] + local["trade_offs"])
+
+
+def test_only_a_better_grade_in_the_same_version_counts(reference, off_client):
+    with respx.mock(assert_all_called=False) as mock:
+        search_route(
+            mock,
+            [
+                off_item("5000000000101", "a", 1, 3, name="Unversioned", nutriscore_version=""),
+                off_item("5000000000102", "a", 1, 3, name="Old version", nutriscore_version="2021"),
+                off_item("5000000000103", "d", 1, 1, name="Same grade, less sugar"),
+                off_item("5000000000104", "c", 4, 20, name="Better grade, NOVA 4"),
+            ],
+        )
+        result = alternatives(reference, client=off_client, limit=10)
+    # NOVA and sugar do not rank; only a strictly better grade of the same version does.
+    assert [r["name"] for r in result] == ["Better grade, NOVA 4"]
 
 
 def test_trade_offs_where_the_alternative_is_worse(reference, off_client):

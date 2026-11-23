@@ -9,7 +9,9 @@
   cached per (category, country) for 24 h. OFF results are normalised with
   ``off.mapping.map_product`` into the same shape as ``revision.data``.
 * Python decides: strict restrictions and the Avoid list exclude candidates (never sent to
-  OFF), the Foodo Score ranks them, and only a strictly better score is kept.
+  OFF). Only a strictly better official Nutri-Score grade in the same Nutri-Score version
+  (Foodo Score ``score.v2``, ``assessments.score.is_better``) is kept; NOVA and additives
+  never rank, they are listed as advantages or trade-offs.
 * On any OFF error the local candidates are still used.
 """
 
@@ -23,7 +25,12 @@ from django.conf import settings
 from django.core.cache import cache
 from django.urls import reverse
 
-from assessments.score import foodo_score, indicators_from_snapshots
+from assessments.score import (
+    indicators_from_snapshots,
+    is_better,
+    score_for_revision,
+    score_from_off,
+)
 from catalog import quality
 from catalog.models import Category, Product
 from catalog.nutrition import BASIS_LABELS
@@ -101,7 +108,8 @@ def search_off_cached(
     """Raw OFF search results for (category, country), cached 24 h. ``[]`` on OFF errors."""
     from catalog.services.lookup import off_circuit_open
 
-    key = f"alternatives:off-search:v1:{country}:{category}"[:250]
+    # v2: results now carry the Nutri-Score version; older cached results did not.
+    key = f"alternatives:off-search:v2:{country}:{category}"[:250]
     cached = cache.get(key)
     if cached is not None:
         return cached
@@ -130,7 +138,7 @@ def _local_candidate(p: Product, category: str) -> dict[str, Any]:
         "off_code": p.off_code or None,
         "facts": facts,
         "indicators": indicators,
-        "score": foodo_score(indicators),
+        "score": score_for_revision(p.current_revision),
         "category": category,
     }
 
@@ -165,7 +173,7 @@ def _off_candidate(raw: dict[str, Any], category: str) -> dict[str, Any] | None:
         "off_code": code,
         "facts": facts,
         "indicators": raw,
-        "score": foodo_score(raw),
+        "score": score_from_off(raw),
         "category": category,
     }
 
@@ -248,11 +256,13 @@ def alternatives(
     country: str = UK,
     client: OFFClient | None = None,
 ) -> list[dict[str, Any]]:
-    """Up to ``limit`` products with a strictly better Foodo Score, best first.
+    """Up to ``limit`` products with a strictly better official Nutri-Score grade in the same
+    Nutri-Score version, best grade first.
 
     Each item: ``source`` ("local" or "off"), ``product_id`` (local) / ``off_code``,
-    ``name``, ``brand``, ``quantity``, ``image``, ``url``, ``score`` (int), ``score_detail``,
-    ``reference_score``, ``category``, ``advantage`` (main one), ``advantages`` and
+    ``name``, ``brand``, ``quantity``, ``image``, ``url``, ``grade`` and ``reference_grade``
+    (official Nutri-Score letters), ``nutriscore_version``, ``score_detail`` (the full
+    ``score.v2`` result), ``category``, ``advantage`` (main one), ``advantages`` and
     ``trade_offs`` (lists of short sentences).
     """
     from myola.page import facts_from_product
@@ -261,7 +271,7 @@ def alternatives(
         return []
     ref_snapshots = list(product.current_revision.assessments.all())
     ref_ind = indicators_from_snapshots(ref_snapshots)
-    ref_score = foodo_score(ref_ind)
+    ref_score = score_for_revision(product.current_revision)
     if ref_score["status"] != "ok":
         return []  # nothing can be shown as better than an unknown score
     ref_facts = facts_from_product(product, ref_snapshots)
@@ -303,8 +313,7 @@ def alternatives(
             candidates.append(cand)
 
         for cand in candidates:
-            score = cand["score"]
-            if score["status"] != "ok" or score["score"] <= ref_score["score"]:
+            if not is_better(cand["score"], ref_score):
                 continue
             if _blocked(cand["facts"], prefs):
                 continue
@@ -318,7 +327,7 @@ def alternatives(
         chosen.values(),
         key=lambda c: (
             c["level"],
-            -c["score"]["score"],
+            c["score"]["nutriscore"]["grade"],
             c["facts"].name.lower(),
             c["off_code"] or "",
         ),
@@ -327,8 +336,10 @@ def alternatives(
     for cand in ranked:
         facts: ProductFacts = cand["facts"]
         advantages, trade_offs = compare(ref_facts, ref_ind, facts, cand["indicators"])
-        if not advantages:
-            advantages = [f"Foodo Score {cand['score']['score']} vs {ref_score['score']}"]
+        grade = cand["score"]["nutriscore"]["grade"]
+        ref_grade = ref_score["nutriscore"]["grade"]
+        if not advantages:  # cannot happen (strictly better grade), kept as a safe default
+            advantages = [f"Nutri-Score {grade.upper()} vs {ref_grade.upper()}"]
         results.append(
             {
                 "source": cand["source"],
@@ -339,9 +350,10 @@ def alternatives(
                 "quantity": facts.quantity,
                 "image": facts.image,
                 "url": facts.url,
-                "score": cand["score"]["score"],
+                "grade": grade,
+                "reference_grade": ref_grade,
+                "nutriscore_version": ref_score["nutriscore"]["version"],
                 "score_detail": cand["score"],
-                "reference_score": ref_score["score"],
                 "category": cand["category"],
                 "advantage": advantages[0],
                 "advantages": advantages,

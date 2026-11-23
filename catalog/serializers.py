@@ -46,6 +46,7 @@ class ProductDetailSerializer(ProductSummarySerializer):
     data = serializers.JSONField(source="current_revision.data")
     field_sources = serializers.JSONField(source="current_revision.field_sources")
     indicators = serializers.SerializerMethodField()
+    foodo_score = serializers.SerializerMethodField()
     sync_status = serializers.CharField(source="sync_label")
     off_synced_at = serializers.DateTimeField()
     identifiers = serializers.SerializerMethodField()
@@ -59,6 +60,7 @@ class ProductDetailSerializer(ProductSummarySerializer):
             "data",
             "field_sources",
             "indicators",
+            "foodo_score",
             "sync_status",
             "off_synced_at",
             "identifiers",
@@ -83,6 +85,12 @@ class ProductDetailSerializer(ProductSummarySerializer):
                 }
             )
         return result
+
+    def get_foodo_score(self, obj: Product) -> dict:
+        """``score.v2`` (docs/assessment-rules.md): grade and points are null unless ``ok``."""
+        from assessments.score import score_for_product
+
+        return score_for_product(obj)
 
     def get_identifiers(self, obj: Product) -> list[dict]:
         return [

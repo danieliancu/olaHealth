@@ -1,0 +1,107 @@
+{
+ "_fixture": {
+  "fetched_at": "2026-11-23",
+  "license": "ODbL 1.0, Open Food Facts contributors",
+  "source": "https://world.openfoodfacts.org/product/10614594"
+ },
+ "allergens_tags": [],
+ "brands": "Milsani",
+ "categories_tags": [
+  "en:dairies",
+  "en:fermented-foods",
+  "en:fermented-milk-products",
+  "en:cheeses",
+  "en:cow-cheeses",
+  "en:hard-cheeses",
+  "en:emmentaler"
+ ],
+ "code": "10614594",
+ "countries_tags": [
+  "en:australia",
+  "en:austria",
+  "en:germany",
+  "en:ireland",
+  "en:switzerland",
+  "en:united-kingdom",
+  "en:united-states"
+ ],
+ "ingredients_text": "",
+ "lang": "en",
+ "last_modified_t": 1793790136,
+ "misc_tags": [
+  "en:environmental-score-changed",
+  "en:environmental-score-computed",
+  "en:environmental-score-grade-changed",
+  "en:environmental-score-missing-data-labels",
+  "en:environmental-score-missing-data-no-packagings",
+  "en:environmental-score-missing-data-origins",
+  "en:environmental-score-missing-data-packagings",
+  "en:environmental-score-missing-data-warning",
+  "en:forest-footprint-unknown",
+  "en:nutrients-not-estimated-from-ingredients-no-ingredients",
+  "en:nutriscore-missing-fiber",
+  "en:nutriscore-missing-nutrition-data",
+  "en:nutriscore-missing-nutrition-data-saturated-fat",
+  "en:nutriscore-missing-nutrition-data-sodium",
+  "en:nutriscore-missing-nutrition-data-sugars",
+  "en:nutriscore-not-computed",
+  "en:nutrition-data-per-100g",
+  "en:nutrition-no-fiber-or-fruits-vegetables-nuts",
+  "en:nutrition-no-fruits-vegetables-nuts",
+  "en:nutrition-not-enough-data-to-compute-nutrition-score",
+  "en:packagings-empty",
+  "en:packagings-not-complete",
+  "en:packagings-number-of-components-0",
+  "en:storage-conditions-set",
+  "en:number-of-uploaded-images-1-to-3",
+  "en:main-countries-au-ingredients-not-in-country-language",
+  "en:main-countries-au-only-1-field-in-country-language",
+  "en:main-countries-at-product-name-not-in-country-language",
+  "en:main-countries-at-ingredients-not-in-country-language",
+  "en:main-countries-at-no-data-in-country-language",
+  "en:main-countries-de-product-name-not-in-country-language",
+  "en:main-countries-de-ingredients-not-in-country-language",
+  "en:main-countries-de-no-data-in-country-language",
+  "en:main-countries-ie-ingredients-not-in-country-language",
+  "en:main-countries-ie-only-1-field-in-country-language",
+  "en:main-countries-ch-product-name-not-in-country-language",
+  "en:main-countries-ch-ingredients-not-in-country-language",
+  "en:main-countries-ch-no-data-in-country-language",
+  "en:main-countries-uk-unexpectedly-low-scans",
+  "en:main-countries-uk-unexpectedly-low-scans-0-10-percent-of-expected",
+  "en:main-countries-uk-unexpectedly-low-scans-and-only-1-field-in-country-language",
+  "en:main-countries-uk-ingredients-not-in-country-language",
+  "en:main-countries-uk-only-1-field-in-country-language",
+  "en:main-countries-us-ingredients-not-in-country-language",
+  "en:main-countries-us-only-1-field-in-country-language"
+ ],
+ "nova_groups_tags": [
+  "unknown"
+ ],
+ "nutrient_levels": {
+  "fat": "high"
+ },
+ "nutriments": {
+  "carbohydrates_100g": 0.1,
+  "energy-kcal_100g": 386,
+  "energy-kj_100g": 1604.7,
+  "fat_100g": 30,
+  "proteins_100g": 29
+ },
+ "nutriscore": {
+  "2021": {
+   "grade": "unknown"
+  },
+  "2023": {
+   "grade": "unknown"
+  }
+ },
+ "nutriscore_grade": "unknown",
+ "nutriscore_version": "2023",
+ "nutrition_data": "on",
+ "nutrition_data_per": "100g",
+ "nutrition_data_prepared_per": "100g",
+ "product_name": "Heumilch Emmentaler",
+ "quantity": "",
+ "traces_tags": []
+}

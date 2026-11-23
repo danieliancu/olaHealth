@@ -1,0 +1,132 @@
+{
+ "_fixture": {
+  "fetched_at": "2026-11-23",
+  "license": "ODbL 1.0, Open Food Facts contributors",
+  "source": "https://world.openfoodfacts.org/product/3068320114453"
+ },
+ "additives_tags": [],
+ "allergens_tags": [],
+ "brands": "Badoit",
+ "categories_tags": [
+  "en:beverages-and-beverages-preparations",
+  "en:beverages",
+  "en:non-alcoholic-beverages",
+  "en:carbonated-drinks",
+  "en:waters",
+  "en:spring-waters",
+  "en:carbonated-waters",
+  "en:mineral-waters",
+  "en:unsweetened-beverages",
+  "en:natural-mineral-waters",
+  "en:carbonated-mineral-waters"
+ ],
+ "code": "3068320114453",
+ "countries_tags": [
+  "en:france",
+  "en:switzerland"
+ ],
+ "ingredients_analysis_tags": [
+  "en:palm-oil-free",
+  "en:vegan",
+  "en:vegetarian"
+ ],
+ "ingredients_text": "Natürliches Mineralwasser mit Kohlensäure.",
+ "lang": "de",
+ "last_modified_t": 1786613590,
+ "misc_tags": [
+  "en:environmental-score-not-applicable",
+  "en:environmental-score-not-computed",
+  "en:estimated-ingredients-with-recipe-estimator-cvxpy",
+  "en:nutrients-estimated-from-ingredients",
+  "en:nutriscore-2021-a-2023-a",
+  "en:nutriscore-2021-same-as-2023",
+  "en:nutriscore-computed",
+  "en:nutrition-all-nutriscore-values-known",
+  "en:nutrition-data-per-100ml",
+  "en:nutrition-fruits-vegetables-legumes-estimate-from-ingredients",
+  "en:nutrition-fruits-vegetables-nuts-estimate-from-ingredients",
+  "en:packagings-not-complete",
+  "en:packagings-not-empty",
+  "en:packagings-not-empty-but-not-complete",
+  "en:packagings-number-of-components-3",
+  "en:packagings-with-some-but-not-all-weights",
+  "en:packagings-with-weights",
+  "en:forest-footprint-computed",
+  "en:forest-footprint-grade-a"
+ ],
+ "nova_group": 1,
+ "nova_groups_tags": [
+  "en:1-unprocessed-or-minimally-processed-foods"
+ ],
+ "nutrient_levels": {
+  "fat": "low",
+  "salt": "low",
+  "saturated-fat": "low",
+  "sugars": "low"
+ },
+ "nutriments": {
+  "carbohydrates_100g": 0,
+  "energy-kcal_100g": 0,
+  "energy-kj_100g": 0,
+  "fat_100g": 0,
+  "fiber_100g": 0,
+  "proteins_100g": 0,
+  "salt_100g": 0,
+  "saturated-fat_100g": 0,
+  "sugars_100g": 0
+ },
+ "nutriments_estimated": {
+  "alcohol_100g": 0,
+  "beta-carotene_100g": 0,
+  "cholesterol_100g": 0,
+  "copper_100g": 1.7e-05,
+  "fructose_100g": 0,
+  "galactose_100g": 0,
+  "glucose_100g": 0,
+  "iodine_100g": 0,
+  "iron_100g": 3e-05,
+  "lactose_100g": 0,
+  "maltose_100g": 0,
+  "manganese_100g": 8.2e-07,
+  "pantothenic-acid_100g": 0,
+  "phosphorus_100g": 0,
+  "phylloquinone_100g": 0,
+  "polyols_100g": 0,
+  "selenium_100g": 5e-07,
+  "starch_100g": 0,
+  "sucrose_100g": 0,
+  "vitamin-a_100g": 0,
+  "vitamin-b12_100g": 0,
+  "vitamin-b1_100g": 0,
+  "vitamin-b2_100g": 0,
+  "vitamin-b6_100g": 0,
+  "vitamin-b9_100g": 0,
+  "vitamin-c_100g": 0,
+  "vitamin-d_100g": 0,
+  "vitamin-e_100g": 0,
+  "vitamin-pp_100g": 0,
+  "water_100g": 100,
+  "zinc_100g": 1.1e-05
+ },
+ "nutriscore": {
+  "2021": {
+   "grade": "a",
+   "score": 0
+  },
+  "2023": {
+   "grade": "a",
+   "score": 0
+  }
+ },
+ "nutriscore_grade": "a",
+ "nutriscore_score": 0,
+ "nutriscore_version": "2023",
+ "nutrition_data": "on",
+ "nutrition_data_per": "100ml",
+ "nutrition_data_prepared_per": "100g",
+ "product_name": "Badoit 1 L PET",
+ "product_quantity": 1000,
+ "product_quantity_unit": "ml",
+ "quantity": "1 l",
+ "traces_tags": []
+}

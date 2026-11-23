@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from assessments.models import AssessmentSnapshot
 from assessments.rules import IndicatorSpec, apply_packaging_conflict, inputs_hash
+from assessments.score import foodo_score
 from catalog import quality
 from catalog.models import NutrientFact, Product, ProductRevision
 from catalog.nutrition import CORE_NUTRIENTS, to_decimal
@@ -135,40 +136,8 @@ def publish_revision(
     if base is not None and base.content_hash == digest:
         return None
 
-    number = (product.revisions.aggregate(m=Max("number"))["m"] or 0) + 1
-    revision = ProductRevision.objects.create(
-        product=product,
-        number=number,
-        source=source,
-        data=data,
-        content_hash=digest,
-        field_sources=field_sources,
-        off_data=source_data,
-        off_payload=off_payload
-        if off_payload is not None
-        else (base.off_payload if base else None),
-        off_last_modified=off_last_modified or (base.off_last_modified if base else None),
-        base_revision=base,
-        contribution=contribution,
-    )
-    NutrientFact.objects.bulk_create(
-        [
-            NutrientFact(
-                revision=revision,
-                nutrient=f["nutrient"],
-                basis=f["basis"],
-                preparation=f["preparation"],
-                status=f["status"],
-                value=to_decimal(f["value"]) if f["value"] is not None else None,
-                unit=f["unit"],
-                modifier=f.get("modifier") or "",
-            )
-            for f in (data.get("nutrition") or {}).get("facts") or []
-        ]
-    )
     snapshots = [
         AssessmentSnapshot(
-            revision=revision,
             indicator=spec.indicator,
             data_status=spec.data_status,
             value=spec.value,
@@ -185,7 +154,6 @@ def publish_revision(
     if isinstance(declared, dict) and declared.get("grade"):
         snapshots.append(
             AssessmentSnapshot(
-                revision=revision,
                 indicator="nutriscore",
                 data_status=AssessmentSnapshot.DataStatus.AVAILABLE,
                 value={"grade": declared["grade"]},
@@ -196,6 +164,42 @@ def publish_revision(
                 computed_at=now,
             )
         )
+
+    number = (product.revisions.aggregate(m=Max("number"))["m"] or 0) + 1
+    revision = ProductRevision.objects.create(
+        product=product,
+        number=number,
+        source=source,
+        data=data,
+        content_hash=digest,
+        field_sources=field_sources,
+        off_data=source_data,
+        off_payload=off_payload
+        if off_payload is not None
+        else (base.off_payload if base else None),
+        off_last_modified=off_last_modified or (base.off_last_modified if base else None),
+        base_revision=base,
+        contribution=contribution,
+        # Recomputed only here: whenever the data or the indicators change.
+        foodo_score=foodo_score(snapshots),
+    )
+    NutrientFact.objects.bulk_create(
+        [
+            NutrientFact(
+                revision=revision,
+                nutrient=f["nutrient"],
+                basis=f["basis"],
+                preparation=f["preparation"],
+                status=f["status"],
+                value=to_decimal(f["value"]) if f["value"] is not None else None,
+                unit=f["unit"],
+                modifier=f.get("modifier") or "",
+            )
+            for f in (data.get("nutrition") or {}).get("facts") or []
+        ]
+    )
+    for s in snapshots:
+        s.revision = revision
     AssessmentSnapshot.objects.bulk_create(snapshots)
     apply_revision(product, revision, snapshots)
     return revision

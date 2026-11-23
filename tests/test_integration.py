@@ -27,14 +27,15 @@ def test_alternatives_fragment_shows_the_score_or_why_not(client, off_payload, m
     graded = import_off_product(off_payload(nutriscore_grade="b", nova_group=3))
     r = client.get(reverse("product-alternatives", args=[graded.pk]), HTTP_HX_REQUEST="true")
     body = r.content.decode()
-    assert r.status_code == 200 and "/100" in body and "<html" not in body
+    assert r.status_code == 200 and "<html" not in body
+    assert "<strong>B</strong>" in body and "/100" not in body
     bare = import_off_product(
         off_payload(code="3017620422003", nutriscore_grade="", nova_group=None, nutriscore={})
     )
     body = client.get(
         reverse("product-alternatives", args=[bare.pk]), HTTP_HX_REQUEST="true"
     ).content.decode()
-    assert "/100" in body or "Not enough data" in body
+    assert "Not enough data" in body and "score-value" not in body
 
 
 @pytest.mark.django_db

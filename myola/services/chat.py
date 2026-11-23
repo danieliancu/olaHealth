@@ -365,13 +365,13 @@ def ai_facts_for(
     if p.get("nova") in PROCESSING:
         out["product"]["processing"] = PROCESSING[p["nova"]]
     if product is not None:
-        from assessments.score import score_for_product
+        from assessments.score import score_for_product, summary
 
         levels = _levels(product)
         if levels:
             out["product"]["levels"] = levels
-        score = score_for_product(product)
-        out["foodo_score"] = {k: score.get(k) for k in ("status", "score", "points")}
+        # Computed by code (score.v2: the official Nutri-Score); the AI only rephrases it.
+        out["foodo_score"] = summary(score_for_product(product))
         if with_ingredients:
             out["product"].update(_ingredient_facts(product))
     if with_preferences:

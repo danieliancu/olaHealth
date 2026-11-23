@@ -140,6 +140,9 @@ class ProductRevision(models.Model):
     off_data = models.JSONField(null=True, blank=True)  # mapped OFF data used as source
     off_payload = models.JSONField(null=True, blank=True)  # raw OFF product object
     off_last_modified = models.DateTimeField(null=True, blank=True)
+    # Foodo Score (assessments.score.foodo_score) of this revision's indicators, computed when
+    # the revision is published; null for revisions published before score.v2.
+    foodo_score = models.JSONField(null=True, blank=True)
     base_revision = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )

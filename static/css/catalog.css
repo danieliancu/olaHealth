@@ -142,6 +142,8 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 .foodo-score .score-value { display: flex; align-items: baseline; gap: .25rem; margin: .25rem 0 .5rem; }
 .foodo-score .score-value strong { font-size: 2.2rem; line-height: 1; color: var(--accent-strong); }
 .foodo-score .score-value span { color: var(--muted); }
+.foodo-score .score-none { font-weight: 600; margin: .25rem 0 .5rem; }
+.foodo-score .score-reasons { margin: 0 0 .5rem; padding-left: 1.1rem; color: var(--muted); font-size: .9rem; }
 .alt-list { list-style: none; padding: 0; margin: .5rem 0 0; }
 .alt-plus { margin: .2rem 0 0; color: var(--accent-strong); font-weight: 500; }
 .score-points summary { text-decoration: underline; text-underline-offset: 3px; cursor: pointer; color: var(--accent-strong); font-weight: 600; }

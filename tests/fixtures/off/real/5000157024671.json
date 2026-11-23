@@ -1,0 +1,130 @@
+{
+ "_fixture": {
+  "fetched_at": "2026-11-23",
+  "license": "ODbL 1.0, Open Food Facts contributors",
+  "source": "https://world.openfoodfacts.org/product/5000157024671"
+ },
+ "additives_tags": [],
+ "allergens_tags": [],
+ "brands": "H J Heinz Foods UK Ltd",
+ "categories_tags": [
+  "en:plant-based-foods-and-beverages",
+  "en:plant-based-foods",
+  "en:legumes-and-their-products",
+  "en:fruits-and-vegetables-based-foods",
+  "en:legumes",
+  "en:vegetable-based-foods-and-beverages",
+  "en:canned-foods",
+  "en:vegetables-based-foods",
+  "en:canned-plant-based-foods",
+  "en:prepared-vegetables",
+  "en:baked-beans-in-tomato-sauce",
+  "en:canned-legumes",
+  "en:canned-common-beans"
+ ],
+ "code": "5000157024671",
+ "countries_tags": [
+  "en:bulgaria",
+  "en:czech-republic",
+  "en:france",
+  "en:germany",
+  "en:greece",
+  "en:italy",
+  "en:portugal",
+  "en:spain",
+  "en:sweden",
+  "en:united-kingdom"
+ ],
+ "ingredients_analysis_tags": [
+  "en:palm-oil-free",
+  "en:maybe-vegan",
+  "en:vegetarian"
+ ],
+ "ingredients_text": "Beans (50%), Tomatoes (36%), Water, Sugar, Modified Cornflour, Salt, Spice Extracts , Herb Extract",
+ "lang": "en",
+ "last_modified_t": 1795028777,
+ "misc_tags": [
+  "en:ecobalyse-api-called",
+  "en:ecobalyse-api-success",
+  "en:ecobalyse-ingredients-matched-between-90-and-100",
+  "en:ecobalyse-reference-quantity-from-product-quantity",
+  "en:environmental-score-changed",
+  "en:environmental-score-computed",
+  "en:environmental-score-missing-data-labels",
+  "en:environmental-score-missing-data-origins",
+  "en:environmental-score-missing-data-warning",
+  "en:estimated-ingredients-with-recipe-estimator-cvxpy",
+  "en:forest-footprint-not-computed",
+  "en:ingredients-contain-rare-crops",
+  "en:nutrients-not-estimated-from-ingredients-too-few-ingredients-with-nutrition-data",
+  "en:nutriscore-2021-a-2023-a",
+  "en:nutriscore-2021-same-as-2023",
+  "en:nutriscore-computed",
+  "en:nutrition-all-nutriscore-values-known",
+  "en:nutrition-data-per-100g",
+  "en:nutrition-data-per-serving",
+  "en:nutrition-fruits-vegetables-legumes-estimate-from-ingredients",
+  "en:nutrition-fruits-vegetables-nuts-estimate-from-ingredients",
+  "en:packagings-not-complete",
+  "en:packagings-not-empty",
+  "en:packagings-not-empty-but-not-complete",
+  "en:packagings-number-of-components-1",
+  "en:storage-conditions-set",
+  "en:number-of-uploaded-images-more-than-100",
+  "en:main-countries-bg-ingredients-not-in-country-language",
+  "en:main-countries-bg-only-1-field-in-country-language",
+  "en:main-countries-cz-product-name-not-in-country-language",
+  "en:main-countries-cz-ingredients-not-in-country-language",
+  "en:main-countries-cz-no-data-in-country-language",
+  "en:main-countries-de-unexpectedly-low-scans",
+  "en:main-countries-de-unexpectedly-low-scans-0-10-percent-of-expected",
+  "en:main-countries-gr-ingredients-not-in-country-language",
+  "en:main-countries-gr-only-1-field-in-country-language",
+  "en:main-countries-it-ingredients-not-in-country-language",
+  "en:main-countries-it-only-1-field-in-country-language",
+  "en:main-countries-uk-unexpectedly-low-scans",
+  "en:main-countries-uk-unexpectedly-low-scans-0-10-percent-of-expected"
+ ],
+ "nova_group": 4,
+ "nova_groups_tags": [
+  "en:4-ultra-processed-food-and-drink-products"
+ ],
+ "nutrient_levels": {
+  "fat": "low",
+  "salt": "moderate",
+  "saturated-fat": "low",
+  "sugars": "moderate"
+ },
+ "nutriments": {
+  "carbohydrates_100g": 15.5,
+  "energy-kcal_100g": 81,
+  "energy-kj_100g": 391.1,
+  "fat_100g": 0.4,
+  "fiber_100g": 3.9,
+  "proteins_100g": 4.8,
+  "salt_100g": 0.6,
+  "saturated-fat_100g": 0.2,
+  "sugars_100g": 10.3
+ },
+ "nutriscore": {
+  "2021": {
+   "grade": "a",
+   "score": -3
+  },
+  "2023": {
+   "grade": "a",
+   "score": -1
+  }
+ },
+ "nutriscore_grade": "a",
+ "nutriscore_score": -1,
+ "nutriscore_version": "2023",
+ "nutrition_data": "on",
+ "nutrition_data_per": "100g",
+ "nutrition_data_prepared_per": "100g",
+ "product_name": "Beanz in a rich tomato sauce",
+ "product_quantity": 415,
+ "product_quantity_unit": "g",
+ "quantity": "415g",
+ "traces_tags": []
+}

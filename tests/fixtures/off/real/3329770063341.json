@@ -1,0 +1,105 @@
+{
+ "_fixture": {
+  "fetched_at": "2026-11-23",
+  "license": "ODbL 1.0, Open Food Facts contributors",
+  "source": "https://world.openfoodfacts.org/product/3329770063341"
+ },
+ "additives_tags": [],
+ "allergens_tags": [
+  "en:milk"
+ ],
+ "brands": "Yop gf, Yoplait",
+ "categories_tags": [
+  "en:beverages-and-beverages-preparations",
+  "en:beverages",
+  "en:dairies",
+  "en:fermented-foods",
+  "en:desserts",
+  "en:fermented-milk-products",
+  "en:dairy-desserts",
+  "en:dairy-drinks",
+  "en:fermented-dairy-desserts",
+  "en:fermented-drinks",
+  "en:fermented-milk-drinks",
+  "en:yogurts",
+  "en:yogurt-drinks",
+  "en:flavoured-yogurt-drinks",
+  "en:yogurt-drinks-with-sugar",
+  "en:flavoured-yogurt-drinks-with-sugar"
+ ],
+ "code": "3329770063341",
+ "countries_tags": [
+  "en:france"
+ ],
+ "ingredients_analysis_tags": [
+  "en:palm-oil-free",
+  "en:non-vegan",
+  "en:maybe-vegetarian"
+ ],
+ "ingredients_text": "LAIT écrémé à base de poudre de LAIT - Sucre 7,9% - CREME – Arôme naturel – Concentré des minéraux du LAIT – Ferments LACTIQUES (LAIT) – Vitamine D. LAIT D'ORIGINE FRANCE.",
+ "lang": "fr",
+ "last_modified_t": 1772464942,
+ "misc_tags": [
+  "en:environmental-score-changed",
+  "en:environmental-score-computed",
+  "en:environmental-score-missing-data-labels",
+  "en:environmental-score-missing-data-packagings",
+  "en:environmental-score-missing-data-warning",
+  "en:nutrients-not-estimated-from-ingredients-too-few-ingredients-with-nutrition-data",
+  "en:nutriscore-2021-different-from-2023",
+  "en:nutriscore-2021-e-2023-d",
+  "en:nutriscore-2021-worse-than-2023",
+  "en:nutriscore-computed",
+  "en:nutriscore-missing-fiber",
+  "en:nutrition-fruits-vegetables-legumes-estimate-from-ingredients",
+  "en:nutrition-fruits-vegetables-nuts-estimate-from-ingredients",
+  "en:nutrition-no-fiber-or-fruits-vegetables-nuts",
+  "en:packagings-not-complete",
+  "en:packagings-not-empty",
+  "en:packagings-not-empty-but-not-complete",
+  "en:packagings-number-of-components-1",
+  "en:some-ingredients-with-specified-percent",
+  "en:forest-footprint-not-computed"
+ ],
+ "nova_group": 4,
+ "nova_groups_tags": [
+  "en:4-ultra-processed-food-and-drink-products"
+ ],
+ "nutrient_levels": {
+  "fat": "low",
+  "salt": "low",
+  "saturated-fat": "low",
+  "sugars": "high"
+ },
+ "nutriments": {
+  "carbohydrates_100g": 10.5,
+  "energy-kcal_100g": 65,
+  "energy-kj_100g": 276,
+  "fat_100g": 0.8,
+  "proteins_100g": 3,
+  "salt_100g": 0.1,
+  "saturated-fat_100g": 0.5,
+  "sugars_100g": 10.5
+ },
+ "nutriscore": {
+  "2021": {
+   "grade": "e",
+   "score": 17
+  },
+  "2023": {
+   "grade": "d",
+   "score": 9
+  }
+ },
+ "nutriscore_grade": "d",
+ "nutriscore_score": 9,
+ "nutriscore_version": "2023",
+ "nutrition_data": "on",
+ "nutrition_data_per": "100g",
+ "nutrition_data_prepared_per": "100g",
+ "product_name": "Yop pêche",
+ "product_quantity": 825,
+ "product_quantity_unit": "g",
+ "quantity": "825 g",
+ "traces_tags": []
+}

@@ -9,7 +9,7 @@ corrections, read through the existing contracts (`ProductDetailSerializer`, `re
 > ActivityEntry, WeightEntry, ProductMark, ProductVisit, Note, Memory, ChatMessage) with the
 > same fields and limits, rendered server-side with htmx. Health conditions are stored only
 > with explicit consent and deleted with the account. The Foodo Score (§3) is implemented as
-> `score.v1` and alternatives in `catalog/services/alternatives.py`; Ask Foodo (§5) can use an
+> `score.v2` (docs/assessment-rules.md) and alternatives in `catalog/services/alternatives.py`; Ask Foodo (§5) can use an
 > AI provider that only rephrases Python-computed facts.
 
 Conventions:
@@ -58,8 +58,11 @@ Goals (`lower_sugar`, `more_protein`) only bring the matching value (sugars, pro
 
 ## 3. V2: score and alternatives (not in the MVP)
 
-* **Score**: a single Foodo Score with reconstructible points, computed in Python; the production
-  rule and weights are decided before it is published. Unknown values give `not_enough_data`.
+* **Score**: the Foodo Score `score.v2` is the official Nutri-Score computed by OFF (grade,
+  points, algorithm version), stored per revision; NOVA and additives are returned beside it in
+  `separate`. Product detail API: field `foodo_score` (shape in docs/assessment-rules.md).
+  `status` is `ok`, `not_enough_data`, `not_applicable` or `conflicting`; only `ok` carries a
+  grade and points, every other status has `null` there and a reason.
 * **Alternatives**: up to 3 similar products recorded as sold in the UK, each with a verifiable
   advantage and its trade-offs, filtered by strict restrictions and the Avoid list.
 

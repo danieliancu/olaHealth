@@ -1,0 +1,159 @@
+{
+ "_fixture": {
+  "fetched_at": "2026-11-23",
+  "license": "ODbL 1.0, Open Food Facts contributors",
+  "source": "https://world.openfoodfacts.org/product/20994945"
+ },
+ "additives_tags": [],
+ "allergens_tags": [
+  "en:milk"
+ ],
+ "brands": "Milbona",
+ "categories_tags": [
+  "en:dairies",
+  "en:fermented-foods",
+  "en:fermented-milk-products",
+  "en:cheeses",
+  "en:cow-cheeses",
+  "en:fresh-cheeses",
+  "en:cottage-cheeses"
+ ],
+ "code": "20994945",
+ "countries_tags": [
+  "en:finland",
+  "en:ireland",
+  "en:spain",
+  "en:sweden",
+  "en:united-kingdom"
+ ],
+ "ingredients_analysis_tags": [
+  "en:palm-oil-free",
+  "en:non-vegan",
+  "en:vegetarian"
+ ],
+ "ingredients_text": "Cottage cheese (milk) salt",
+ "lang": "en",
+ "last_modified_t": 1780489899,
+ "misc_tags": [
+  "en:environmental-score-changed",
+  "en:environmental-score-computed",
+  "en:environmental-score-grade-changed",
+  "en:environmental-score-missing-data-labels",
+  "en:environmental-score-missing-data-origins",
+  "en:environmental-score-missing-data-packagings",
+  "en:environmental-score-missing-data-warning",
+  "en:estimated-ingredients-with-recipe-estimator-cvxpy",
+  "en:forest-footprint-not-computed",
+  "en:nutrients-estimated-from-ingredients",
+  "en:nutriscore-2021-a-2023-b",
+  "en:nutriscore-2021-better-than-2023",
+  "en:nutriscore-2021-different-from-2023",
+  "en:nutriscore-computed",
+  "en:nutrition-all-nutriscore-values-known",
+  "en:nutrition-data-per-100g",
+  "en:nutrition-fruits-vegetables-legumes-estimate-from-ingredients",
+  "en:nutrition-fruits-vegetables-nuts-estimate-from-ingredients",
+  "en:packagings-complete",
+  "en:packagings-not-empty",
+  "en:packagings-number-of-components-2",
+  "en:storage-conditions-not-set"
+ ],
+ "nova_group": 3,
+ "nova_groups_tags": [
+  "en:3-processed-foods"
+ ],
+ "nutrient_levels": {
+  "fat": "moderate",
+  "salt": "moderate",
+  "saturated-fat": "moderate",
+  "sugars": "low"
+ },
+ "nutriments": {
+  "carbohydrates_100g": 2.8,
+  "energy-kcal_100g": 97,
+  "energy-kj_100g": 406,
+  "fat_100g": 4.5,
+  "fiber_100g": 0,
+  "proteins_100g": 11.5,
+  "salt_100g": 0.52,
+  "saturated-fat_100g": 3,
+  "sugars_100g": 2.8
+ },
+ "nutriments_estimated": {
+  "alcohol_100g": 0,
+  "alpha-linolenic-acid_100g": 0.129324,
+  "arachidonic-acid_100g": 0.0208908,
+  "beta-carotene_100g": 7.75944e-05,
+  "butyric-acid_100g": 0.89532,
+  "calcium_100g": 0.62281396,
+  "capric-acid_100g": 0.855528,
+  "caproic-acid_100g": 0.59688,
+  "caprylic-acid_100g": 0.407868,
+  "chloride_100g": 1.126922,
+  "cholesterol_100g": 0.08933304,
+  "copper_100g": 0.000130104,
+  "crude-ash_100g": 3.712788,
+  "docosahexaenoic-acid_100g": 0.0059688,
+  "eicosapentaenoic-acid_100g": 0.00785892,
+  "fructose_100g": 0.0706308,
+  "galactose_100g": 0.0716256,
+  "glucose_100g": 0.0706308,
+  "iodine_100g": 3.265188e-05,
+  "iron_100g": 0.000270104,
+  "lactose_100g": 0.318336,
+  "lauric-acid_100g": 0.915216,
+  "linoleic-acid_100g": 0.407868,
+  "magnesium_100g": 0.02906454,
+  "maltose_100g": 0.0716256,
+  "manganese_100g": 2.84784e-05,
+  "monounsaturated-fat_100g": 6.376668,
+  "myristic-acid_100g": 3.004296,
+  "oleic-acid_100g": 4.993896,
+  "palmitic-acid_100g": 7.938504,
+  "pantothenic-acid_100g": 0.000507348,
+  "phosphorus_100g": 0.4516808,
+  "phylloquinone_100g": 1.721004e-06,
+  "polyols_100g": 0,
+  "polyunsaturated-fat_100g": 0.79584,
+  "potassium_100g": 0.12145348,
+  "selenium_100g": 7.7123e-06,
+  "starch_100g": 0.007461,
+  "stearic-acid_100g": 2.506896,
+  "sucrose_100g": 0.07461,
+  "vitamin-a_100g": 0.0002248248,
+  "vitamin-b12_100g": 1.352928e-06,
+  "vitamin-b1_100g": 3.4818e-05,
+  "vitamin-b2_100g": 0.000407868,
+  "vitamin-b6_100g": 0.000109428,
+  "vitamin-b9_100g": 3.422112e-05,
+  "vitamin-c_100g": 5.67036e-05,
+  "vitamin-d_100g": 2.88492e-07,
+  "vitamin-e_100g": 0.00054714,
+  "vitamin-pp_100g": 0.0009948,
+  "water_100g": 45.9599004,
+  "zinc_100g": 0.0028555336
+ },
+ "nutriscore": {
+  "2021": {
+   "grade": "a",
+   "score": -2
+  },
+  "2023": {
+   "grade": "b",
+   "score": 1
+  }
+ },
+ "nutriscore_grade": "b",
+ "nutriscore_score": 1,
+ "nutriscore_version": "2023",
+ "nutrition_data": "on",
+ "nutrition_data_per": "100g",
+ "nutrition_data_prepared_per": "100g",
+ "product_name": "Natural Cottage Cheese",
+ "product_quantity": 300,
+ "product_quantity_unit": "g",
+ "quantity": "300 g",
+ "traces_tags": [
+  "en:none"
+ ]
+}

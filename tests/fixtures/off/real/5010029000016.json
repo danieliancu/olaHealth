@@ -1,0 +1,110 @@
+{
+ "_fixture": {
+  "fetched_at": "2026-11-23",
+  "license": "ODbL 1.0, Open Food Facts contributors",
+  "source": "https://world.openfoodfacts.org/product/5010029000016"
+ },
+ "additives_tags": [],
+ "allergens_tags": [
+  "en:gluten"
+ ],
+ "brands": "Weetabix",
+ "categories_tags": [
+  "en:plant-based-foods-and-beverages",
+  "en:plant-based-foods",
+  "en:breakfasts",
+  "en:cereals-and-potatoes",
+  "en:cereals-and-their-products",
+  "en:breakfast-cereals"
+ ],
+ "code": "5010029000016",
+ "countries_tags": [
+  "en:france",
+  "en:ireland",
+  "en:united-kingdom"
+ ],
+ "ingredients_analysis_tags": [
+  "en:palm-oil-free",
+  "en:vegan",
+  "en:vegetarian"
+ ],
+ "ingredients_text": "Wholegrain Wheat (95%), Malted Barley Extract, Sugar, Salt, Niacin, Iron, Riboflavin (B2), Thiamin (B1), Folic Acid.",
+ "lang": "en",
+ "last_modified_t": 1794043844,
+ "misc_tags": [
+  "en:ecobalyse-api-called",
+  "en:ecobalyse-api-success",
+  "en:ecobalyse-ingredients-matched-between-80-and-89",
+  "en:ecobalyse-reference-quantity-from-product-quantity",
+  "en:environmental-score-changed",
+  "en:environmental-score-computed",
+  "en:environmental-score-grade-changed",
+  "en:environmental-score-missing-data-labels",
+  "en:environmental-score-missing-data-packagings",
+  "en:environmental-score-missing-data-warning",
+  "en:estimated-ingredients-with-recipe-estimator-cvxpy",
+  "en:forest-footprint-computed",
+  "en:forest-footprint-grade-a",
+  "en:nutrients-not-estimated-from-ingredients-too-few-ingredients-with-nutrition-data",
+  "en:nutriscore-2021-a-2023-a",
+  "en:nutriscore-2021-same-as-2023",
+  "en:nutriscore-computed",
+  "en:nutrition-all-nutriscore-values-known",
+  "en:nutrition-data-per-100g",
+  "en:nutrition-data-per-serving",
+  "en:nutrition-fruits-vegetables-legumes-estimate-from-ingredients",
+  "en:nutrition-fruits-vegetables-nuts-estimate-from-ingredients",
+  "en:packagings-not-complete",
+  "en:packagings-not-empty",
+  "en:packagings-not-empty-but-not-complete",
+  "en:packagings-number-of-components-3",
+  "en:storage-conditions-not-set",
+  "en:number-of-uploaded-images-4-to-6",
+  "en:main-countries-fr-unexpectedly-low-scans",
+  "en:main-countries-fr-unexpectedly-low-scans-0-10-percent-of-expected",
+  "en:main-countries-uk-unexpectedly-low-scans",
+  "en:main-countries-uk-unexpectedly-low-scans-0-10-percent-of-expected"
+ ],
+ "nova_group": 3,
+ "nova_groups_tags": [
+  "en:3-processed-foods"
+ ],
+ "nutrient_levels": {
+  "fat": "low",
+  "salt": "low",
+  "saturated-fat": "low",
+  "sugars": "low"
+ },
+ "nutriments": {
+  "carbohydrates_100g": 68,
+  "energy-kcal_100g": 354,
+  "energy-kj_100g": 1531,
+  "fat_100g": 2,
+  "fiber_100g": 10,
+  "proteins_100g": 11,
+  "salt_100g": 0.28,
+  "saturated-fat_100g": 0.6,
+  "sugars_100g": 4.2
+ },
+ "nutriscore": {
+  "2021": {
+   "grade": "a",
+   "score": -5
+  },
+  "2023": {
+   "grade": "a",
+   "score": -3
+  }
+ },
+ "nutriscore_grade": "a",
+ "nutriscore_score": -3,
+ "nutriscore_version": "2023",
+ "nutrition_data": "on",
+ "nutrition_data_per": "100g",
+ "nutrition_data_prepared_per": "100g",
+ "product_name": "Weetabix",
+ "product_quantity": 430,
+ "product_quantity_unit": "g",
+ "quantity": "430 g",
+ "traces_tags": []
+}

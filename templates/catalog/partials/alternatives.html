@@ -1,26 +1,45 @@
 {% load i18n ui %}
 <h2 id="alt-h">{% translate "Foodo Score and alternatives" %}</h2>
+{% with ns=score.nutriscore nova=score.separate.nova additives=score.separate.additives %}
+<div class="foodo-score" data-status="{{ score.status }}">
+  {% if score.status == "ok" %}
+    <p class="score-value"><strong>{{ ns.grade|upper }}</strong><span>{% translate "Nutri-Score" %} · {% blocktranslate with v=ns.version %}{{ v }} algorithm{% endblocktranslate %}{% if ns.points is not None %} · {% blocktranslate count p=ns.points %}{{ p }} point{% plural %}{{ p }} points{% endblocktranslate %}{% endif %}</span></p>
+  {% elif score.status == "not_applicable" %}
+    <p class="score-none">{% translate "No Foodo Score: Nutri-Score does not apply to this kind of product." %}</p>
+  {% elif score.status == "conflicting" %}
+    <p class="score-none">{% translate "No Foodo Score: the Nutri-Score data disagree." %}</p>
+  {% else %}
+    <p class="score-none">{% translate "Not enough data for a Foodo Score." %}</p>
+  {% endif %}
+  <ul class="score-reasons">{% for r in score.reasons %}<li>{{ r.text }}</li>{% endfor %}</ul>
+  {% if score.status == "ok" and ns.points is not None %}<p class="caption">{% translate "Nutri-Score points: fewer is better. Grades and points are compared only within the same algorithm version." %}</p>{% endif %}
+  {% if score.status == "ok" and ns.other_versions %}
+    <p class="caption">{% translate "Other Nutri-Score versions (not comparable):" %} {% for v, g in ns.other_versions.items %}{{ v }}: {{ g|upper }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+  {% if ns.warnings %}<ul class="caption">{% for w in ns.warnings %}<li>{{ w }}</li>{% endfor %}</ul>{% endif %}
+  <details class="score-points">
+    <summary>{% translate "Shown separately, not part of the score" %}</summary>
+    <ul>
+      <li>{% translate "Processing (NOVA):" %}
+        {% if nova.status == "available" %}{% blocktranslate with g=nova.group %}group {{ g }}{% endblocktranslate %}{% elif nova.status == "not_applicable" %}{% translate "not applicable" %}{% elif nova.status == "not_current" %}{% translate "not current after a correction" %}{% else %}{% translate "unknown" %}{% endif %}</li>
+      <li>{% translate "Additives identified by Open Food Facts in the ingredient list (listed, not assessed):" %}
+        {% if additives.status == "available" %}{% if additive_names %}{{ additive_names|join:", " }}{% else %}{% translate "none identified" %}{% endif %}{% elif additives.status == "not_current" %}{% translate "not current after a correction" %}{% else %}{% translate "unknown" %}{% endif %}</li>
+      <li>{% blocktranslate with c=product.completeness %}Data completeness: {{ c }}%{% endblocktranslate %}</li>
+    </ul>
+    <p class="caption">{% translate "The Foodo Score is the official Nutri-Score computed by Open Food Facts, an orientative indicator of nutritional quality; it is not a medical assessment. Processing, additives and your own diets, allergies and goals are shown separately and never change it. The label on the product is the reference." %} <a href="{% url 'sources' %}#foodo-score">{% translate "Method" %}</a></p>
+  </details>
+</div>
 {% if score.status == "ok" %}
-  <div class="foodo-score">
-    <p class="score-value"><strong>{{ score.score }}</strong><span>/100</span></p>
-    <details class="score-points">
-      <summary>{% translate "How this score is calculated" %}</summary>
-      <ul>
-        {% for p in score.points %}<li>{{ p.reason }}: {{ p.points }}</li>{% empty %}<li>{% translate "No points deducted." %}</li>{% endfor %}
-      </ul>
-      {% if score.missing %}<p class="caption">{% translate "Unknown, not counted:" %} {{ score.missing|join:", " }}</p>{% endif %}
-      <p class="caption">{% translate "Starts at 100 and deducts points from Nutri-Score, NOVA processing, high sugar, salt and saturated fat. Your own restrictions are shown separately and never change the score." %} <a href="{% url 'sources' %}#foodo-score">{% translate "Method" %}</a></p>
-    </details>
-  </div>
   {% if alternatives %}
     <h3>{% translate "Better alternatives sold in the UK" %}</h3>
+    <p class="caption">{% blocktranslate with v=ns.version %}Same kind of food with a better Nutri-Score ({{ v }} algorithm).{% endblocktranslate %}</p>
     <ul class="alt-slider" aria-label="{% translate 'Better alternatives' %}">
       {% for a in alternatives %}
       <li class="alt-card">
         <a href="{{ a.url }}">
           <span class="alt-img">{% if a.image %}<img src="{{ a.image }}" alt="" loading="lazy">{% else %}<img src="{% asset 'img/placeholder' %}" alt="">{% endif %}</span>
           <span class="alt-name">{{ a.name|default:_("Unnamed product") }}</span>
-          <span class="alt-foot"><span class="alt-brand">{{ a.brand }}</span><span class="alt-score">{{ a.score }}</span></span>
+          <span class="alt-foot"><span class="alt-brand">{{ a.brand }}</span><span class="alt-score" title="{% translate 'Nutri-Score' %}">{{ a.grade|upper }}</span></span>
         </a>
       </li>
       {% endfor %}
@@ -29,6 +48,5 @@
   {% else %}
     <p class="caption">{% translate "We haven't found a suitable alternative yet." %}</p>
   {% endif %}
-{% else %}
-  <p class="caption">{% translate "Not enough data for a Foodo Score: this product has no Nutri-Score and no NOVA group yet." %}</p>
 {% endif %}
+{% endwith %}

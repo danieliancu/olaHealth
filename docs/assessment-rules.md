@@ -1,9 +1,9 @@
 # Assessment rules
 
-AskFoodo shows indicators published by Open Food Facts and explains their state, plus one
-transparent summary, the **Foodo Score** (`score.v1`, section at the end): every deducted point
-is listed with its reason. No "safe for allergies" statements, no disease claims; Ask Foodo may
-use an AI model only to phrase facts computed here.
+AskFoodo shows indicators published by Open Food Facts and explains their state, plus the
+**Foodo Score** (`score.v2`, section at the end): the official Nutri-Score of the product, with
+its algorithm version, or an explicit reason why there is none. No "safe for allergies"
+statements, no disease claims; Ask Foodo may use an AI model only to phrase facts computed here.
 
 ## Indicators
 
@@ -68,13 +68,166 @@ Share (0–100 %) of: name, brand, quantity, categories, ingredient list, front 
 seven core nutrients (energy kcal, fat, saturates, carbohydrate, sugars, protein, salt;
 "no nutrition facts on the package" counts as complete). It measures data, not health.
 
-## Foodo Score (score.v1)
+## Foodo Score (score.v2)
 
-A V2 summary (see docs/mvp-api-contracts.md §3), computed in Python by
-`assessments/score.py` from the OFF indicators above. It is separate from the indicators:
-they are still shown as published, and the score never replaces them.
+Computed in Python by `assessments/score.py` (`foodo_score`, a pure, deterministic function)
+from the indicators above. Not validated clinically, scientifically or by a nutrition
+professional: it passes on a public algorithm, it does not add a judgement of its own.
 
-Start at 100, then add the points below (result clamped to 0–100):
+### What it measures, and what it does not
+
+* **Measures:** the nutritional quality of 100 g / 100 ml of the product as rated by the
+  **official Nutri-Score**, computed by Open Food Facts with the algorithm version OFF states
+  (`nutriscore_version`). The headline is the grade (A–E); the number is the official
+  Nutri-Score points (`nutriscore_score`, lower is better), unchanged.
+* **Does not measure:** processing (NOVA), additives, allergens or diets, portion size,
+  whether the product suits a person or a goal, safety, or how "healthy" a product is overall.
+  It is an orientative indicator; the physical product and its label remain the reference.
+
+### Why there is no AskFoodo 0–100 total
+
+`score.v1` combined Nutri-Score, NOVA and nutrient levels into a 0–100 total with weights of
+our own. That total was not equivalent to any official score: the weights had no public
+methodology, sugars/salt/saturates were counted twice (they are already Nutri-Score
+components), NOVA (processing) was mixed with nutritional quality, and unknown components
+cost nothing, so missing data raised the total. No public, verifiable methodology combines
+Nutri-Score, NOVA and additives into one number, so `score.v2` keeps the official
+Nutri-Score as the only numeric score and shows the rest separately. A composite total would
+need a published methodology and a new version.
+
+### Inputs
+
+Only snapshots with origin `off_computed` of the product's current revision (an OFF search
+result is first read with the same rules, `assessments.rules.derive_from_off`). The
+Nutri-Score printed on the package (`packaging_declared`) is never an input; it is only used
+to detect a conflict (section *Indicators*).
+
+| Input | Snapshot | Used for |
+|---|---|---|
+| Nutri-Score grade | `nutriscore.value.grade` (a–e) | the score |
+| Nutri-Score points | `nutriscore.value.score` (OFF `nutriscore_score`) | the score (detail) |
+| Nutri-Score version | `nutriscore.algorithm_version` (OFF `nutriscore_version`) | comparability |
+| Grades of other versions | `nutriscore.value.other_versions` | shown as detail only |
+| NOVA group | `nova.value.group` | shown separately |
+| Additives identified | `additives.value.tags` | shown separately |
+
+Nutrient levels are Nutri-Score inputs already; they stay on the product page and are not
+part of the result (no double counting).
+
+### Status: exact rules, first match wins
+
+| # | Nutri-Score snapshot (off_computed) | `status` | Reason code |
+|---|---|---|---|
+| 1 | none, or `missing_data`, or a grade that is not a–e | `not_enough_data` | `nutriscore_missing` |
+| 2 | invalidated by a local correction | `not_enough_data` | `nutriscore_not_current` |
+| 3 | `not_applicable` | `not_applicable` | `nutriscore_not_applicable` |
+| 4 | `conflicting` (package grade differs, same or unknown version) | `conflicting` | `nutriscore_conflicting` |
+| 5 | grade a–e, `algorithm_version` empty | `not_enough_data` | `nutriscore_version_unknown` |
+| 6 | grade a–e, version known, current | `ok` | `nutriscore_official` |
+
+* **Minimum for a score:** rule 6, i.e. a current OFF Nutri-Score grade a–e with a known
+  algorithm version. Only then are `grade`, `points` and `version` filled in; in every other
+  status they are `null` and pages and the API show no grade and no number.
+* If OFF gives the grade but not the points, the result is still `ok`; `points` is `null`
+  and `nutriscore_points` is listed in `missing` (never 0).
+* NOVA, additives and data completeness never change the status, the grade or the points.
+
+### Comparing two scores
+
+Two results are comparable only if both are `ok` and have the same Nutri-Score version
+(`comparable_key = "nutriscore:<version>"`). A product is "better" only with a strictly better
+official grade (A < B < … < E) in the same version; the points are shown but never used to
+rank, because the grade thresholds differ between product groups (general foods, beverages,
+fats and oils, cheese) and between versions. The 2021 and 2023 algorithms are never compared:
+the same product can be B in 2021 and C in 2023. Alternatives follow this rule.
+
+### Shown separately, never part of the score
+
+* **NOVA** (processing, Monteiro et al.): group 1–4 with "not part of the score"; missing,
+  not applicable or not current are shown as such.
+* **Additives:** the E-numbers OFF identified in the ingredient list, with "listed, not
+  assessed". Additives listed in the EU/UK are authorised for their uses; AskFoodo has no
+  reviewed source that rates individual additives, so none is called "risky" and none costs
+  points. No ingredient list or no additive analysis → "unknown", never "none"; an empty list
+  with an ingredient list → "OFF identified no additives in the ingredient list".
+* **Allergens and diets:** personal-fit warnings (`myola.restrictions`), computed separately
+  and never in the score result; never "safe".
+* **Goals, portion, targets:** the "For you" card and daily targets, computed separately.
+* **Data completeness:** `Product.completeness` (section above), shown next to the score.
+
+### Result
+
+```json
+{"version": "score.v2", "status": "ok",
+ "nutriscore": {"status": "available", "grade": "b", "points": 1, "version": "2023",
+                "source": "off_computed", "other_versions": {"2021": "a"},
+                "packaging_grade": null, "warnings": ["…"]},
+ "comparable_key": "nutriscore:2023",
+ "separate": {"nova": {"status": "available", "group": 3, "source": "off_computed"},
+              "additives": {"status": "available", "tags": [], "count": 0,
+                            "source": "off_computed", "assessed": false}},
+ "missing": [], "reasons": [{"code": "nutriscore_official", "text": "…"}],
+ "inputs_hash": "<sha256>"}
+```
+
+`missing` lists `nutriscore`, `nutriscore_points`, `nova` and `additives` when they have no
+usable value. `inputs_hash` is a hash of exactly the inputs read (status, value, version,
+current flag), so the same inputs always give the same result and hash.
+
+### When it is computed
+
+On every published revision (`catalog.services.revisions.publish_revision`), i.e. when an
+OFF import, an approved correction or a package grade changes the data, and stored in
+`ProductRevision.foodo_score`. Pages, the API and Ask Foodo read the stored result. A
+revision without a stored `score.v2` result (published before `score.v2`) is computed in
+memory, without writing; migration `catalog.0009` fills current revisions. A result of
+another version is never shown. Any change to these rules gets a new version string.
+
+### Sources
+
+* Nutri-Score: Santé publique France, Nutri-Score specifications, and the reports of the
+  Scientific Committee of the Nutri-Score on the updated algorithm for foods (2022) and for
+  beverages (2023), together "Nutri-Score 2023"; the 2021 version is the earlier algorithm.
+  AskFoodo does not recompute it: OFF applies the version it states.
+* Open Food Facts: product data and computed indicators (`nutriscore_*`, `nova_group`,
+  `additives_tags`), <https://world.openfoodfacts.org/nutriscore> and
+  <https://world.openfoodfacts.org/nova>. Data under the Open Database License.
+* NOVA: Monteiro C. A. et al., "Ultra-processed foods: what they are and how to identify
+  them", Public Health Nutrition 22(5), 2019.
+* Food additives: Regulation (EC) No 1333/2008 (retained in UK law).
+
+### Limitations
+
+* OFF data are crowd-sourced: values may be wrong, incomplete or out of date, and a
+  recipe may change before the page is edited. The score is only as good as that data.
+* OFF estimates some inputs (fruit/vegetable/legume share from the ingredients or category,
+  missing fibre); its warnings are shown with the Nutri-Score.
+* AskFoodo does not check OFF's arithmetic or thresholds; it relies on OFF's implementation.
+* Products without a category or nutrition facts get no score (`not_enough_data`).
+
+### Open questions (not blocking; nothing here has been validated externally)
+
+* Wording of "Foodo Score" next to "Nutri-Score" in the interface.
+* How to present products that OFF only rated with an older version.
+* Any future additive or composite rule needs a published source and a new version.
+
+### score.v1 (retired)
+
+Kept in `assessments/score.py` as `foodo_score_v1` for reference only; no page, API or AI
+fact uses it. Differences:
+
+| | score.v1 | score.v2 |
+|---|---|---|
+| Number | 0–100, own weights | official Nutri-Score points |
+| Nutri-Score | −0…−55 by grade, all versions alike | grade + points + version; versions never compared |
+| NOVA | −10 / −20 | shown separately |
+| Nutrient levels | −5 per "high" (double count) | not used |
+| Additives | empty list, 0 points | listed separately, never scored |
+| Missing data | 0 points (looked good) | no number, explicit reason |
+| Conflict with the package | scored with OFF's grade | `conflicting`, no number |
+| Computed | on every display | per revision, stored |
+
+v1 rule, for the record. Start at 100, then add the points below (result clamped to 0–100):
 
 | Component | Points |
 |---|---|
@@ -94,5 +247,4 @@ Start at 100, then add the points below (result clamped to 0–100):
 * **No personal data:** diets, allergies, goals and health conditions never change the score.
 * Result: `{"status": "ok", "score": 0–100, "version": "score.v1", "points": [{"reason",
   "points"}], "missing": [...]}`. The points list makes the score reconstructible.
-* The score is computed on demand (`score_for_product`) and not stored in
-  `AssessmentSnapshot`. Any change to the rule or weights gets a new version string.
+* The score was computed on demand and never stored.
