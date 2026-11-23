@@ -20,6 +20,10 @@ class Product(models.Model):
         REFRESH_FAILED = "refresh_failed"
         LOCAL_ONLY = "local_only"
 
+    class SyncSource(models.TextChoices):
+        API = "api"  # fetched one by one from the OFF product API
+        DUMP = "dump"  # last written by a catalogue import (docs/off-local-catalogue.md)
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     current_revision = models.ForeignKey(
         "ProductRevision", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
@@ -50,6 +54,9 @@ class Product(models.Model):
     )
     off_last_error = models.CharField(max_length=40, blank=True)
     off_last_attempt_at = models.DateTimeField(null=True, blank=True)
+    off_sync_source = models.CharField(
+        max_length=10, choices=SyncSource.choices, default=SyncSource.API
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -128,6 +135,7 @@ class ProductRevision(models.Model):
 
     class Source(models.TextChoices):
         OFF_IMPORT = "off_import"
+        OFF_DUMP = "off_dump"  # catalogue import (same normalisation as OFF_IMPORT)
         CONTRIBUTION = "contribution"
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="revisions")
@@ -323,3 +331,40 @@ class Country(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class CatalogImport(models.Model):
+    """One import of an Open Food Facts dump into the local catalogue.
+
+    The local catalogue is used first only after an import is ``verified``
+    (``catalog.services.catalog_mode``); running, failed or rejected imports change nothing.
+    See docs/off-local-catalogue.md.
+    """
+
+    class Status(models.TextChoices):
+        RUNNING = "running"
+        FAILED = "failed"
+        COMPLETED = "completed"  # finished, not yet verified
+        VERIFIED = "verified"
+        REJECTED = "rejected"  # finished, failed verification
+
+    source = models.CharField(max_length=30, default="off-jsonl")
+    file_name = models.CharField(max_length=300, blank=True)
+    file_sha256 = models.CharField(max_length=64, blank=True)
+    exported_at = models.DateTimeField(null=True, blank=True)  # date of the dump itself
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.RUNNING)
+    seen = models.PositiveIntegerField(default=0)
+    imported = models.PositiveIntegerField(default=0)
+    skipped = models.PositiveIntegerField(default=0)  # older than the local copy, or no code
+    failed = models.PositiveIntegerField(default=0)
+    started_at = models.DateTimeField(default=timezone.now)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    report = models.JSONField(default=dict, blank=True)  # verification checks and errors
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self) -> str:
+        return f"Import #{self.pk} ({self.status})"

@@ -43,6 +43,17 @@
     <li>Last successful sync: {{ s.off.last_sync|default:"—" }}</li>
   </ul>
 </section>
+<section class="card">
+  <h2>Product catalogue</h2>
+  <p>Mode: <strong>{% if catalogue.mode == "local" %}local catalogue first{% else %}Open Food Facts API, product by product{% endif %}</strong>. {{ catalogue.reason }}</p>
+  {% with run=catalogue.latest %}{% if run %}
+  <ul class="staff-facts">
+    <li>Latest import #{{ run.pk }}: <strong>{{ run.status }}</strong>, started {{ run.started_at }}{% if run.exported_at %}, dump of {{ run.exported_at|date:"Y-m-d" }}{% endif %}</li>
+    <li>Lines {{ run.seen }}, imported {{ run.imported }}, skipped {{ run.skipped }}, failed {{ run.failed }}</li>
+    {% for c in run.report.checks %}<li>{% if c.ok %}ok{% else %}<strong>failed</strong>{% endif %}: {{ c.check }} ({{ c.detail }})</li>{% endfor %}
+  </ul>
+  {% else %}<p>No catalogue import yet (docs/off-local-catalogue.md).</p>{% endif %}{% endwith %}
+</section>
 {% if s.site.maintenance_message %}<p class="notice notice-warn">{% icon "info" 18 %}<span>Maintenance message is on: “{{ s.site.maintenance_message }}”</span></p>{% endif %}
 {% endwith %}
 {% endblock %}

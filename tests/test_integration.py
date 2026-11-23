@@ -18,7 +18,7 @@ def test_product_page_lazy_loads_score_and_alternatives(client, off_payload):
     assert f'hx-get="{url}"' in html and 'hx-trigger="revealed"' in html
     # Without htmx the same URL is a full page.
     page = client.get(url)
-    assert page.status_code == 200 and "Foodo Score" in page.content.decode()
+    assert page.status_code == 200 and "Nutri-Score and alternatives" in page.content.decode()
 
 
 @pytest.mark.django_db

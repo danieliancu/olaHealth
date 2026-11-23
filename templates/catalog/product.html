@@ -111,6 +111,13 @@
       </ul>
       <p class="caption">{% translate "Never a guarantee: the physical label is the reference, especially for allergies." %}</p>
       {% endif %}
+      {% if for_you.contribution %}
+      <div class="foryou-portion">
+        <p><strong>{% blocktranslate with p=for_you.contribution.portion.label %}{{ p }} of your daily targets:{% endblocktranslate %}</strong></p>
+        <ul>{% for c in for_you.contribution.items %}<li>{{ c.label }}: {{ c.value }} {{ c.unit }} ({{ c.percent }}% {% blocktranslate with t=c.target u=c.unit %}of {{ t }} {{ u }}{% endblocktranslate %})</li>{% endfor %}</ul>
+        <p class="caption">{% translate "From the values on the label. Your targets and the portion do not change the product's score." %}</p>
+      </div>
+      {% endif %}
       <p class="foryou-prefs-line">{% if for_you.has_prefs %}{% blocktranslate with names=for_you.summary %}Checked for: {{ names }}.{% endblocktranslate %} <a class="link-btn" href="{{ for_you.edit_url }}">{% translate "Change" %}</a>{% else %}{% translate "Add your diet or allergies to check this product." %} <a class="link-btn" href="{{ for_you.edit_url }}">{% translate "Add" %}</a>{% endif %}</p>
     {% else %}
       <p class="foryou-prefs-line">{% translate "Check this product against your diet and allergies." %} <a class="link-btn" href="{{ login_url }}">{% translate "Sign in" %}</a></p>
@@ -123,9 +130,9 @@
   </section>
   {# 3b. Foodo Score and up to 3 better alternatives sold in the UK (loaded when visible) #}
   <section class="card po-3" aria-labelledby="alt-h" id="better" hx-get="{% url 'product-alternatives' product.pk %}" hx-trigger="revealed" hx-swap="innerHTML">
-    <h2 id="alt-h">{% translate "Foodo Score and alternatives" %}</h2>
+    <h2 id="alt-h">{% if foodo_score_public %}{% translate "Foodo Score and alternatives" %}{% else %}{% translate "Nutri-Score and alternatives" %}{% endif %}</h2>
     <p class="caption htmx-indicator">{% translate "Loading…" %}</p>
-    <p><a href="{% url 'product-alternatives' product.pk %}">{% translate "See the score and better alternatives" %}</a></p>
+    <p><a href="{% url 'product-alternatives' product.pk %}">{% if foodo_score_public %}{% translate "See the score and better alternatives" %}{% else %}{% translate "See the Nutri-Score and better alternatives" %}{% endif %}</a></p>
   </section>
   {# Only things that need checking #}
   {% if gaps or flags %}

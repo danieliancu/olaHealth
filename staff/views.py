@@ -112,9 +112,10 @@ def pretty(value: Any) -> str:
 
 @staff_view()
 def dashboard(request: HttpRequest) -> HttpResponse:
-    return staff_render(
-        request, "staff/dashboard.html", {"stats": services.dashboard_stats()}, "dashboard"
-    )
+    from catalog.services.catalog_mode import describe
+
+    context = {"stats": services.dashboard_stats(), "catalogue": describe()}
+    return staff_render(request, "staff/dashboard.html", context, "dashboard")
 
 
 # ---------- Moderation ----------
@@ -336,6 +337,8 @@ def products(request: HttpRequest) -> HttpResponse:
 
 @staff_view(access.PERM_VIEW_PRODUCTS)
 def product_detail(request: HttpRequest, pk) -> HttpResponse:
+    from assessments.score import public_enabled, score_for_product
+
     product = get_object_or_404(Product.objects.select_related("current_revision"), pk=pk)
     context = {
         "product": product,
@@ -350,6 +353,8 @@ def product_detail(request: HttpRequest, pk) -> HttpResponse:
         "can_refresh": request.user.has_perm(access.PERM_MODERATE) and bool(product.off_code),
         "can_moderate": request.user.has_perm(access.PERM_MODERATE),
         "images": product.images.order_by("kind", "-created_at"),
+        "foodo_score": score_for_product(product),
+        "foodo_score_public": public_enabled(),
     }
     return staff_render(request, "staff/product.html", context, "products")
 

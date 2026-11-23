@@ -177,11 +177,58 @@ current flag), so the same inputs always give the same result and hash.
 ### When it is computed
 
 On every published revision (`catalog.services.revisions.publish_revision`), i.e. when an
-OFF import, an approved correction or a package grade changes the data, and stored in
-`ProductRevision.foodo_score`. Pages, the API and Ask Foodo read the stored result. A
-revision without a stored `score.v2` result (published before `score.v2`) is computed in
-memory, without writing; migration `catalog.0009` fills current revisions. A result of
-another version is never shown. Any change to these rules gets a new version string.
+OFF import (API or catalogue dump), an approved correction or a package grade changes the
+data, and stored in `ProductRevision.foodo_score` with its provenance:
+
+* `source`: `off_api` (product fetched from the OFF API), `off_dump` (catalogue import) or
+  `contribution` (approved correction);
+* `data_id`: the revision's content hash, i.e. exactly which data was scored.
+
+API and dump data go through the same normalisation (`off.mapping.map_product`,
+`assessments.rules.derive_from_off`) and the same function, so the same OFF data gives the
+same result whatever its source (only `source` differs). Pages, the comparison, the API and
+Ask Foodo read the stored result. A result that is missing, of another rules version or
+without provenance is computed in memory when read (never written on display) and stored by
+the hourly job `assessments.tasks.recompute_foodo_scores` (also
+`manage.py recompute_foodo_scores [--all]`), which only writes that derived column: revision
+data, approved corrections and history are untouched. Any change to these rules gets a new
+version string, which makes the job recompute every stored result.
+
+### Public display: off by default
+
+`score.v2` is shown publicly under the name "Foodo Score" only when staff switch on
+Settings → "Show the Foodo Score publicly" (`SiteSettings.foodo_score_public`, default off).
+
+* **Off (default):** the product page shows "Nutri-Score and alternatives": the official
+  Nutri-Score (grade, points, version) or why there is none, NOVA and additives separately
+  with their explanations, and data completeness. The API returns `foodo_score: null` (and
+  `foodo_score_public: false`) except to staff; Ask Foodo receives no Foodo Score. Staff see
+  the full result on the product page (preview box) and in the staff product view.
+* **On:** the same content under the name "Foodo Score", the result in the API for everyone,
+  and its summary in Ask Foodo's facts.
+
+### Before public activation
+
+1. **Decide what "Foodo Score" means.** Either it is the official Nutri-Score shown as is
+   (`score.v2`), or AskFoodo wants its own 0–100 number. There is no approved rule for a
+   0–100 number: it would need a published methodology with verifiable sources for every
+   weight, a new version (`score.v3`), and the same "not enough data" rules. Until then no
+   number other than the official Nutri-Score points is shown.
+2. **Check on real products.** Staff compare the preview with the product labels on a sample
+   across categories (including beverages, fats, cheese, not-applicable products and
+   products with local corrections) and record the outcome.
+3. **Agree the wording** next to "Nutri-Score" in the interface and on the Sources page.
+4. **Validation status.** Nothing here has been validated clinically, scientifically or by a
+   nutrition professional; the public text must not say otherwise unless such a review takes
+   place and is recorded.
+
+### Personal fit stays separate
+
+Diets and allergies ("For you", `myola.restrictions`) are warnings, never "safe". For a
+signed-in user with daily targets, the "For you" card shows what one declared portion (the
+serving, or one unit of a multipack; never converted between g and ml) gives towards each
+target that is set (`myola.contribution`), from per-100 values on the label. The portion and
+the profile never change the product's score.
 
 ### Sources
 

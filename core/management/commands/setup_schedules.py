@@ -6,6 +6,8 @@ from django_q.models import Schedule
 SCHEDULES = [
     ("refresh-stale-products", "catalog.tasks.refresh_stale_products", Schedule.HOURLY),
     ("purge-coordination", "catalog.tasks.purge_coordination", Schedule.HOURLY),
+    # Stores the Foodo Score on revisions missing it or after a rules change (no-op otherwise).
+    ("recompute-foodo-scores", "assessments.tasks.recompute_foodo_scores", Schedule.HOURLY),
     ("purge-expired-drafts", "contributions.tasks.purge_expired_drafts", Schedule.DAILY),
     ("delete-orphan-files", "contributions.tasks.delete_orphan_files", Schedule.DAILY),
     (

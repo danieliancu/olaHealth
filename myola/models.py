@@ -365,6 +365,9 @@ class Notification(models.Model):
     kind = models.CharField(max_length=12, choices=Kind.choices)
     # Stable identity of the event, so the same notification is never created twice.
     key = models.CharField(max_length=120)
+    # Recurring reminders on one subject (water, lunch, dinner, weigh-in...) share a topic: a new
+    # one replaces the previous one instead of piling up (``notifications.reminder_topic``).
+    topic = models.CharField(max_length=60, blank=True)
     title = models.CharField(max_length=160)
     body = models.CharField(max_length=500, blank=True)
     url = models.CharField(max_length=300, blank=True)
@@ -377,7 +380,10 @@ class Notification(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["user", "key"], name="one_notification_per_key")
         ]
-        indexes = [models.Index(fields=["user", "read_at", "-created_at"])]
+        indexes = [
+            models.Index(fields=["user", "read_at", "-created_at"]),
+            models.Index(fields=["user", "topic"], name="notification_topic"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.kind}: {self.title[:60]}"

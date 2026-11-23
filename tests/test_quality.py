@@ -67,9 +67,17 @@ def test_sources_page_explains_the_foodo_score(client):
     html = client.get(reverse("sources")).content.decode()
     assert "does not compute its own score" not in html
     assert "Nutri-Score and NOVA are imported from Open Food Facts" in html
+    assert "starts at 100" not in html
+    # The Foodo Score paragraph appears only once staff make the score public.
+    assert "Foodo Score is the official Nutri-Score" not in html
+    from staff.models import SiteSettings
+
+    site = SiteSettings.load()
+    site.foodo_score_public = True
+    site.save()
+    html = client.get(reverse("sources")).content.decode()
     assert "Foodo Score is the official Nutri-Score" in html
     assert "does not combine it into a 0–100 total" in html
-    assert "starts at 100" not in html
 
 
 @pytest.mark.django_db

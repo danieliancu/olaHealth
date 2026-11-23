@@ -347,3 +347,82 @@ def test_article_notification_detail_is_for_wider_screens():
     lead, detail = notif_parts("“Sweeteners on the label”: a 4-minute read in Ingredients.")
     assert lead == "“Sweeteners on the label”" and detail == ": a 4-minute read in Ingredients."
     assert notif_parts("Plain text: no title.") == ("Plain text: no title.", "")
+
+
+# ---------- Recurring reminders collapse (one per subject) ----------
+def _reminders(user, topic):
+    return list(Notification.objects.filter(user=user, topic=topic))
+
+
+def test_a_new_water_reminder_replaces_the_previous_one(member):
+    profile = onboard(member)
+    yesterday = local_today(profile) - dt.timedelta(days=1)
+    tasks.water_reminder_for(member, profile, now=_local(profile, 17, yesterday))
+    tasks.water_reminder_for(member, profile, now=_local(profile, 11))
+    assert notes.unread_count(member) == 1
+    last = tasks.water_reminder_for(member, profile, now=_local(profile, 14))
+    (only,) = _reminders(member, "water")
+    assert only.pk == last.pk and only.key.endswith("water-14")
+    assert notes.unread_count(member) == 1  # replaced, not added
+
+
+def test_after_a_read_reminder_the_new_one_counts_once(member):
+    profile = onboard(member)
+    first = tasks.water_reminder_for(member, profile, now=_local(profile, 11))
+    notes.mark_read(member, first.pk)
+    assert notes.unread_count(member) == 0
+    tasks.water_reminder_for(member, profile, now=_local(profile, 14))
+    assert len(_reminders(member, "water")) == 1 and notes.unread_count(member) == 1
+
+
+def test_meal_reminders_collapse_per_meal_not_across_meals(member):
+    assert notes.notify(member, "reminder", "reminder:2026-11-21:meal-lunch", "Add lunch?")
+    assert notes.notify(member, "reminder", "reminder:2026-11-22:meal-lunch", "Add lunch?")
+    assert notes.notify(member, "reminder", "reminder:2026-11-22:meal-dinner", "Add dinner?")
+    keys = sorted(Notification.objects.filter(user=member).values_list("key", flat=True))
+    assert keys == ["reminder:2026-11-22:meal-dinner", "reminder:2026-11-22:meal-lunch"]
+    assert notes.unread_count(member) == 2
+
+
+def test_weigh_in_collapses_and_one_off_events_never_do(member):
+    notes.notify(member, "reminder", "reminder:weigh:2026-W46", "Weigh-in")
+    notes.notify(member, "reminder", "reminder:weigh:2026-W47", "Weigh-in")
+    assert [n.key for n in _reminders(member, "weigh")] == ["reminder:weigh:2026-W47"]
+    for key in ("achievement:first-scan", "achievement:streak-3"):
+        notes.notify(member, "achievement", key, "Well done")
+    notes.notify(member, "reminder", "reminder:profile-incomplete", "Finish your profile")
+    assert Notification.objects.filter(user=member, kind="achievement").count() == 2
+    assert Notification.objects.get(key="reminder:profile-incomplete").topic == ""
+
+
+def test_topics():
+    assert notes.reminder_topic("reminder", "reminder:2026-11-22:water-17") == "water"
+    assert notes.reminder_topic("reminder", "reminder:2026-11-22:start") == "start"
+    assert notes.reminder_topic("reminder", "reminder:weigh:2026-W47") == "weigh"
+    assert notes.reminder_topic("reminder", "reminder:profile-incomplete") == ""
+    assert notes.reminder_topic("achievement", "achievement:a:b") == ""
+
+
+def test_migration_collapses_existing_duplicates(member):
+    import importlib
+
+    from django.apps import apps
+
+    collapse = importlib.import_module("myola.migrations.0013_collapse_repeated_reminders").collapse
+    for key in (
+        "reminder:2026-11-20:water-11",
+        "reminder:2026-11-21:water-14",
+        "reminder:2026-11-22:water-17",
+        "reminder:2026-11-22:meal-lunch",
+        "achievement:x",
+    ):
+        Notification.objects.create(
+            user=member, kind=key.split(":")[0], key=key, title="t", topic=""
+        )
+    collapse(apps, None)
+    keys = sorted(Notification.objects.filter(user=member).values_list("key", flat=True))
+    assert keys == [
+        "achievement:x",
+        "reminder:2026-11-22:meal-lunch",
+        "reminder:2026-11-22:water-17",
+    ]

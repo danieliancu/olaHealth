@@ -28,13 +28,23 @@ def refresh_product(product_id: str, queued_key: str = "", queued_owner: str = "
 
 
 def refresh_stale_products() -> dict[str, int]:
-    """Refresh a small batch of stale products, within the shared OFF rate limit."""
+    """Refresh a small batch of stale products, within the shared OFF rate limit.
+
+    With the local catalogue active, products last written by the dump import are left to the
+    next dump and to on-view refreshes (``lookup.schedule_refresh``): refreshing millions of
+    them one by one through the API would never end and would break the API limits.
+    """
+    from catalog.services.catalog_mode import local_catalogue_active
+
     cutoff = timezone.now() - timedelta(hours=settings.OFF_FRESH_TTL_HOURS)
-    candidates = (
-        Product.objects.filter(off_code__isnull=False)
-        .filter(Q(off_synced_at__lt=cutoff) | Q(off_sync_status=Product.SyncStatus.REFRESH_FAILED))
-        .order_by("off_last_attempt_at", "off_synced_at")[: settings.OFF_REFRESH_BATCH]
+    candidates = Product.objects.filter(off_code__isnull=False).filter(
+        Q(off_synced_at__lt=cutoff) | Q(off_sync_status=Product.SyncStatus.REFRESH_FAILED)
     )
+    if local_catalogue_active():
+        candidates = candidates.exclude(off_sync_source=Product.SyncSource.DUMP)
+    candidates = candidates.order_by("off_last_attempt_at", "off_synced_at")[
+        : settings.OFF_REFRESH_BATCH
+    ]
     results: dict[str, int] = {}
     for product in candidates:
         outcome = lookup_service.refresh(product)

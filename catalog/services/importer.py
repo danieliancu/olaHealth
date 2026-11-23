@@ -5,6 +5,11 @@
 * When OFF changes a locked field to a value different from the local one, an open
   ``data_conflict`` review flag is raised (once per distinct value).
 * Idempotent: an import producing the same content creates no revision.
+* The same normalisation (``off.mapping.map_product``) and the same indicator rules
+  (``assessments.rules.derive_from_off``) serve a product from the OFF API and one from a
+  catalogue dump (``source="off_dump"``), so both give the same Foodo Score.
+* A dump never replaces a newer copy: a product whose OFF ``last_modified_t`` is older than
+  the one already stored is skipped (:func:`older_than_local`).
 """
 
 from __future__ import annotations
@@ -174,7 +179,34 @@ def _get_or_create_product(off_code: str, parsed: ParsedCode | None) -> Product:
         return Product.objects.select_for_update().get(off_code=off_code)
 
 
-def import_off_product(payload: dict[str, Any], parsed: ParsedCode | None = None) -> Product:
+def older_than_local(product: Product | None, payload: dict[str, Any]) -> bool:
+    """True when ``payload`` is older (OFF ``last_modified_t``) than the stored OFF copy."""
+    revision = product.current_revision if product is not None else None
+    modified = _off_modified(payload)
+    return bool(
+        revision is not None
+        and revision.off_last_modified is not None
+        and modified is not None
+        and modified < revision.off_last_modified
+    )
+
+
+def import_off_product(
+    payload: dict[str, Any],
+    parsed: ParsedCode | None = None,
+    *,
+    source: str = "off_import",
+    synced_at: datetime | None = None,
+    queue_images: bool = True,
+) -> Product:
+    """Import one OFF product object (API response or dump line) into the catalogue.
+
+    ``source`` is the revision source: ``off_import`` (API) or ``off_dump`` (catalogue
+    import, with ``synced_at`` = the dump's export date and no image downloads queued).
+    """
+    from catalog.models import ProductRevision
+
+    from_dump = source == ProductRevision.Source.OFF_DUMP
     off_code = off_normalize(str(payload.get("code") or (parsed.digits if parsed else "")))
     off_data = map_product(payload)
     specs = derive_from_off(payload)
@@ -182,6 +214,8 @@ def import_off_product(payload: dict[str, Any], parsed: ParsedCode | None = None
     now = timezone.now()
     with transaction.atomic():
         product = _get_or_create_product(off_code, parsed)
+        if from_dump and older_than_local(product, payload):
+            return product  # the stored copy is newer: never replaced by an older dump
         if parsed is not None:
             ensure_identifier(product, parsed, identifier_context(parsed, origin="off"))
         images_changed = _sync_off_images(product, image_urls(payload, settings.OFF_IMAGE_HOSTS))
@@ -191,7 +225,7 @@ def import_off_product(payload: dict[str, Any], parsed: ParsedCode | None = None
         revision = publish_revision(
             product,
             data,
-            source="off_import",
+            source=source,
             field_sources=sources,
             off_specs=specs,
             off_data=off_data,
@@ -209,10 +243,20 @@ def import_off_product(payload: dict[str, Any], parsed: ParsedCode | None = None
                 name,
                 {"off_value": off_data.get(name), "local_value": data.get(name)},
             )
-        if images_changed:
+        if images_changed and queue_images and not from_dump:
             transaction.on_commit(lambda pk=str(product.pk): _queue_image_cache(pk))
-        product.off_synced_at = now
-        product.off_last_attempt_at = now
+        if from_dump:
+            # The copy is as fresh as the dump; never older than a sync already recorded.
+            synced = synced_at or now
+            if product.off_synced_at and product.off_synced_at > synced:
+                synced = product.off_synced_at
+            else:
+                product.off_sync_source = Product.SyncSource.DUMP
+        else:
+            synced = now
+            product.off_sync_source = Product.SyncSource.API
+            product.off_last_attempt_at = now
+        product.off_synced_at = synced
         product.off_sync_status = Product.SyncStatus.CURRENT
         product.off_last_error = ""
         product.save(
@@ -221,6 +265,7 @@ def import_off_product(payload: dict[str, Any], parsed: ParsedCode | None = None
                 "off_last_attempt_at",
                 "off_sync_status",
                 "off_last_error",
+                "off_sync_source",
                 "updated_at",
             ]
         )

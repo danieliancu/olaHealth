@@ -13,6 +13,8 @@
   (Foodo Score ``score.v2``, ``assessments.score.is_better``) is kept; NOVA and additives
   never rank, they are listed as advantages or trade-offs.
 * On any OFF error the local candidates are still used.
+* Once the local catalogue is active (``catalog.services.catalog_mode``: a verified OFF dump
+  import), candidates come from it only: no OFF search, and more local products are read.
 """
 
 from __future__ import annotations
@@ -265,10 +267,13 @@ def alternatives(
     ``score.v2`` result), ``category``, ``advantage`` (main one), ``advantages`` and
     ``trade_offs`` (lists of short sentences).
     """
+    from catalog.services.catalog_mode import local_catalogue_active
     from myola.page import facts_from_product
 
     if product.current_revision is None or limit <= 0:
         return []
+    local_only = local_catalogue_active()
+    local_limit = settings.OFF_LOCAL_ALTERNATIVES_LIMIT if local_only else LOCAL_LIMIT
     ref_snapshots = list(product.current_revision.assessments.all())
     ref_ind = indicators_from_snapshots(ref_snapshots)
     ref_score = score_for_revision(product.current_revision)
@@ -292,7 +297,7 @@ def alternatives(
             .exclude(pk=product.pk)
             .select_related("current_revision")
             .prefetch_related("current_revision__assessments")
-            .order_by("-completeness", "name")[:LOCAL_LIMIT]
+            .order_by("-completeness", "name")[:local_limit]
         )
         for p in local:
             if str(p.pk) in seen:
@@ -303,7 +308,7 @@ def alternatives(
             if str(p.pk) in avoid_ids:
                 continue
             candidates.append(_local_candidate(p, category))
-        for raw in search_off_cached(category, country, client=client):
+        for raw in [] if local_only else search_off_cached(category, country, client=client):
             cand = _off_candidate(raw, category)
             if cand is None or cand["off_code"] in seen:
                 continue

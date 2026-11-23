@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from assessments.models import AssessmentSnapshot
 from assessments.rules import IndicatorSpec, apply_packaging_conflict, inputs_hash
-from assessments.score import foodo_score
+from assessments.score import foodo_score, score_source, with_provenance
 from catalog import quality
 from catalog.models import NutrientFact, Product, ProductRevision
 from catalog.nutrition import CORE_NUTRIENTS, to_decimal
@@ -181,7 +181,9 @@ def publish_revision(
         base_revision=base,
         contribution=contribution,
         # Recomputed only here: whenever the data or the indicators change.
-        foodo_score=foodo_score(snapshots),
+        foodo_score=with_provenance(
+            foodo_score(snapshots), source=score_source(source), data_id=digest
+        ),
     )
     NutrientFact.objects.bulk_create(
         [

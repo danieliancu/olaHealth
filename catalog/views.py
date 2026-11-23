@@ -278,7 +278,11 @@ def _record_visit(request: HttpRequest, product: Product, code: str) -> None:
 
 
 def _for_you(request: HttpRequest, facts) -> dict | None:
-    """Restriction states for the signed-in user's diets and allergies (server-side)."""
+    """Restriction states for the signed-in user's diets and allergies (server-side), and what
+    one declared portion gives towards their daily targets. Both are personal and never
+    change the product's score."""
+    from myola.contribution import portion_contribution
+
     if not request.user.is_authenticated:
         return None
     profile = Profile.objects.filter(user=request.user).first()
@@ -308,6 +312,7 @@ def _for_you(request: HttpRequest, facts) -> dict | None:
         "has_prefs": bool(diets or allergens),
         "summary": ", ".join(names),
         "edit_url": PROFILE_RESTRICTIONS_URL,
+        "contribution": portion_contribution(facts.data, profile),
     }
 
 
@@ -389,6 +394,9 @@ def product_detail(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
     context["quality_pills"] = presenters.quality_pills(product, data, context["flags"])
     context["explain"] = {k: explanations.indicator(k) for k in explanations.INDICATORS}
     context["for_you"] = _for_you(request, facts_from_product(product, snapshots))
+    from assessments.score import public_enabled
+
+    context["foodo_score_public"] = public_enabled()
     context["login_url"] = _login_url(request.get_full_path())
     context["chat_context"] = f"product:{product.pk}"
     context["note_open"] = request.GET.get("note") == "1"
@@ -815,11 +823,14 @@ def _latest_export() -> Path | None:
 
 @require_GET
 def sources(request: HttpRequest) -> HttpResponse:
+    from assessments.score import public_enabled
+
     export = _latest_export()
     return render(
         request,
         "catalog/sources.html",
         {
+            "foodo_score_public": public_enabled(),
             "export": export,
             "export_size": export.stat().st_size if export else 0,
             "export_mtime": export.stat().st_mtime if export else None,
@@ -869,7 +880,7 @@ def off_image(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
 @rate_limited("product_view")
 def product_alternatives(request: HttpRequest, pk) -> HttpResponse:
     """Foodo Score of a product and up to 3 better alternatives (htmx fragment or full page)."""
-    from assessments.score import score_for_product
+    from assessments.score import public_enabled, score_for_product
     from catalog.presenters import additive_label
     from catalog.services.alternatives import alternatives
 
@@ -885,6 +896,7 @@ def product_alternatives(request: HttpRequest, pk) -> HttpResponse:
         "score": score,
         "additive_names": [additive_label(t) for t in tags],
         "alternatives": items,
+        "score_public": public_enabled(),
     }
     if request.headers.get("HX-Request"):
         return render(request, "catalog/partials/alternatives.html", context)

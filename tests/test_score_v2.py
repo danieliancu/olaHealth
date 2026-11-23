@@ -20,6 +20,7 @@ from django.urls import reverse
 from assessments.rules import IndicatorSpec, derive_from_off
 from assessments.score import (
     VERSION,
+    core,
     foodo_score,
     foodo_score_v1,
     is_better,
@@ -298,8 +299,8 @@ def test_same_inputs_same_result_in_any_order():
 def test_off_object_and_snapshots_give_the_same_result(db):
     payload = real("20994945")
     product = import_off_product(payload)
-    assert score_from_off(payload) == score_for_product(product)
-    assert foodo_score(derive_from_off(payload)) == score_from_off(payload)
+    assert core(score_from_off(payload)) == core(score_for_product(product))
+    assert foodo_score(derive_from_off(payload)) == core(score_from_off(payload))
     assert all(isinstance(s, IndicatorSpec) for s in derive_from_off(payload))
 
 
@@ -367,7 +368,9 @@ def test_publish_stores_the_score_on_the_revision(db, off_payload):
     product = import_off_product(off_payload())
     stored = product.current_revision.foodo_score
     assert stored["version"] == VERSION and stored["status"] == "ok"
-    assert stored == foodo_score(product.current_revision.assessments.all())
+    assert core(stored) == foodo_score(product.current_revision.assessments.all())
+    assert stored["source"] == "off_api"
+    assert stored["data_id"] == product.current_revision.content_hash
     assert score_for_product(product) == stored
 
 
@@ -448,13 +451,23 @@ def test_name_change_keeps_the_score(db, off_payload, admin_user):
     before = product.current_revision.foodo_score
     _approve(product, {"name": "Another name"}, admin_user)
     product.refresh_from_db()
-    assert product.current_revision.foodo_score == before
+    after = product.current_revision.foodo_score
+    assert core(after) == core(before) and after["source"] == "contribution"
 
 
 # --- API and pages: no number without enough data -----------------------------------------
 
 
-def test_api_exposes_the_score(db, client, off_payload):
+@pytest.fixture
+def score_public(db):
+    from staff.models import SiteSettings
+
+    site = SiteSettings.load()
+    site.foodo_score_public = True
+    site.save()
+
+
+def test_api_exposes_the_score(db, client, off_payload, score_public):
     graded = import_off_product(off_payload())
     body = client.get(reverse("api-product", args=[graded.pk])).json()
     assert body["foodo_score"]["status"] == "ok"
@@ -509,3 +522,93 @@ def test_ai_facts_carry_no_number_without_enough_data():
     }
     ok = summary(foodo_score([ns(grade="b", score=1)]))
     assert ok["nutriscore_grade"] == "b" and ok["nutriscore_points"] == 1
+
+
+# --- Public setting (off by default) --------------------------------------------------------
+
+
+def test_off_by_default_public_sees_nutriscore_not_the_foodo_label(db, client, off_payload):
+    product = import_off_product(off_payload())
+    html = client.get(
+        reverse("product-alternatives", args=[product.pk]), HTTP_HX_REQUEST="true"
+    ).content.decode()
+    assert "Nutri-Score and alternatives" in html and "<strong>B</strong>" in html
+    assert "Foodo Score" not in html and "/100" not in html
+    page = client.get(reverse("product", args=[product.pk])).content.decode()
+    assert "Foodo Score" not in page
+    body = client.get(reverse("api-product", args=[product.pk])).json()
+    assert body["foodo_score"] is None and body["foodo_score_public"] is False
+    assert body["nutriscore"]["grade"] == "b"  # the official Nutri-Score stays available
+    assert "foodo-score" not in client.get(reverse("sources")).content.decode()
+
+
+def test_staff_see_the_result_for_checking(db, client, admin_user, off_payload):
+    product = import_off_product(off_payload())
+    client.force_login(admin_user)
+    html = client.get(
+        reverse("product-alternatives", args=[product.pk]), HTTP_HX_REQUEST="true"
+    ).content.decode()
+    assert "staff preview, not public" in html and product.current_revision.content_hash in html
+    body = client.get(reverse("api-product", args=[product.pk])).json()
+    assert body["foodo_score"]["status"] == "ok" and body["foodo_score_public"] is False
+
+
+def test_switched_on_the_foodo_label_is_public(db, client, off_payload, score_public):
+    product = import_off_product(off_payload())
+    html = client.get(
+        reverse("product-alternatives", args=[product.pk]), HTTP_HX_REQUEST="true"
+    ).content.decode()
+    assert "Foodo Score and alternatives" in html and "staff preview" not in html
+    assert client.get(reverse("api-product", args=[product.pk])).json()["foodo_score_public"]
+    assert 'id="foodo-score"' in client.get(reverse("sources")).content.decode()
+
+
+def test_ai_gets_the_foodo_score_only_when_public(db, off_payload):
+    from myola.services.chat import ai_facts_for
+    from staff.models import SiteSettings
+
+    product = import_off_product(off_payload())
+    facts = {"product": {"product": {"name": "x"}, "facts": {}}}
+    assert "foodo_score" not in ai_facts_for(facts, product, with_preferences=False)
+    site = SiteSettings.load()
+    site.foodo_score_public = True
+    site.save()
+    out = ai_facts_for(facts, product, with_preferences=False)
+    assert out["foodo_score"]["nutriscore_grade"] == "b"
+
+
+# --- Batch recalculation --------------------------------------------------------------------
+
+
+def test_recompute_stores_missing_or_outdated_results_only(db, off_payload):
+    from django.core.management import call_command
+
+    from assessments.tasks import recompute_foodo_scores
+
+    product = import_off_product(off_payload())
+    revision_id = product.current_revision_id
+    data_before = ProductRevision.objects.get(pk=revision_id).data
+    assert recompute_foodo_scores() == 0  # already current
+    for old in (None, {"version": "score.v1", "score": 80}, {"version": VERSION}):
+        ProductRevision.objects.filter(pk=revision_id).update(foodo_score=old)
+        assert recompute_foodo_scores() == 1
+        stored = ProductRevision.objects.get(pk=revision_id).foodo_score
+        assert stored["version"] == VERSION and stored["source"] == "off_api"
+    assert ProductRevision.objects.get(pk=revision_id).data == data_before
+    assert product.revisions.count() == 1  # history untouched
+    ProductRevision.objects.filter(pk=revision_id).update(foodo_score=None)
+    call_command("recompute_foodo_scores")
+    assert ProductRevision.objects.get(pk=revision_id).foodo_score["status"] == "ok"
+    call_command("recompute_foodo_scores", "--all")
+
+
+def test_comparison_uses_the_stored_result(db, off_payload):
+    from assessments.services.compare import compare
+
+    a = import_off_product(off_payload())
+    b = import_off_product(off_payload(code="5000000000777", nutriscore_version="2021"))
+    c = import_off_product(off_payload(code="5000000000778", nutriscore_grade="", nutriscore={}))
+    result = compare([a, b, c])
+    assert [n["grade"] for n in result.nutriscore] == ["B", "B", ""]
+    assert [n["status"] for n in result.nutriscore] == ["available", "available", "not_enough_data"]
+    assert "not directly comparable" in result.nutriscore_note

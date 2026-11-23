@@ -3,6 +3,12 @@
 Every source (daily reminders, achievements, moderated contributions, announcements) goes
 through ``notify()``, which honours the user's switch for that kind and never creates the same
 notification twice (``key`` is unique per user). No health data, calories or weight in here.
+
+Recurring reminders collapse: a new reminder on the same subject (``reminder_topic``: water,
+each meal, the weekly weigh-in) replaces the previous one, read or not, so the bell never holds
+two reminders on one subject. Replacing an unread one leaves the unread count unchanged; after
+a read one, the new reminder is unread like any new notification. One-off events
+(achievements, contributions, announcements, articles) never collapse.
 """
 
 from __future__ import annotations
@@ -30,6 +36,23 @@ KIND_TONES = {
     Notification.Kind.ANNOUNCEMENT: "violet",
 }
 RECENT_LIMIT = 50
+
+
+def reminder_topic(kind: str, key: str) -> str:
+    """The subject a recurring reminder is about, from its key; ``""`` for anything else.
+
+    ``reminder:<day>:water-<hour>`` -> ``water``; ``reminder:<day>:meal-lunch`` ->
+    ``meal-lunch``; ``reminder:<day>:start`` -> ``start``; ``reminder:weigh:<week>`` ->
+    ``weigh``. One-off reminders (``reminder:profile-incomplete``) have no topic.
+    """
+    if kind != Notification.Kind.REMINDER:
+        return ""
+    parts = key.split(":")
+    if len(parts) != 3:
+        return ""
+    if parts[1] == "weigh":
+        return "weigh"
+    return "water" if parts[2].startswith("water-") else parts[2][:60]
 
 
 def wants(profile, kind: str) -> bool:
@@ -61,12 +84,16 @@ def notify(
     read: bool = False,
     profile=None,
 ) -> Notification | None:
-    """Create the notification unless the user switched this kind off or already has it."""
+    """Create the notification unless the user switched this kind off or already has it. A
+    recurring reminder replaces the user's previous reminder on the same topic."""
     profile = profile or get_profile(user)
     if not wants(profile, kind):
         return None
+    key = key[:120]
+    topic = reminder_topic(kind, key)
     defaults = {
         "kind": kind,
+        "topic": topic,
         "title": title[:160],
         "body": body[:500],
         "url": safe_url(url),
@@ -75,9 +102,9 @@ def notify(
     }
     try:
         with transaction.atomic():
-            obj, created = Notification.objects.get_or_create(
-                user=user, key=key[:120], defaults=defaults
-            )
+            obj, created = Notification.objects.get_or_create(user=user, key=key, defaults=defaults)
+            if created and topic:
+                Notification.objects.filter(user=user, topic=topic).exclude(pk=obj.pk).delete()
     except IntegrityError:  # created concurrently by another worker
         return None
     return obj if created else None

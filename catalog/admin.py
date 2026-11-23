@@ -5,6 +5,7 @@ from unfold.admin import ModelAdmin, TabularInline
 
 from assessments.models import AssessmentSnapshot
 from catalog.models import (
+    CatalogImport,
     Category,
     Country,
     Product,
@@ -150,6 +151,21 @@ class CountryAdmin(ModelAdmin):
     list_display = ("name", "code", "tag")
     search_fields = ("name", "tag", "code")
     readonly_fields = ("tag", "name", "code")
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+    def has_change_permission(self, request, obj=None) -> bool:
+        return False
+
+
+@admin.register(CatalogImport)
+class CatalogImportAdmin(ModelAdmin):
+    """Read-only record of catalogue imports (docs/off-local-catalogue.md)."""
+
+    list_display = ("pk", "status", "file_name", "exported_at", "seen", "imported", "failed")
+    list_filter = ("status",)
+    readonly_fields = [f.name for f in CatalogImport._meta.fields]
 
     def has_add_permission(self, request) -> bool:
         return False

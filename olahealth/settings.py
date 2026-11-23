@@ -240,6 +240,12 @@ OFF_FRESH_TTL_HOURS = env_int("OFF_FRESH_TTL_HOURS", 24 * 7)
 OFF_NEGATIVE_TTL_MINUTES = env_int("OFF_NEGATIVE_TTL_MINUTES", 30)
 OFF_LEASE_SECONDS = env_int("OFF_LEASE_SECONDS", 30)
 OFF_REFRESH_BATCH = env_int("OFF_REFRESH_BATCH", 20)
+# Local catalogue (docs/off-local-catalogue.md): an imported dump is used first only after it
+# is verified; these are the verification thresholds.
+OFF_DUMP_MIN_PRODUCTS = env_int("OFF_DUMP_MIN_PRODUCTS", 1000)
+OFF_DUMP_MAX_FAILED_RATIO = float(env("OFF_DUMP_MAX_FAILED_RATIO", "0.005"))
+# Local candidates read per category for alternatives once the local catalogue is active.
+OFF_LOCAL_ALTERNATIVES_LIMIT = env_int("OFF_LOCAL_ALTERNATIVES_LIMIT", 300)
 
 # Abuse limits (per session and per IP, fixed windows) -------------------------
 RATE_LIMITS = {

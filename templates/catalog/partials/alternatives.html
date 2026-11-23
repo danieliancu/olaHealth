@@ -1,15 +1,17 @@
 {% load i18n ui %}
-<h2 id="alt-h">{% translate "Foodo Score and alternatives" %}</h2>
+<h2 id="alt-h">{% if score_public %}{% translate "Foodo Score and alternatives" %}{% else %}{% translate "Nutri-Score and alternatives" %}{% endif %}</h2>
 {% with ns=score.nutriscore nova=score.separate.nova additives=score.separate.additives %}
 <div class="foodo-score" data-status="{{ score.status }}">
   {% if score.status == "ok" %}
     <p class="score-value"><strong>{{ ns.grade|upper }}</strong><span>{% translate "Nutri-Score" %} · {% blocktranslate with v=ns.version %}{{ v }} algorithm{% endblocktranslate %}{% if ns.points is not None %} · {% blocktranslate count p=ns.points %}{{ p }} point{% plural %}{{ p }} points{% endblocktranslate %}{% endif %}</span></p>
   {% elif score.status == "not_applicable" %}
-    <p class="score-none">{% translate "No Foodo Score: Nutri-Score does not apply to this kind of product." %}</p>
+    <p class="score-none">{% translate "Nutri-Score does not apply to this kind of product." %}</p>
   {% elif score.status == "conflicting" %}
-    <p class="score-none">{% translate "No Foodo Score: the Nutri-Score data disagree." %}</p>
-  {% else %}
+    <p class="score-none">{% translate "The Nutri-Score data disagree." %}</p>
+  {% elif score_public %}
     <p class="score-none">{% translate "Not enough data for a Foodo Score." %}</p>
+  {% else %}
+    <p class="score-none">{% translate "Not enough data for a Nutri-Score." %}</p>
   {% endif %}
   <ul class="score-reasons">{% for r in score.reasons %}<li>{{ r.text }}</li>{% endfor %}</ul>
   {% if score.status == "ok" and ns.points is not None %}<p class="caption">{% translate "Nutri-Score points: fewer is better. Grades and points are compared only within the same algorithm version." %}</p>{% endif %}
@@ -26,8 +28,26 @@
         {% if additives.status == "available" %}{% if additive_names %}{{ additive_names|join:", " }}{% else %}{% translate "none identified" %}{% endif %}{% elif additives.status == "not_current" %}{% translate "not current after a correction" %}{% else %}{% translate "unknown" %}{% endif %}</li>
       <li>{% blocktranslate with c=product.completeness %}Data completeness: {{ c }}%{% endblocktranslate %}</li>
     </ul>
+    {% if score_public %}
     <p class="caption">{% translate "The Foodo Score is the official Nutri-Score computed by Open Food Facts, an orientative indicator of nutritional quality; it is not a medical assessment. Processing, additives and your own diets, allergies and goals are shown separately and never change it. The label on the product is the reference." %} <a href="{% url 'sources' %}#foodo-score">{% translate "Method" %}</a></p>
+    {% else %}
+    <p class="caption">{% translate "The official Nutri-Score computed by Open Food Facts, an orientative indicator of nutritional quality; it is not a medical assessment. Processing, additives and your own diets, allergies and goals are shown separately. The label on the product is the reference." %} <a href="{% url 'sources' %}">{% translate "Sources" %}</a></p>
+    {% endif %}
   </details>
+  {% if user.is_staff and not score_public %}
+  <details class="score-staff">
+    <summary>Foodo Score v2: staff preview, not public</summary>
+    <dl>
+      <dt>Status</dt><dd>{{ score.status }} ({{ score.version }})</dd>
+      <dt>Comparable within</dt><dd>{{ score.comparable_key|default:"—" }}</dd>
+      <dt>Missing</dt><dd>{{ score.missing|join:", "|default:"—" }}</dd>
+      <dt>Source</dt><dd>{{ score.source|default:"—" }}</dd>
+      <dt>Data id</dt><dd><code>{{ score.data_id|default:"—" }}</code></dd>
+      <dt>Inputs hash</dt><dd><code>{{ score.inputs_hash }}</code></dd>
+    </dl>
+    <p class="caption">Shown publicly only when Settings → “Show the Foodo Score publicly” is on (docs/assessment-rules.md, Before public activation).</p>
+  </details>
+  {% endif %}
 </div>
 {% if score.status == "ok" %}
   {% if alternatives %}

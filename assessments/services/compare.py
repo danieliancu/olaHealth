@@ -165,10 +165,50 @@ def compare(products: list[Product]) -> Comparison:
     facts: dict[tuple[str, str], dict[Any, dict[str, Any]]] = defaultdict(lambda: defaultdict(dict))
     for f in NutrientFact.objects.filter(revision_id__in=revision_ids):
         facts[(f.basis, f.preparation)][f.revision_id][f.nutrient] = f
-    return build_comparison(products, snapshots, facts)
+    from assessments.score import score_for_revision
+
+    # The stored Foodo Score results (score.v2) decide which grades are shown and comparable.
+    scores = {p.current_revision_id: score_for_revision(p.current_revision) for p in products}
+    return build_comparison(products, snapshots, facts, scores=scores)
 
 
-def build_comparison(products: list[Any], snapshots: dict, facts: dict) -> Comparison:
+def _nutriscore_from_score(score: dict[str, Any]) -> dict[str, str]:
+    """Nutri-Score cell from a stored ``score.v2`` result: a grade only when it is ``ok``."""
+    ns = score.get("nutriscore") or {}
+    ok = score.get("status") == "ok"
+    reason = (score.get("reasons") or [{}])[0].get("code")
+    if ok:
+        status = "available"
+    elif reason == "nutriscore_not_current":
+        status = "not_current"
+    else:
+        status = score.get("status") or "missing_data"
+    return {
+        "grade": (ns.get("grade") or "").upper() if ok else "",
+        "version": ns.get("version") or "",
+        "status": status,
+    }
+
+
+def _nutriscore_from_snapshot(s: Any) -> dict[str, str]:
+    """Nutri-Score cell from a snapshot (fictional demo products, which have no stored score)."""
+    usable = (
+        s is not None
+        and s.data_status in ("available", "conflicting")
+        and not s.invalidated_by_local_change
+    )
+    return {
+        "grade": (s.value.get("grade") or "").upper() if usable else "",
+        "version": s.algorithm_version if s else "",
+        "status": "not_current"
+        if s is not None and s.invalidated_by_local_change
+        else (s.data_status if s else "missing_data"),
+    }
+
+
+def build_comparison(
+    products: list[Any], snapshots: dict, facts: dict, *, scores: dict | None = None
+) -> Comparison:
     """Pure part of the comparison (no database access).
 
     ``products`` need ``name``, ``categories`` and ``current_revision_id`` (the key used in
@@ -176,6 +216,10 @@ def build_comparison(products: list[Any], snapshots: dict, facts: dict) -> Compa
     objects need ``data_status``, ``invalidated_by_local_change``, ``value`` and
     ``algorithm_version``; facts need ``value``, ``unit``, ``modifier`` and ``status``. Used
     for real products (loaded by ``compare``) and for the fictional demo products.
+
+    ``scores`` (``current_revision_id`` -> stored ``score.v2`` result), when given, decide the
+    Nutri-Score row: a grade is shown only for an ``ok`` result, and grades are flagged as not
+    comparable when their Nutri-Score versions differ.
     """
     if not MIN_PRODUCTS <= len(products) <= MAX_PRODUCTS:
         raise ComparisonError(_("Choose 2 or 3 products to compare."))
@@ -184,24 +228,13 @@ def build_comparison(products: list[Any], snapshots: dict, facts: dict) -> Compa
 
     versions = set()
     for p in products:
-        s = snapshots[p.current_revision_id].get("nutriscore")
-        usable = (
-            s is not None
-            and s.data_status in ("available", "conflicting")
-            and not s.invalidated_by_local_change
-        )
-        grade = (s.value.get("grade") or "").upper() if usable else ""
-        if usable and grade:
-            versions.add(s.algorithm_version or "unknown")
-        result.nutriscore.append(
-            {
-                "grade": grade,
-                "version": s.algorithm_version if s else "",
-                "status": "not_current"
-                if s is not None and s.invalidated_by_local_change
-                else (s.data_status if s else "missing_data"),
-            }
-        )
+        if scores is not None:
+            cell = _nutriscore_from_score(scores.get(p.current_revision_id) or {})
+        else:
+            cell = _nutriscore_from_snapshot(snapshots[p.current_revision_id].get("nutriscore"))
+        if cell["grade"]:
+            versions.add(cell["version"] or "unknown")
+        result.nutriscore.append(cell)
         n = snapshots[p.current_revision_id].get("nova")
         group = (n.value or {}).get("group") if n and not n.invalidated_by_local_change else None
         result.nova.append({"group": group, "label": NOVA_LABELS.get(group, "") if group else ""})

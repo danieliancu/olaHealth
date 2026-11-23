@@ -221,18 +221,66 @@ def score_from_off(product: dict[str, Any]) -> dict[str, Any]:
     rules as an imported product."""
     from assessments.rules import derive_from_off
 
-    return foodo_score(derive_from_off(product))
+    return with_provenance(foodo_score(derive_from_off(product)), source="off_api", data_id=None)
+
+
+# Provenance added to a stored result: where the data came from and which data it was.
+PROVENANCE = ("source", "data_id")
+SOURCES = {"off_import": "off_api", "off_dump": "off_dump", "contribution": "contribution"}
+
+
+def score_source(revision_source: str) -> str:
+    """``off_api`` / ``off_dump`` / ``contribution`` from a ``ProductRevision.source``."""
+    return SOURCES.get(revision_source, revision_source or "unknown")
+
+
+def with_provenance(result: dict[str, Any], *, source: str, data_id: str | None) -> dict[str, Any]:
+    """The result with its data source and the identifier of the data used (the revision's
+    content hash). Provenance never changes status, grade or points."""
+    return {**result, "source": source, "data_id": data_id}
+
+
+def core(result: dict[str, Any]) -> dict[str, Any]:
+    """The result without provenance: equal for the same data, whatever its source."""
+    return {k: v for k, v in result.items() if k not in PROVENANCE}
+
+
+def needs_recompute(stored: Any) -> bool:
+    """True for a missing result, another rules version, or one stored without provenance."""
+    return (
+        not isinstance(stored, dict)
+        or stored.get("version") != VERSION
+        or any(k not in stored for k in PROVENANCE)
+    )
+
+
+def for_revision(revision: Any) -> dict[str, Any]:
+    """Compute (never read) the result of a revision, with its provenance."""
+    return with_provenance(
+        foodo_score(revision.assessments.all()),
+        source=score_source(getattr(revision, "source", "")),
+        data_id=getattr(revision, "content_hash", None),
+    )
 
 
 def score_for_revision(revision: Any) -> dict[str, Any]:
     """The stored ``score.v2`` result of a revision, or computed now (without writing) for a
-    revision published before ``score.v2`` existed. Another version is never returned."""
+    revision whose stored result is missing or outdated (``needs_recompute``); the batch job
+    ``assessments.tasks.recompute_foodo_scores`` stores those. Another version is never
+    returned."""
     if revision is None:
         return foodo_score([])
     stored = getattr(revision, "foodo_score", None)
-    if isinstance(stored, dict) and stored.get("version") == VERSION:
+    if not needs_recompute(stored):
         return stored
-    return foodo_score(revision.assessments.all())
+    return for_revision(revision)
+
+
+def public_enabled() -> bool:
+    """Whether the Foodo Score is shown publicly under that name (staff Settings)."""
+    from staff.models import SiteSettings
+
+    return SiteSettings.load().foodo_score_public
 
 
 def score_for_product(product: Any) -> dict[str, Any]:

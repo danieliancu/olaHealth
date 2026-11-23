@@ -45,7 +45,7 @@
     </th>{% endfor %}</tr></thead>
   <tbody>
     <tr><th scope="row">Nutri-Score</th>
-      {% for n in c.nutriscore %}<td>{% if n.grade %}<span class="grade grade-sm grade-{{ n.grade|lower }}"><span class="sr-only">Nutri-Score </span>{{ n.grade }}</span>{% if n.version %} <span class="hint">{{ n.version }}</span>{% endif %}{% elif n.status == "not_current" %}<span class="muted">{% translate "not current" %}</span>{% elif n.status == "not_applicable" %}<span class="muted">{% translate "n/a" %}</span>{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
+      {% for n in c.nutriscore %}<td>{% if n.grade %}<span class="grade grade-sm grade-{{ n.grade|lower }}"><span class="sr-only">Nutri-Score </span>{{ n.grade }}</span>{% if n.version %} <span class="hint">{{ n.version }}</span>{% endif %}{% elif n.status == "not_current" %}<span class="muted">{% translate "not current" %}</span>{% elif n.status == "not_applicable" %}<span class="muted">{% translate "n/a" %}</span>{% elif n.status == "conflicting" %}<span class="muted">{% translate "data disagree" %}</span>{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
     <tr><th scope="row">{% translate "Processing" %}</th>
       {% for n in c.nova %}<td>{% if n.group %}<span class="processing processing-{{ n.group }}"><span class="dot" aria-hidden="true"></span>{{ n.group|processing }}</span>{% else %}<span class="na" aria-hidden="true">—</span><span class="sr-only">{% translate "not available" %}</span>{% endif %}</td>{% endfor %}</tr>
   </tbody>

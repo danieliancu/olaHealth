@@ -124,6 +124,8 @@ class SiteSettingsForm(forms.ModelForm):
             "ai_send_ingredients",
             "ai_general_questions",
             "maintenance_message",
+            "foodo_score_public",
+            "catalog_mode",
         ]
         labels = {
             "ai_enabled": "AI assistant enabled",
@@ -134,9 +136,16 @@ class SiteSettingsForm(forms.ModelForm):
             "ai_send_ingredients": "Product chat: also send the ingredient list and additives",
             "ai_general_questions": "General chat: answer general food and nutrition questions",
             "maintenance_message": "Maintenance message",
+            "foodo_score_public": "Show the Foodo Score publicly",
+            "catalog_mode": "Product catalogue",
         }
         help_texts = {
             "maintenance_message": "Shown to everyone when not empty.",
+            "foodo_score_public": "Off: the public sees the official Nutri-Score and the "
+            "separate indicators; staff see the Foodo Score for checking. Switch on only after "
+            "the decision in docs/assessment-rules.md (Before public activation).",
+            "catalog_mode": "Automatic: the local catalogue is used first once an import has "
+            "been verified. API only: keep fetching each product from Open Food Facts.",
             "ai_monthly_budget_gbp": "The assistant stops answering when this month's cost "
             "reaches the budget.",
         }
