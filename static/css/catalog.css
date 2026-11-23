@@ -138,12 +138,25 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 /* For you: the preference line directly under the title needs no separator. */
 .foryou-card h2 + .foryou-prefs-line { border-top: 0; padding-top: 0; margin-top: 0; }
 
-/* Foodo Score and alternatives */
-.foodo-score .score-value { display: flex; align-items: baseline; gap: .25rem; margin: .25rem 0 .5rem; }
-.foodo-score .score-value strong { font-size: 2.2rem; line-height: 1; color: var(--accent-strong); }
-.foodo-score .score-value span { color: var(--muted); }
-.foodo-score .score-none { font-weight: 600; margin: .25rem 0 .5rem; }
-.foodo-score .score-reasons { margin: 0 0 .5rem; padding-left: 1.1rem; color: var(--muted); font-size: .9rem; }
+/* Foodo Score in the product card: the number is the grade; the bar is only a visual aid. */
+.foodo-meter { display: grid; gap: .15rem; margin: 0 0 .6rem; max-width: 15rem; }
+.foodo-label { margin: 0; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.foodo-value { margin: 0; display: flex; align-items: baseline; gap: .15rem; line-height: 1; }
+.foodo-value strong { font-size: 2.4rem; font-weight: 800; color: var(--text, #111827); font-variant-numeric: tabular-nums; }
+.foodo-value span { font-size: 1rem; font-weight: 600; color: var(--muted); }
+.foodo-track { position: relative; height: 8px; border-radius: 999px; margin: .3rem 0 .1rem;
+  background: linear-gradient(90deg, #e63e11 0%, #ee8100 30%, #fecb02 50%, #85bb2f 70%, #038141 100%); }
+.foodo-mark { position: absolute; top: 50%; left: calc(var(--foodo, 0) * 1%); width: 14px; height: 14px;
+  transform: translate(-50%, -50%); border-radius: 50%; background: #fff; border: 3px solid #111827; box-shadow: 0 1px 2px rgb(0 0 0 / .25); }
+.foodo-message { margin: .1rem 0; font-weight: 600; font-size: .95rem; color: #374151; }
+.foodo-how { font-size: .78rem; color: var(--accent-strong); text-underline-offset: 3px; }
+.foodo-staff { font-size: .78rem; color: var(--muted); }
+.foodo-staff dl { display: grid; grid-template-columns: auto 1fr; gap: .1rem .5rem; margin: .3rem 0 0; }
+.foodo-staff dt { font-weight: 600; } .foodo-staff dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .foodo-value strong { font-size: 2.1rem; } }
+
+/* Better alternatives: their Foodo Score as "62/100" */
+.alt-foodo small { font-size: .68rem; font-weight: 600; opacity: .9; margin-left: 1px; }
 .alt-list { list-style: none; padding: 0; margin: .5rem 0 0; }
 .alt-plus { margin: .2rem 0 0; color: var(--accent-strong); font-weight: 500; }
 .score-points summary { text-decoration: underline; text-underline-offset: 3px; cursor: pointer; color: var(--accent-strong); font-weight: 600; }
@@ -169,8 +182,6 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 .alt-brand { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .alt-score { flex: none; display: grid; place-items: center; min-width: 34px; height: 26px; padding: 0 .4rem; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 700; font-size: .8rem; }
 
-/* Product page: a bit of room above "Ask Foodo about this product" */
-.foryou-card .btn-ask { margin-top: 1.1rem; }
 
 /* Products: "N products hidden" then "Show them again" on its own line */
 .hidden-note { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; }
@@ -193,3 +204,10 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
   .alt-card { flex-basis: 160px; width: 160px; max-width: 160px; }
   .alt-img, .alt-img img { width: 160px; height: 160px; }
 }
+
+/* Comparison and lists: Foodo Score as "62/100" */
+.foodo-cell strong { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.foodo-cell span { color: var(--muted); font-size: .8rem; margin-left: 1px; }
+.foodo-chip { display: inline-flex; align-items: baseline; gap: 1px; padding: .1rem .45rem; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); font-weight: 700; font-size: .8rem; font-variant-numeric: tabular-nums; color: #111827; }
+.foodo-chip small { font-size: .66rem; font-weight: 600; color: var(--muted); }

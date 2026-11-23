@@ -28,7 +28,7 @@
       </span>
       <span class="cms-badges">
         {% if a.published %}<span class="cms-badge is-on">Published</span>{% else %}<span class="cms-badge">Hidden</span>{% endif %}
-        {% if a.featured %}<span class="cms-badge is-feat">Featured</span>{% endif %}
+        {% if a.editors_pick %}<span class="cms-badge is-feat">Editor’s pick</span>{% endif %}
         {% if a.n_products %}<span class="cms-badge is-products">{% icon "cuboid" 13 %}{{ a.n_products }} product{{ a.n_products|pluralize }}</span>{% endif %}
         {% if a.noindex %}<span class="cms-badge">noindex</span>{% endif %}
       </span>

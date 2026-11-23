@@ -252,24 +252,32 @@ def test_for_you_uses_the_signed_in_profile(member_client, member, off_payload):
     p = import_off_product(off_payload())  # yogurt: contains milk
     Profile.objects.create(user=member, restrictions=["vegan", "nuts"], nut_types=["en:peanuts"])
     html = member_client.get(reverse("product", args=[p.pk])).content.decode()
-    card = html.split('id="score-h"')[1].split("</section>")[0]
+    card = html.split('id="foryou-h"')[1].split("</section>")[0]
     assert "For you" in html
     assert 'class="rs rs-incompatible"><strong>Vegan: Not compatible. </strong>' in card
     assert "Peanuts:" in card
     assert "Checked for: Vegan, 1 allergy." in card
     assert 'href="/ask-foodo/profile/#restrictions"' in card
     assert "Never a guarantee" in card
-    assert 'hx-get="/ask-foodo/chat/' in html or "chat" in card  # Ask Foodo panel included
+    assert "of your daily targets" not in html  # the portion block is gone
+    # Ask Foodo: a button of its own, above the card, not inside it.
+    ask = html.split('class="ask-standalone po-2"')[1].split('id="foryou-h"')[0]
+    assert "Ask Foodo about this product" in ask and "Ask Foodo about this product" not in card
 
 
 def test_for_you_without_preferences_and_for_visitors(member_client, product):
     html = member_client.get(reverse("product", args=[product.pk])).content.decode()
-    assert "Add your diet or allergies to check this product." in html
+    card = html.split('id="foryou-h"')[1].split("</section>")[0]
+    # Nothing set: one line, to the settings.
+    assert (
+        card.count('class="foryou-line"') == 1 and 'href="/ask-foodo/profile/#restrictions"' in card
+    )
+    assert "Add your diet or allergies to check this product" in card and "Checked for" not in card
     anon = Client().get(reverse("product", args=[product.pk])).content.decode()
-    card = anon.split('id="score-h"')[1].split("</section>")[0]
-    assert "Check this product against your diet and allergies." in card
+    card = anon.split('id="foryou-h"')[1].split("</section>")[0]
+    assert "Sign in to check this product against your diet and allergies" in card
     assert reverse("account_login") + "?next=" in card
-    assert "Ask Foodo about this product" in card
+    assert "Ask Foodo about this product" in anon.split('class="ask-standalone po-2"')[1]
     assert 'id="ola-data"' not in anon and "Sign in to save" in anon
 
 

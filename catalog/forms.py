@@ -41,17 +41,17 @@ class SearchForm(forms.Form):
     q = forms.CharField(label=_("Name or brand"), required=False, max_length=100)
     category = forms.CharField(label=_("Category"), required=False, max_length=200)
     country = forms.CharField(label=_("Country where sold"), required=False, max_length=100)
-    nutriscore = forms.ChoiceField(
-        label=_("Nutri-Score"),
+    score = forms.ChoiceField(
+        label=_("Foodo Score"),
         required=False,
         choices=[
             ("", _("Any")),
-            ("a", "A"),
-            ("b", "B"),
-            ("c", "C"),
-            ("d", "D"),
-            ("e", "E"),
-            ("none", _("Not available")),
+            ("80", "80–100"),
+            ("60", "60–79"),
+            ("40", "40–59"),
+            ("20", "20–39"),
+            ("0", "0–19"),
+            ("none", _("No score")),
         ],
     )
     completeness = forms.ChoiceField(

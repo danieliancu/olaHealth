@@ -140,13 +140,15 @@ def test_calories_follow_one_rule(member_client, member):
 
 
 @pytest.mark.django_db
-def test_alternatives_sign_in_returns_to_the_product(client, off_payload, monkeypatch):
+def test_alternatives_card_has_no_sign_in_line(client, off_payload, monkeypatch):
+    """The card holds only its title, the alternatives and their score (the sign-in line that
+    used to follow it was removed on purpose)."""
     monkeypatch.setattr(
         "catalog.services.alternatives.alternatives",
-        lambda *a, **k: [{"url": "/x/", "image": "", "name": "N", "brand": "B", "score": 90}],
+        lambda *a, **k: [{"url": "/x/", "image": "", "name": "N", "brand": "B", "grade": "a"}],
     )
-    p = import_off_product(off_payload(nutriscore_grade="c", nova_group=3))
+    p = import_off_product(off_payload(nova_group=3))
     html = client.get(
         reverse("product-alternatives", args=[p.pk]), HTTP_HX_REQUEST="true"
     ).content.decode()
-    assert f"next={reverse('product', args=[p.pk])}%23better" in html
+    assert "%23better" not in html and "Sign in" not in html

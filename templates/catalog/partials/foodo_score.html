@@ -1,0 +1,21 @@
+{% load i18n %}{# Foodo Score of the product (hero). Needs: foodo = {"value", "message"}; foodo_result (staff). #}
+<div class="foodo-meter{% if foodo.value is None %} is-empty{% endif %}"{% if foodo.value is not None %} data-value="{{ foodo.value }}"{% endif %}>
+  <p class="foodo-label">{% translate "Foodo Score" %}</p>
+  {% if foodo.value is not None %}
+    <p class="foodo-value" aria-label="{% blocktranslate with v=foodo.value %}Foodo Score {{ v }} out of 100{% endblocktranslate %}"><strong aria-hidden="true">{{ foodo.value }}</strong><span aria-hidden="true">/100</span></p>
+    <div class="foodo-track" aria-hidden="true"><span class="foodo-mark"></span></div>
+  {% else %}
+    <p class="foodo-message">{% translate foodo.message %}</p>
+  {% endif %}
+  <a class="foodo-how" href="{% url 'sources' %}#foodo-score">{% translate "How it's calculated" %}</a>
+  {% if user.is_staff and foodo_result %}
+  <details class="foodo-staff">
+    <summary>Staff details</summary>
+    <dl>
+      <dt>Status</dt><dd>{{ foodo_result.status }} · {{ foodo_result.reasons.0.code }} ({{ foodo_result.version }}, {{ foodo_result.foodo.formula }})</dd>
+      <dt>Nutri-Score</dt><dd>{{ foodo_result.nutriscore.grade|upper|default:"—" }}, {{ foodo_result.nutriscore.points|default_if_none:"—" }} points, {{ foodo_result.nutriscore.version|default:"—" }}, {{ foodo_result.nutriscore.category|default:"category unknown" }}</dd>
+      <dt>Source</dt><dd>{{ foodo_result.source|default:"—" }} · <code>{{ foodo_result.data_id|default:"—"|truncatechars:16 }}</code></dd>
+    </dl>
+  </details>
+  {% endif %}
+</div>

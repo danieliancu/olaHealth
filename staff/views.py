@@ -337,7 +337,7 @@ def products(request: HttpRequest) -> HttpResponse:
 
 @staff_view(access.PERM_VIEW_PRODUCTS)
 def product_detail(request: HttpRequest, pk) -> HttpResponse:
-    from assessments.score import public_enabled, score_for_product
+    from assessments.score import score_for_product
 
     product = get_object_or_404(Product.objects.select_related("current_revision"), pk=pk)
     context = {
@@ -354,7 +354,6 @@ def product_detail(request: HttpRequest, pk) -> HttpResponse:
         "can_moderate": request.user.has_perm(access.PERM_MODERATE),
         "images": product.images.order_by("kind", "-created_at"),
         "foodo_score": score_for_product(product),
-        "foodo_score_public": public_enabled(),
     }
     return staff_render(request, "staff/product.html", context, "products")
 

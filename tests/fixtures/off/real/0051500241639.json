@@ -1,0 +1,159 @@
+{
+ "_fixture": {
+  "fetched_at": "2026-11-23",
+  "license": "ODbL 1.0, Open Food Facts contributors",
+  "source": "https://world.openfoodfacts.org/product/0051500241639"
+ },
+ "additives_tags": [
+  "en:e471"
+ ],
+ "allergens_tags": [
+  "en:peanuts",
+  "en:soybeans"
+ ],
+ "brands": "Jif",
+ "categories_tags": [
+  "en:plant-based-foods-and-beverages",
+  "en:plant-based-foods",
+  "en:legumes-and-their-products",
+  "en:spreads",
+  "en:plant-based-spreads",
+  "en:nuts-and-their-products",
+  "en:oilseed-purees",
+  "en:legume-butters",
+  "en:nut-butters",
+  "en:peanut-butters"
+ ],
+ "code": "0051500241639",
+ "countries_tags": [
+  "en:united-states"
+ ],
+ "ingredients_analysis_tags": [
+  "en:may-contain-palm-oil",
+  "en:maybe-vegan",
+  "en:maybe-vegetarian"
+ ],
+ "ingredients_text": "roasted peanuts and sugar, molasses, fully hydrogenated rapeseed oil, fully hydrogenated soybean oil, mono and diglycerides, salt",
+ "lang": "en",
+ "last_modified_t": 1771767143,
+ "misc_tags": [
+  "en:environmental-score-changed",
+  "en:environmental-score-computed",
+  "en:environmental-score-grade-changed",
+  "en:environmental-score-missing-data-labels",
+  "en:environmental-score-missing-data-origins",
+  "en:environmental-score-missing-data-packagings",
+  "en:environmental-score-missing-data-warning",
+  "en:nutrients-estimated-from-ingredients",
+  "en:nutriscore-2021-better-than-2023",
+  "en:nutriscore-2021-c-2023-d",
+  "en:nutriscore-2021-different-from-2023",
+  "en:nutriscore-computed",
+  "en:nutriscore-estimated-energy",
+  "en:nutriscore-estimated-fat",
+  "en:nutriscore-estimated-fiber",
+  "en:nutriscore-estimated-proteins",
+  "en:nutriscore-estimated-saturated-fat",
+  "en:nutriscore-estimated-sodium",
+  "en:nutriscore-estimated-sugars",
+  "en:nutriscore-using-estimated-nutrition-facts",
+  "en:nutrition-all-nutriscore-values-known",
+  "en:nutrition-fruits-vegetables-legumes-estimate-from-ingredients",
+  "en:nutrition-fruits-vegetables-nuts-estimate-from-ingredients",
+  "en:packagings-not-complete",
+  "en:packagings-not-empty",
+  "en:packagings-not-empty-but-not-complete",
+  "en:packagings-number-of-components-1"
+ ],
+ "nova_group": 4,
+ "nova_groups_tags": [
+  "en:4-ultra-processed-food-and-drink-products"
+ ],
+ "nutrient_levels": {
+  "fat": "high",
+  "salt": "high",
+  "saturated-fat": "high",
+  "sugars": "moderate"
+ },
+ "nutriments": {
+  "energy-kcal_100g": 575.757575757576
+ },
+ "nutriments_estimated": {
+  "alcohol_100g": 0,
+  "beta-carotene_100g": 7.8138791325e-06,
+  "calcium_100g": 0.06953026273125,
+  "carbohydrates_100g": 19.804,
+  "cholesterol_100g": 0.00163481868375,
+  "copper_100g": 0.001017518534375,
+  "energy-kj_100g": 2471.0659375,
+  "energy_100g": 2471.0659375,
+  "fat_100g": 47.0569780875,
+  "fiber_100g": 6.834835175,
+  "fructose_100g": 0,
+  "galactose_100g": 0,
+  "glucose_100g": 0.04618131875,
+  "iodine_100g": 1.75575371875e-05,
+  "lactose_100g": 0,
+  "magnesium_100g": 0.147882658459375,
+  "maltose_100g": 0.04618131875,
+  "manganese_100g": 0.00180244909875,
+  "pantothenic-acid_100g": 0.00063730219875,
+  "phosphorus_100g": 0.403690220375,
+  "phylloquinone_100g": 7.6263241775e-06,
+  "polyols_100g": 0,
+  "potassium_100g": 0.58708,
+  "proteins_100g": 19.9503297,
+  "salt_100g": 2.4633597375,
+  "saturated-fat_100g": 6.794784625,
+  "selenium_100g": 9.54035715625e-06,
+  "sodium_100g": 0.96672473125,
+  "starch_100g": 11.1758791375,
+  "sucrose_100g": 6.4114175875,
+  "sugars_100g": 6.4114175875,
+  "vitamin-a_100g": 0,
+  "vitamin-b12_100g": 0,
+  "vitamin-b1_100g": 0.0003140329675,
+  "vitamin-b2_100g": 0.00013911395625,
+  "vitamin-b6_100g": 0.0002031978025,
+  "vitamin-b9_100g": 6.08669781125e-05,
+  "vitamin-c_100g": 0.000554175825,
+  "vitamin-d_100g": 0,
+  "vitamin-pp_100g": 0.00205968681625,
+  "water_100g": 1.8525737939375,
+  "zinc_100g": 0.00272805824575
+ },
+ "nutriscore": {
+  "2021": {
+   "data": {
+    "is_beverage": 0,
+    "is_cheese": 0,
+    "is_fat": 0,
+    "is_water": 0
+   },
+   "grade": "c",
+   "score": 9
+  },
+  "2023": {
+   "data": {
+    "is_beverage": 0,
+    "is_cheese": 0,
+    "is_fat_oil_nuts_seeds": 1,
+    "is_red_meat_product": 0,
+    "is_water": 0
+   },
+   "grade": "d",
+   "score": 12
+  }
+ },
+ "nutriscore_grade": "d",
+ "nutriscore_score": 12,
+ "nutriscore_version": "2023",
+ "nutrition_data": "on",
+ "nutrition_data_per": "100g",
+ "nutrition_data_prepared_per": "100g",
+ "product_name": "Extra Crunchy Peanut Butter",
+ "product_quantity": 793,
+ "product_quantity_unit": "g",
+ "quantity": "793 g",
+ "traces_tags": []
+}

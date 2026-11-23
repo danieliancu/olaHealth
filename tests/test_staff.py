@@ -456,13 +456,12 @@ def test_settings_save_and_log(boss, superuser):
             "ai_daily_messages_per_user": "12",
             "ai_monthly_budget_gbp": "55.50",
             "maintenance_message": "Back soon",
-            "foodo_score_public": "on",
             "catalog_mode": "api",
         },
     )
     assert r.status_code == 302
     s = SiteSettings.load()
-    assert s.foodo_score_public and s.catalog_mode == "api"
+    assert s.catalog_mode == "api"
     assert s.ai_enabled and s.ai_provider == "openai" and s.ai_model == "gpt-5-mini"
     assert s.ai_daily_messages_per_user == 12 and str(s.ai_monthly_budget_gbp) == "55.50"
     assert str(s.usd_to_gbp) == "0.7500"  # fixed rate, not in the form
@@ -470,7 +469,6 @@ def test_settings_save_and_log(boss, superuser):
     entry = StaffAction.objects.get(action="settings_update")
     assert entry.details["changes"]["ai_provider"] == ["anthropic", "openai"]
     assert entry.details["changes"]["catalog_mode"] == ["auto", "api"]
-    assert entry.details["changes"]["foodo_score_public"] == ["False", "True"]
 
 
 def test_model_menu_follows_the_provider(boss, monkeypatch):

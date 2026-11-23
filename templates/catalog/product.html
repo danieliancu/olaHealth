@@ -19,12 +19,7 @@
       <div class="hero-info">
         <h1 id="name-h">{{ data.name|default:_("Name not available") }}</h1>
         {% if data.brand or data.quantity %}<p class="meta">{{ data.brand|default:"" }}{% if data.brand and data.quantity %} · {% endif %}{{ data.quantity|default:"" }}</p>{% endif %}
-        {% if nutriscore and nutriscore.badge %}
-        <div class="ns-scale" role="img" aria-label="Nutri-Score {{ nutriscore.badge|upper }}{% if nutriscore.version %}, {{ nutriscore.version }}{% endif %}">
-          <span class="ns-title" aria-hidden="true">Nutri-Score</span>
-          <span class="ns-letters" aria-hidden="true">{% for l in "abcde" %}<span class="ns-l ns-{{ l }}{% if l == nutriscore.badge %} is-on{% endif %}">{{ l|upper }}</span>{% endfor %}</span>
-        </div>
-        {% endif %}
+        {% include "catalog/partials/foodo_score.html" %}
         {% if nova and nova.badge %}
         <p class="processing processing-{{ nova.badge }}"><span class="dot" aria-hidden="true"></span>{{ nova_label }}</p>
         {% endif %}
@@ -101,38 +96,34 @@
   {% endif %}
   </div>
   <div class="product-col product-side">
-  {# 2. For you: restriction states for the signed-in user's diets and allergies, and Ask Foodo #}
-  <section class="card foryou-card po-2" aria-labelledby="score-h">
-    <h2 id="score-h">{% translate "For you" %}</h2>
-    {% if for_you %}
-      {% if for_you.items %}
-      <ul class="restriction-list">
-        {% for r in for_you.items %}<li class="rs rs-{{ r.status }}"><strong>{{ r.label }}: {{ r.status_text }}. </strong>{{ r.reason }}</li>{% endfor %}
-      </ul>
-      <p class="caption">{% translate "Never a guarantee: the physical label is the reference, especially for allergies." %}</p>
-      {% endif %}
-      {% if for_you.contribution %}
-      <div class="foryou-portion">
-        <p><strong>{% blocktranslate with p=for_you.contribution.portion.label %}{{ p }} of your daily targets:{% endblocktranslate %}</strong></p>
-        <ul>{% for c in for_you.contribution.items %}<li>{{ c.label }}: {{ c.value }} {{ c.unit }} ({{ c.percent }}% {% blocktranslate with t=c.target u=c.unit %}of {{ t }} {{ u }}{% endblocktranslate %})</li>{% endfor %}</ul>
-        <p class="caption">{% translate "From the values on the label. Your targets and the portion do not change the product's score." %}</p>
-      </div>
-      {% endif %}
-      <p class="foryou-prefs-line">{% if for_you.has_prefs %}{% blocktranslate with names=for_you.summary %}Checked for: {{ names }}.{% endblocktranslate %} <a class="link-btn" href="{{ for_you.edit_url }}">{% translate "Change" %}</a>{% else %}{% translate "Add your diet or allergies to check this product." %} <a class="link-btn" href="{{ for_you.edit_url }}">{% translate "Add" %}</a>{% endif %}</p>
-    {% else %}
-      <p class="foryou-prefs-line">{% translate "Check this product against your diet and allergies." %} <a class="link-btn" href="{{ login_url }}">{% translate "Sign in" %}</a></p>
-    {% endif %}
+  {# 2. Better alternatives listed for the visitor's country (loaded when visible), above Ask Foodo #}
+  <section class="card po-2" aria-labelledby="alt-h" id="better" hx-get="{% url 'product-alternatives' product.pk %}" hx-trigger="revealed" hx-swap="innerHTML">
+    <h2 id="alt-h">{% translate "Better alternatives" %}</h2>
+    <p class="caption htmx-indicator">{% translate "Loading…" %}</p>
+    <p><a data-alternatives-link href="{% url 'product-alternatives' product.pk %}">{% translate "See better alternatives" %}</a></p>
+  </section>
+  {# 2. Ask Foodo about this product: a button of its own #}
+  <div class="ask-standalone po-2">
     {% if user.is_authenticated %}
       {% include "myola/partials/chat.html" with chat_context=chat_context chat_product=product button_label=_("Ask Foodo about this product") %}
     {% else %}
       <a class="btn btn-primary btn-block btn-ask ask-foodo-btn" href="{{ login_url }}">{% icon "message-circle" 18 %}<span>{% translate "Ask Foodo about this product" %}</span></a>
     {% endif %}
-  </section>
-  {# 3b. Foodo Score and up to 3 better alternatives sold in the UK (loaded when visible) #}
-  <section class="card po-3" aria-labelledby="alt-h" id="better" hx-get="{% url 'product-alternatives' product.pk %}" hx-trigger="revealed" hx-swap="innerHTML">
-    <h2 id="alt-h">{% if foodo_score_public %}{% translate "Foodo Score and alternatives" %}{% else %}{% translate "Nutri-Score and alternatives" %}{% endif %}</h2>
-    <p class="caption htmx-indicator">{% translate "Loading…" %}</p>
-    <p><a href="{% url 'product-alternatives' product.pk %}">{% if foodo_score_public %}{% translate "See the score and better alternatives" %}{% else %}{% translate "See the Nutri-Score and better alternatives" %}{% endif %}</a></p>
+  </div>
+  {# For you: the signed-in user's diets and allergies against this product (red: a problem, orange: a doubt) #}
+  <section class="card foryou-card po-2" aria-labelledby="foryou-h">
+    <h2 id="foryou-h">{% translate "For you" %}</h2>
+    {% if for_you and for_you.items %}
+      <ul class="restriction-list">
+        {% for r in for_you.items %}<li class="rs rs-{{ r.status }}"><strong>{{ r.label }}: {{ r.status_text }}. </strong>{{ r.reason }}</li>{% endfor %}
+      </ul>
+      <p class="caption">{% translate "Never a guarantee: the physical label is the reference, especially for allergies." %}</p>
+      <p class="foryou-prefs-line">{% blocktranslate with names=for_you.summary %}Checked for: {{ names }}.{% endblocktranslate %} <a class="link-btn" href="{{ for_you.edit_url }}">{% translate "Change" %}</a></p>
+    {% elif for_you %}
+      <p class="foryou-line"><a href="{{ for_you.edit_url }}">{% translate "Add your diet or allergies to check this product" %}{% icon "chevron-right" 16 %}</a></p>
+    {% else %}
+      <p class="foryou-line"><a href="{{ login_url }}">{% translate "Sign in to check this product against your diet and allergies" %}{% icon "chevron-right" 16 %}</a></p>
+    {% endif %}
   </section>
   {# Only things that need checking #}
   {% if gaps or flags %}
@@ -208,10 +199,10 @@
       <p class="hint">{% translate "Official indicators from the source." %}
         {% if product.sync_label == "stale" or product.sync_label == "refresh_failed" %}<span class="badge badge-sync-{{ product.sync_label }}">{{ indicators.0.sync_label }}</span>{% endif %}</p>
       <ul class="indicators">
-        {% for ind in indicators %}{% if ind.key != "additives" and ind.key != "nutrient_levels" %}
+        {% for ind in indicators %}{% if ind.key != "additives" and ind.key != "nutrient_levels" and ind.key != "nutriscore" %}
         <li class="indicator{% if ind.not_current %} not-current{% endif %}">
           <h3>{{ ind.label }}</h3>
-          {% if ind.key == "nutriscore" %}<p class="hint">{{ explain.nutriscore }}</p>{% elif ind.key == "nova" %}<p class="hint">{{ explain.nova }}</p>{% endif %}
+          {% if ind.key == "nova" %}<p class="hint">{{ explain.nova }}</p>{% endif %}
           <p class="headline">{% if ind.not_current %}<del>{{ ind.headline }}</del>{% else %}{{ ind.headline }}{% endif %}</p>
           {% if ind.not_current or ind.data_status == "conflicting" %}<p class="badges">
             {% if ind.not_current %}<span class="badge badge-warn">{% translate "Not current: data was corrected after this was computed" %}</span>{% endif %}
@@ -222,9 +213,6 @@
         </li>
         {% endif %}{% endfor %}
       </ul>
-      {% if packaging_nutriscore %}
-        <p class="declared">{% translate "Nutri-Score printed on the package" %}: <strong>{{ packaging_nutriscore.value.grade|upper }}</strong> <span class="hint">({% translate "as declared by the manufacturer" %})</span></p>
-      {% endif %}
     </details>
   </section>
   {% endif %}

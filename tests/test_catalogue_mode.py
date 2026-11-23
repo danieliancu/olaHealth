@@ -22,6 +22,7 @@ from catalog.services.catalog_mode import current_mode, local_catalogue_active
 from catalog.services.importer import import_off_product
 from catalog.tasks import refresh_stale_products
 from off.client import OFFClient
+from tests.nutri import nutriscore_fields
 
 pytestmark = pytest.mark.django_db
 
@@ -96,7 +97,7 @@ def test_valid_import_is_verified_and_switches_automatically(tmp_path, small_dum
     assert current_mode() == "api"
     run = run_jsonl(write_jsonl(tmp_path / "dump.jsonl", real_payloads()), exported_at=EXPORTED)
     assert run.status == "verified", run.report["checks"]
-    assert run.imported == 14 and run.failed == 0 and run.seen == 14
+    assert run.imported == 16 and run.failed == 0 and run.seen == 16
     assert all(c["ok"] for c in run.report["checks"])
     assert len(run.file_sha256) == 64
     assert current_mode() == "local"
@@ -263,11 +264,11 @@ def test_alternatives_use_the_local_catalogue_only_once_active(off_payload):
     cats = ["en:dairies", "en:yogurts"]
     uk = ["en:united-kingdom"]
     ref = import_off_product(
-        off_payload(code="5000000000001", nutriscore_grade="d", categories_tags=cats,
+        off_payload(code="5000000000001", **nutriscore_fields("d"), categories_tags=cats,
                     countries_tags=uk, product_name="Sweet yogurt")
     )  # fmt: skip
     import_off_product(
-        off_payload(code="5000000000002", nutriscore_grade="a", categories_tags=cats,
+        off_payload(code="5000000000002", **nutriscore_fields("a"), categories_tags=cats,
                     countries_tags=uk, product_name="Plain yogurt")
     )  # fmt: skip
     search = f"{BASE}/api/v2/search"

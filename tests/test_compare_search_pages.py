@@ -10,6 +10,7 @@ from catalog.models import Product
 from catalog.services.importer import import_off_product
 from catalog.services.search import SearchParams, search_products
 from contributions.services import drafts
+from tests.nutri import nutriscore_fields
 
 pytestmark = pytest.mark.django_db
 
@@ -26,8 +27,7 @@ def catalogue(off_payload):
         product_name="Plain yogurt",
         categories_tags=["en:dairies", "en:fermented-foods", "en:yogurts"],
         countries_tags=["en:romania", "en:moldova"],
-        nutriscore_grade="a",
-        nutriscore_version="2023",
+        **nutriscore_fields("a"),  # 2023 general, −2 points -> 82
         nutriments={
             **_nutriments(
                 **{
@@ -49,9 +49,7 @@ def catalogue(off_payload):
         quantity="300 g",
         categories_tags=["en:snacks", "en:sweet-snacks", "en:biscuits-and-cakes", "en:biscuits"],
         countries_tags=["en:romania"],
-        nutriscore_grade="d",
-        nutriscore_version="2023",
-        nutriscore={"2023": {"grade": "d"}},
+        **nutriscore_fields("d"),  # 2023 general, 14 points -> 31
         nutriments=_nutriments(
             **{
                 "energy-kcal": 468,
@@ -71,9 +69,7 @@ def catalogue(off_payload):
         quantity="250 g",
         categories_tags=["en:snacks", "en:sweet-snacks", "en:biscuits-and-cakes", "en:biscuits"],
         countries_tags=["en:france"],
-        nutriscore_grade="c",
-        nutriscore_version="2021",
-        nutriscore={"2021": {"grade": "c"}},
+        **nutriscore_fields("c", version="2021"),  # 2017 algorithm, 5 points -> 54
         nutriments=_nutriments(
             **{
                 "energy-kcal": 441,
@@ -143,7 +139,8 @@ def test_zero_is_a_value_and_missing_is_last(catalogue):
 def test_nutriscore_versions_are_not_ranked_together(catalogue):
     c = compare([catalogue["Oat biscuits"], catalogue["Wholegrain biscuits"]])
     assert [n["version"] for n in c.nutriscore] == ["2023", "2021"]
-    assert "different Nutri-Score algorithm versions" in c.nutriscore_note
+    assert [n["foodo"] for n in c.nutriscore] == [31, 54]
+    assert "not directly comparable" in c.foodo_note
     assert not any("different categories" in w for w in c.warnings)  # same leaf category
 
 
@@ -154,9 +151,16 @@ def test_search_and_filters(catalogue):
     assert set(names(q="biscuit")) == {"Oat biscuits", "Wholegrain biscuits"}
     assert names(q="yoghurt") == ["Plain yogurt"]  # trigram tolerance
     assert names(category="en:yogurts") == ["Plain yogurt"]
-    assert names(nutriscore="a") == ["Plain yogurt"]
-    assert names(sort="nutriscore")[-1] == "Orange juice"  # unknown last
-    assert names(nutriscore="none") == ["Orange juice"]
+    assert names(score="80") == ["Plain yogurt"]  # 82
+    assert names(score="40") == ["Wholegrain biscuits"]  # 54
+    # Highest Foodo Score first; no score last.
+    assert names(sort="score") == [
+        "Plain yogurt",
+        "Wholegrain biscuits",
+        "Oat biscuits",
+        "Orange juice",
+    ]
+    assert names(score="none") == ["Orange juice"]
 
 
 def test_facets_show_only_what_matches(catalogue):
@@ -173,11 +177,11 @@ def test_facets_show_only_what_matches(catalogue):
     assert countries == {"en:romania": 2, "en:moldova": 1, "en:france": 2}  # no Japan
     assert "en:unused-category" not in {o.value for o in f["category"]}
     assert next(o for o in f["category"] if o.value == "en:biscuits").label == "Biscuits"
-    assert {o.value for o in f["nutriscore"]} == {"a", "c", "d", "none"}  # no B / E
+    assert {o.value for o in f["score"]} == {"80", "40", "20", "none"}  # 82, 54, 31, none
 
     # Each facet narrows with the other filters, but keeps its own choices.
     f = facets(SearchParams(country="en:france"))
-    assert {o.value for o in f["nutriscore"]} == {"c", "none"}
+    assert {o.value for o in f["score"]} == {"40", "none"}
     assert {o.value for o in f["category"]} >= {"en:biscuits", "en:orange-juices"}
     assert "en:yogurts" not in {o.value for o in f["category"]}
     assert {o.value for o in f["country"]} == {"en:romania", "en:moldova", "en:france"}
@@ -187,7 +191,7 @@ def test_facets_show_only_what_matches(catalogue):
 def test_products_page_hides_empty_filters(client, catalogue):
     html = client.get(reverse("products") + "?country=en:france").content.decode()
     assert 'value="en:france" selected' in html
-    assert 'value="a"' not in html  # no Nutri-Score A product in France
+    assert 'value="80"' not in html  # no product scoring 80+ in France
     assert "Japan" not in html
 
 
@@ -199,7 +203,7 @@ def test_main_pages_render_with_bounded_queries(client, catalogue, django_assert
         (reverse("home"), 8),
         (reverse("scan"), 8),
         (reverse("products"), 18),
-        (reverse("products") + "?q=biscuit&sort=nutriscore&country=en:france", 18),
+        (reverse("products") + "?q=biscuit&sort=score&country=en:france", 18),
         (reverse("product", args=[real.pk]), 18),
         (reverse("compare") + f"?ids={ids}", 14),
         (reverse("saved"), 5),
@@ -214,7 +218,7 @@ def test_main_pages_render_with_bounded_queries(client, catalogue, django_assert
 def test_product_page_states_and_attribution(client, off_payload):
     p = import_off_product(off_payload(allergens_tags=[]))
     html = client.get(reverse("product", args=[p.pk])).content.decode()
-    assert "Grade B" in html
+    assert "Foodo Score 79 out of 100" in html and "Grade B" not in html
     assert "does not mean allergen-free" in html
     assert "Open Food Facts" in html
     assert "https://world.openfoodfacts.org" in html  # attribution kept in the footer (ODbL)

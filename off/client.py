@@ -125,16 +125,18 @@ class OFFClient:
         page_size: int = 24,
         fields: list[str] | tuple[str, ...] = SEARCH_FIELDS,
     ) -> list[dict[str, Any]]:
-        """Products in one category sold in one country (OFF search API v2).
+        """Products in one category, sold in one country when ``country_tag`` is given (OFF
+        search API v2).
 
         Only taxonomy tags are sent: never anything about the user.
         """
         params = {
             "categories_tags": categories_tag,
-            "countries_tags": country_tag,
             "page_size": str(max(1, min(int(page_size), 100))),
             "fields": ",".join(fields),
         }
+        if country_tag:
+            params["countries_tags"] = country_tag
 
         def attempt(client: httpx.Client) -> list[dict[str, Any]]:
             status, payload = self._get_json(client, "/api/v2/search", params, self.search_gate)

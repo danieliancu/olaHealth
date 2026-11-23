@@ -83,7 +83,7 @@ def test_product_page_hides_unavailable_data(client, off_payload):
     # "unknown" states on purpose (docs/mvp-api-contracts.md).
     html = html.split("</head>")[1]
     assert "Processing" not in html and "NOVA" not in html and "Nutrient levels" not in html
-    assert "Grade B" in html
+    assert "Foodo Score 79 out of 100" in html and "Grade B" not in html
     assert ">Salt<" not in html and "unknown" not in html
     assert "Missing data" not in html and "Data: Available" not in html
 

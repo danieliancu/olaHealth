@@ -38,6 +38,8 @@ PRODUCTS = {
     "3068320114453": "sparkling mineral water: A under the 2023 beverage rules",
     "75041670": "beer: Nutri-Score not applicable (alcohol)",
     "10614594": "Emmentaler: Nutri-Score unknown, no ingredient list, NOVA missing",
+    "0051500241639": "crunchy peanut butter (fats, oils, nuts and seeds rules): D",
+    "8710532469535": "100% peanut butter (fats, oils, nuts and seeds rules): A",
 }
 
 FIELDS = (
@@ -64,12 +66,16 @@ def trim(product: dict) -> dict:
     out = {k: v for k, v in product.items() if k != "nutriscore"}
     nutriments = product.get("nutriments") or {}
     out["nutriments"] = {k: nutriments[k] for k in CORE_NUTRIMENTS if k in nutriments}
-    # Per-version results only (grade and points); the component breakdown is not used.
-    out["nutriscore"] = {
-        version: {k: d.get(k) for k in ("grade", "score") if k in d}
-        for version, d in sorted((product.get("nutriscore") or {}).items())
-        if isinstance(d, dict)
-    }
+    # Per-version results: grade, points and the calculation-category flags (``data.is_*``)
+    # the Foodo Score needs; the component breakdown is not used.
+    out["nutriscore"] = {}
+    for version, d in sorted((product.get("nutriscore") or {}).items()):
+        if not isinstance(d, dict):
+            continue
+        entry = {k: d.get(k) for k in ("grade", "score") if k in d}
+        data = d.get("data") if isinstance(d.get("data"), dict) else {}
+        entry["data"] = {k: v for k, v in sorted(data.items()) if k.startswith("is_")}
+        out["nutriscore"][version] = entry
     return out
 
 

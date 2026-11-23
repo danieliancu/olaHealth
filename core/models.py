@@ -79,8 +79,10 @@ class LearnArticle(models.Model):
         related_name="learn_articles",
         help_text="Products shown at the end of the article.",
     )
-    featured = models.BooleanField(
-        default=False, help_text="Shown on the Magazine cover under its topic (up to 2 per topic)."
+    editors_pick = models.BooleanField(
+        default=False,
+        verbose_name="Editor’s pick",
+        help_text="Shown in “Editor’s picks” on the Magazine cover (the newest 3).",
     )
     published = models.BooleanField(default=True)
     order = models.PositiveSmallIntegerField(default=0)
@@ -139,9 +141,9 @@ class LearnArticle(models.Model):
 
 
 class MagazineCover(models.Model):
-    """The Magazine cover: one issue only (no archive). Its month ("MAGAZINE • NOVEMBER 2026"),
-    its photo and where the photo sits on desktop and on phones. The titles still follow the
-    topics' featured articles (core.learn). Managed in Staff → Magazine → Cover."""
+    """The Magazine cover: one issue only (no archive). Its month (on the phone cover card), its
+    photo, and where the photo sits on the desktop cover and in the phone cover card. Managed
+    in Staff → Magazine → Cover."""
 
     month = models.DateField(help_text="The month and year shown on the cover.")
     image = models.ImageField(
@@ -149,27 +151,29 @@ class MagazineCover(models.Model):
         blank=True,
         help_text="Any photo with plain space beside the person. Empty: the built-in photo.",
     )
-    # Desktop: the photo lies under the logo and titles, over the whole cover; in % of the
+    # Desktop: the photo lies under the titles and cards, over the whole 3:2 cover; in % of the
     # cover's height: its height, its left edge from the middle of the screen, its top edge.
+    # The defaults fit a 3:2 photo to the whole cover.
     photo_size = models.PositiveSmallIntegerField(
-        default=133, validators=[MinValueValidator(40), MaxValueValidator(300)]
+        default=100, validators=[MinValueValidator(40), MaxValueValidator(300)]
     )
     photo_x = models.SmallIntegerField(
-        default=-26, validators=[MinValueValidator(-300), MaxValueValidator(200)]
+        default=-75, validators=[MinValueValidator(-300), MaxValueValidator(200)]
     )
     photo_y = models.SmallIntegerField(
-        default=-7, validators=[MinValueValidator(-100), MaxValueValidator(100)]
-    )
-    # Phones: the photo fills the cover; which part stays in view (0 left … 100 right), how far
-    # it is moved up or down (% of the cover's height) and zoom.
-    mobile_x = models.PositiveSmallIntegerField(
-        default=50, validators=[MinValueValidator(0), MaxValueValidator(100)]
-    )
-    mobile_y = models.SmallIntegerField(
         default=0, validators=[MinValueValidator(-100), MaxValueValidator(100)]
     )
+    # Phones: the photo in the cover card (topics on its left). Its height in % of the card's
+    # height (100: the whole 3:2 photo fills the 3:2 card), its left and top edges in % of the
+    # card's width and height (minus: further left / higher).
     mobile_zoom = models.PositiveSmallIntegerField(
-        default=100, validators=[MinValueValidator(20), MaxValueValidator(250)]
+        default=100, validators=[MinValueValidator(40), MaxValueValidator(300)]
+    )
+    mobile_x = models.SmallIntegerField(
+        default=0, validators=[MinValueValidator(-200), MaxValueValidator(100)]
+    )
+    mobile_y = models.SmallIntegerField(
+        default=0, validators=[MinValueValidator(-200), MaxValueValidator(100)]
     )
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -203,9 +207,10 @@ class MagazineCover(models.Model):
         return f"{reverse('learn-cover-style')}?v={int(self.updated_at.timestamp())}"
 
     def style_css(self) -> str:
-        """Where the photo sits, as CSS variables (a stylesheet: no inline styles, CSP)."""
+        """Where the photo sits on the desktop cover and in the phone cover card, as CSS
+        variables (a stylesheet: no inline styles, CSP)."""
         return (
             f".mag-cover{{--photo-h:{int(self.photo_size)};--photo-x:{int(self.photo_x)};"
-            f"--photo-y:{int(self.photo_y)};--m-x:{int(self.mobile_x)};"
-            f"--m-y:{int(self.mobile_y)};--m-zoom:{int(self.mobile_zoom)}}}"
+            f"--photo-y:{int(self.photo_y)};--m-zoom:{int(self.mobile_zoom)};"
+            f"--m-x:{int(self.mobile_x)};--m-y:{int(self.mobile_y)}}}"
         )

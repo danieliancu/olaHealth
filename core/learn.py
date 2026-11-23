@@ -27,28 +27,24 @@ def _visible(request: HttpRequest):
     return qs
 
 
-# The cover: topic places fixed by topic order, as on the printed cover — left column: topics 1
-# (top) and 4; right column: topics 3 (top) and 2. Their titles change with what staff feature.
-COVER_SIDES = (("left", (0, 3)), ("right", (2, 1)))
-COVER_PER_TOPIC = 2
+PICKS = 3  # "Editor's picks": articles marked as an editor's pick, newest first
+LATEST = 4  # "Explore the latest"
 
 
-def _cover_sides() -> list[dict]:
-    """Two columns of topic slots. Each slot: the topic and up to 2 featured articles (newest
-    first); a topic without a featured article shows its newest one."""
-    visible = LearnArticle.objects.filter(published=True).order_by("-published_at")
-    topics = list(LearnTopic.objects.all()[:4])
-    sides = []
-    for name, indexes in COVER_SIDES:
-        slots = []
-        for i in indexes:
-            if i >= len(topics):
-                continue
-            mine = visible.filter(topic=topics[i])
-            articles = list(mine.filter(featured=True)[:COVER_PER_TOPIC]) or list(mine[:1])
-            slots.append({"topic": topics[i], "articles": articles, "lead": i == 0})
-        sides.append({"name": name, "slots": slots})
-    return sides
+def _cover_articles() -> tuple[list, list]:
+    """(Editor's picks, latest). Picks are the newest editor's picks (topped up with the
+    newest ones); the latest leave out the picks while there are enough others."""
+    published = LearnArticle.objects.filter(published=True).select_related("topic")
+    newest = list(published.order_by("-published_at")[: PICKS + LATEST + PICKS])
+    picks = list(published.filter(editors_pick=True).order_by("-published_at")[:PICKS])
+    for a in newest:
+        if len(picks) >= PICKS:
+            break
+        if a not in picks:
+            picks.append(a)
+    others = [a for a in newest if a not in picks]
+    latest = (others + [a for a in newest if a in picks])[:LATEST]
+    return picks, latest
 
 
 @require_GET
@@ -67,12 +63,13 @@ def learn_index(request: HttpRequest) -> HttpResponse:
 def cover_context() -> dict:
     """What the cover needs (also Staff → Magazine → Cover, for its preview)."""
     issue = MagazineCover.load()
+    picks, latest = _cover_articles()
     return {
-        "sides": _cover_sides(),
+        "picks": picks,
+        "latest": latest,
+        "topics": list(LearnTopic.objects.all()),
         "nav_active": "learn",
-        "issue_month": issue.month,  # "MAGAZINE • NOVEMBER 2026"
-        # An uploaded photo replaces the built-in one (and its head-over-the-logo cut-out).
-        "cover_url": issue.image_url(),
+        "cover_url": issue.image_url(),  # an uploaded photo replaces the built-in one
         "cover_style_url": issue.style_url(),
     }
 

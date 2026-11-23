@@ -35,10 +35,6 @@ class SiteSettings(models.Model):
     # answered by the AI from general knowledge, with strict rules for health questions.
     ai_general_questions = models.BooleanField(default=True)
     maintenance_message = models.CharField(max_length=300, blank=True)
-    # Foodo Score v2 shown publicly under that name (docs/assessment-rules.md, "Before public
-    # activation"). Off: the public sees the official Nutri-Score and the separate indicators;
-    # staff see the Foodo Score result for checking.
-    foodo_score_public = models.BooleanField(default=False)
     # "auto": the local catalogue is used first once an import is verified; "api": always the
     # current per-product API mode, whatever was imported (docs/off-local-catalogue.md).
     catalog_mode = models.CharField(

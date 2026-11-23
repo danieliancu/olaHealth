@@ -4,7 +4,7 @@
 {% block staff_content %}
 {% include "staff/partials/learn_tabs.html" with tab="covers" %}
 <h1>Magazine cover</h1>
-<p class="caption">One cover: the photo you upload and the month you set. The titles still come from each topic’s featured articles. Move the sliders to place the photo; the previews follow, and everything is saved with “Save cover”.</p>
+<p class="caption">One cover: the photo you upload. Editor’s picks are the articles marked “Editor’s pick”; “Explore the latest”, the newest ones. Move the sliders to place the photo on the desktop cover and in the phone cover card (the topics sit on its left). The previews follow, and everything is saved with “Save cover”.</p>
 
 <div class="cover-previews">
   {# Desktop: the real cover at a smaller scale; it can go full screen with its sliders. #}
@@ -27,9 +27,9 @@
     <h2 class="cover-h">Phone</h2>
     <div class="cover-phone-frame"><iframe src="{% url 'staff:learn-cover-preview' %}" title="Phone preview of the Magazine cover" data-cover-phone tabindex="-1"></iframe></div>
     <div class="cover-tools cover-tools-phone">
+      {% include "staff/partials/cover_slider.html" with field=form.mobile_zoom key="mz" %}
       {% include "staff/partials/cover_slider.html" with field=form.mobile_x key="mx" %}
       {% include "staff/partials/cover_slider.html" with field=form.mobile_y key="my" %}
-      {% include "staff/partials/cover_slider.html" with field=form.mobile_zoom key="mz" %}
       <div class="cover-tools-buttons"><button class="btn btn-outline btn-small" type="button" data-photo-reset="phone">Reset</button></div>
     </div>
   </section>

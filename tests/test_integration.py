@@ -18,24 +18,31 @@ def test_product_page_lazy_loads_score_and_alternatives(client, off_payload):
     assert f'hx-get="{url}"' in html and 'hx-trigger="revealed"' in html
     # Without htmx the same URL is a full page.
     page = client.get(url)
-    assert page.status_code == 200 and "Nutri-Score and alternatives" in page.content.decode()
+    assert page.status_code == 200 and "Better alternatives" in page.content.decode()
 
 
 @pytest.mark.django_db
-def test_alternatives_fragment_shows_the_score_or_why_not(client, off_payload, monkeypatch):
-    monkeypatch.setattr("catalog.services.alternatives.alternatives", lambda *a, **k: [])
-    graded = import_off_product(off_payload(nutriscore_grade="b", nova_group=3))
-    r = client.get(reverse("product-alternatives", args=[graded.pk]), HTTP_HX_REQUEST="true")
+def test_alternatives_card_holds_only_title_products_and_scores(client, off_payload, monkeypatch):
+    item = {"url": "/x/", "image": "", "name": "Plain yogurt", "brand": "B", "grade": "a"}
+    monkeypatch.setattr(
+        "catalog.services.alternatives.alternatives", lambda *a, **k: [{**item, "foodo": 85}]
+    )
+    graded = import_off_product(off_payload(nova_group=3))
+    r = client.get(
+        reverse("product-alternatives", args=[graded.pk]),
+        HTTP_HX_REQUEST="true",
+        HTTP_ACCEPT_LANGUAGE="en-GB,en;q=0.9",
+    )
     body = r.content.decode()
     assert r.status_code == 200 and "<html" not in body
-    assert "<strong>B</strong>" in body and "/100" not in body
-    bare = import_off_product(
-        off_payload(code="3017620422003", nutriscore_grade="", nova_group=None, nutriscore={})
-    )
+    assert "Better alternatives in the UK" in body and "Plain yogurt" in body
+    assert ">85</span>" in body and "/100" not in body and 'title="Nutri-Score"' not in body
+    assert "Sign in" not in body and "<select" not in body
+    monkeypatch.setattr("catalog.services.alternatives.alternatives", lambda *a, **k: [])
     body = client.get(
-        reverse("product-alternatives", args=[bare.pk]), HTTP_HX_REQUEST="true"
+        reverse("product-alternatives", args=[graded.pk]), HTTP_HX_REQUEST="true"
     ).content.decode()
-    assert "Not enough data" in body and "score-value" not in body
+    assert "found a better alternative yet." in body
 
 
 @pytest.mark.django_db

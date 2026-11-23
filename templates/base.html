@@ -22,6 +22,7 @@
   <script type="module" src="{% static 'js/reveal.js' %}"></script>
   <script type="module" src="{% static 'js/week-nav.js' %}"></script>
   <script type="module" src="{% static 'js/keep-place.js' %}"></script>
+  <script type="module" src="{% static 'js/foodo.js' %}"></script>
   {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}" data-placeholder="{% asset 'img/placeholder' %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>

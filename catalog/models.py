@@ -41,6 +41,9 @@ class Product(models.Model):
     nutriscore_grade = models.CharField(max_length=1, blank=True)
     nutriscore_version = models.CharField(max_length=10, blank=True)
     nova_group = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Foodo Score 0–100 of the current revision (assessments.score), for lists; None when the
+    # product has no valid score. 0 is a value.
+    foodo_value = models.PositiveSmallIntegerField(null=True, blank=True)
     completeness = models.PositiveSmallIntegerField(default=0)
     front_image_url = models.URLField(max_length=500, blank=True)
     # Data quality (catalog/quality.py): what is missing, and whether the product may appear

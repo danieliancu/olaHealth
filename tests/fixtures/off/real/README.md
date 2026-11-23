@@ -1,9 +1,11 @@
-# Real Open Food Facts products (Foodo Score `score.v2` examples)
+# Real Open Food Facts products (Foodo Score examples)
 
 These are **real products**, downloaded from the Open Food Facts product API v2 with
 `fetch_real.py` (date in each file's `_fixture.fetched_at`). The files are trimmed to the fields
 AskFoodo reads: no images, no contributor or user data. The data may have changed on OFF since
 the download; the tests check our rules against these files, not against today's OFF.
+Each product keeps OFF's per-version Nutri-Score grade, points and calculation-category flags
+(`nutriscore.<version>.data.is_*`), which the Foodo Score needs.
 
 **License:** Open Food Facts contributors, [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/1-0/).
 Product pages: `https://world.openfoodfacts.org/product/<code>`.
@@ -24,7 +26,13 @@ Product pages: `https://world.openfoodfacts.org/product/<code>`.
 | 3068320114453 | sparkling mineral water | A under the 2023 beverage rules |
 | 75041670 | beer | Nutri-Score not applicable (alcohol) |
 | 10614594 | Emmentaler | Nutri-Score unknown, no ingredient list, NOVA missing |
+| 0051500241639 | crunchy peanut butter (fats, oils, nuts and seeds) | D, 12 points |
+| 8710532469535 | 100% peanut butter (fats, oils, nuts and seeds) | A, −9 points |
+
+No red-meat product (2023 `is_red_meat_product`) could be fetched while OFF search was
+unavailable; that category and every edge of the formula are covered by synthetic cases in
+`tests/test_foodo_formula.py`.
 
 Cases that real data cannot give on demand (a grade printed on the package that disagrees, a
 local correction, a missing algorithm version, invalid values) are **synthetic** and built in
-`tests/test_score_v2.py`; they are marked there as such and are not validation on real products.
+`tests/test_score_v3.py`; they are marked there as such and are not validation on real products.

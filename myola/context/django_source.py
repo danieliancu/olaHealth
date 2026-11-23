@@ -231,15 +231,15 @@ class DjangoContextSource:
                     current_revision__isnull=False, listable=True, countries__contains=[country]
                 ).filter(categories__overlap=list(tags))
                 found = list(qs[:40])
-        grade = {g: i for i, g in enumerate("abcde")}
         found = [p for p in found if p.pk not in avoid]
-        found.sort(key=lambda p: (grade.get(p.nutriscore_grade, 9), p.nova_group or 9, p.name))
+        # Highest Foodo Score first; products without one last.
+        found.sort(key=lambda p: (-(p.foodo_value if p.foodo_value is not None else -1), p.name))
         return [
             {
                 "name": p.name,
                 "brand": p.brand,
                 "quantity": p.quantity,
-                "nutri_score": (p.nutriscore_grade or "").upper() or None,
+                "foodo_score": f"{p.foodo_value}/100" if p.foodo_value is not None else None,
                 "nova": p.nova_group,
             }
             for p in found[:limit]

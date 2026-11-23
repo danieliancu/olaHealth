@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from assessments.models import AssessmentSnapshot
 from assessments.rules import IndicatorSpec, apply_packaging_conflict, inputs_hash
-from assessments.score import foodo_score, score_source, with_provenance
+from assessments.score import foodo_score, foodo_value, score_source, with_provenance
 from catalog import quality
 from catalog.models import NutrientFact, Product, ProductRevision
 from catalog.nutrition import CORE_NUTRIENTS, to_decimal
@@ -166,6 +166,8 @@ def publish_revision(
         )
 
     number = (product.revisions.aggregate(m=Max("number"))["m"] or 0) + 1
+    payload = off_payload if off_payload is not None else (base.off_payload if base else None)
+    nutriscore_data = payload.get("nutriscore") if isinstance(payload, dict) else None
     revision = ProductRevision.objects.create(
         product=product,
         number=number,
@@ -174,15 +176,15 @@ def publish_revision(
         content_hash=digest,
         field_sources=field_sources,
         off_data=source_data,
-        off_payload=off_payload
-        if off_payload is not None
-        else (base.off_payload if base else None),
+        off_payload=payload,
         off_last_modified=off_last_modified or (base.off_last_modified if base else None),
         base_revision=base,
         contribution=contribution,
         # Recomputed only here: whenever the data or the indicators change.
         foodo_score=with_provenance(
-            foodo_score(snapshots), source=score_source(source), data_id=digest
+            foodo_score(snapshots, nutriscore_data=nutriscore_data),
+            source=score_source(source),
+            data_id=digest,
         ),
     )
     NutrientFact.objects.bulk_create(
@@ -241,6 +243,7 @@ def apply_revision(
         if nova and nova.data_status == "available" and not nova.invalidated_by_local_change
         else None
     )
+    product.foodo_value = foodo_value(revision.foodo_score)
     _set_front_and_quality(product, data)
     product.save()
 

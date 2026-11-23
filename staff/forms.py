@@ -124,7 +124,6 @@ class SiteSettingsForm(forms.ModelForm):
             "ai_send_ingredients",
             "ai_general_questions",
             "maintenance_message",
-            "foodo_score_public",
             "catalog_mode",
         ]
         labels = {
@@ -136,14 +135,10 @@ class SiteSettingsForm(forms.ModelForm):
             "ai_send_ingredients": "Product chat: also send the ingredient list and additives",
             "ai_general_questions": "General chat: answer general food and nutrition questions",
             "maintenance_message": "Maintenance message",
-            "foodo_score_public": "Show the Foodo Score publicly",
             "catalog_mode": "Product catalogue",
         }
         help_texts = {
             "maintenance_message": "Shown to everyone when not empty.",
-            "foodo_score_public": "Off: the public sees the official Nutri-Score and the "
-            "separate indicators; staff see the Foodo Score for checking. Switch on only after "
-            "the decision in docs/assessment-rules.md (Before public activation).",
             "catalog_mode": "Automatic: the local catalogue is used first once an import has "
             "been verified. API only: keep fetching each product from Open Food Facts.",
             "ai_monthly_budget_gbp": "The assistant stops answering when this month's cost "
@@ -236,7 +231,7 @@ class LearnArticleForm(forms.ModelForm):
             "title", "slug", "topic", "summary", "pull_quote", "body", "minutes",
             "image", "image_alt",
             "seo_title", "meta_description", "canonical_url", "noindex",
-            "published", "published_at", "featured", "order",
+            "published", "published_at", "editors_pick", "order",
         ]  # fmt: skip
         labels = {
             "slug": "Web address (slug)",
@@ -248,6 +243,7 @@ class LearnArticleForm(forms.ModelForm):
             "canonical_url": "Canonical URL",
             "noindex": "Hide from search engines (noindex)",
             "published_at": "Publication date",
+            "editors_pick": "Editor’s pick",
         }
         help_texts = {
             "slug": "Leave empty to make it from the title. Changing it breaks old links.",
@@ -355,39 +351,41 @@ class MagazineCoverForm(forms.ModelForm):
         label="Month and year",
         input_formats=["%Y-%m", "%Y-%m-%d"],
         widget=forms.DateInput(attrs={"type": "month"}, format="%Y-%m"),
-        help_text="Shown as “MAGAZINE • NOVEMBER 2026” on the desktop cover.",
+        help_text="The issue’s month, kept with the cover (not shown on the page).",
     )
 
     class Meta:
         model = MagazineCover
-        fields = ["month", "image", "photo_size", "photo_x", "photo_y", "mobile_x", "mobile_y",
-                  "mobile_zoom"]  # fmt: skip
+        fields = [
+            "month", "image", "photo_size", "photo_x", "photo_y",
+            "mobile_zoom", "mobile_x", "mobile_y",
+        ]  # fmt: skip
         labels = {
             "image": "Cover photo",
             "photo_size": "Size",
             "photo_x": "Left / right",
             "photo_y": "Up / down",
+            "mobile_zoom": "Size",
             "mobile_x": "Left / right",
             "mobile_y": "Up / down",
-            "mobile_zoom": "Zoom",
         }
         help_texts = {
             "photo_size": "Height of the photo, % of the cover's height.",
             "photo_x": "Its left edge from the middle of the screen, % of the cover's height "
             "(minus: further left).",
             "photo_y": "Its top edge, % of the cover's height (minus: higher).",
-            "mobile_x": "The photo fills the phone screen: which part stays in view "
-            "(0 left, 100 right).",
-            "mobile_y": "Moves the photo up or down, % of the screen's height (minus: higher).",
-            "mobile_zoom": "100: the whole height of the photo; less: smaller (it still fills the width).",
+            "mobile_zoom": "Height of the photo in the phone cover card, % of the card's height "
+            "(100: the whole photo).",
+            "mobile_x": "Its left edge, % of the card's width (minus: further left).",
+            "mobile_y": "Its top edge, % of the card's height (minus: higher).",
         }
         widgets = {
             "photo_size": _slider(40, 300, "h"),
             "photo_x": _slider(-300, 200, "x"),
             "photo_y": _slider(-100, 100, "y"),
-            "mobile_x": _slider(0, 100, "mx"),
-            "mobile_y": _slider(-100, 100, "my"),
-            "mobile_zoom": _slider(20, 250, "mz"),
+            "mobile_zoom": _slider(40, 300, "mz"),
+            "mobile_x": _slider(-200, 100, "mx"),
+            "mobile_y": _slider(-200, 100, "my"),
         }
 
     def clean_month(self):
@@ -411,4 +409,4 @@ class MagazineCoverForm(forms.ModelForm):
         return ContentFile(data, name="cover.webp")
 
 
-COVER_MAX_WIDTH = 2000
+COVER_MAX_WIDTH = 3200  # wide enough for a 3:1 cover photo on large screens

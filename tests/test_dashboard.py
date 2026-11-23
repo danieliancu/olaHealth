@@ -122,13 +122,24 @@ def test_chat_page_is_the_active_tab(member_client):
 @pytest.mark.django_db
 def test_learn_index_topic_and_article(client):
     html = client.get(reverse("learn")).content.decode()
-    # The cover: 4 topics in their places (left: topics 1 and 4, right: 3 and 2).
-    topics = re.findall(r'class="mag-topic" href="/learn/topic/([\w-]+)/"', html)
-    assert topics == ["labels", "allergens", "ingredients", "scores"]
-    assert 'href="/learn/nutri-score/">Nutri-Score, explained</a>' in html
-    assert html.count('class="mag-title mag-lead"') == 1
-    assert 'action="/learn/search/"' in html and 'style="' not in html
-    assert "Latest" not in html and "News" not in html
+    # The cover: "Magazine", the tagline, the topic pills (All + every topic, in order),
+    # Editor's picks (3), "Explore the latest" (4) and the phone cover card.
+    assert ">Foodo Magazine</h1>" in html and "Good food, clearly understood" not in html
+    # The topics: in the phone cover card (each title on two lines) and listed on desktop.
+    card = html.split('class="mag-issue-card"')[1].split("</nav>")[0]
+    topics = re.findall(r'href="/learn/topic/([\w-]+)/"', card)
+    assert topics == ["labels", "scores", "ingredients", "allergens"]
+    assert "<span>Reading<br>the label</span>" in card and "<span>Allergens</span>" in card
+    listed = html.split('class="mag-topic-list"')[1].split("</ul>")[0]
+    assert re.findall(r'href="/learn/topic/([\w-]+)/"', listed) == topics
+    assert ">All<" not in html
+    picks = html.split('id="mag-picks-h"')[1].split("</section>")[0]
+    latest = html.split('id="mag-latest-h"')[1].split("</section>")[0]
+    assert picks.count('class="mag-pick"') == 3 and latest.count('class="mag-card"') == 4
+    assert "min read" in picks and "<img" in picks  # picks: photo and reading time
+    assert "mag-card-img" in latest and "min read" not in latest  # photo on desktop only
+    assert "FOODO" not in html  # the card holds only the photo and the topics
+    assert 'style="' not in html  # no inline styles (CSP)
     r = client.get(reverse("learn") + "?topic=allergens")
     assert r.status_code == 301 and r["Location"] == "/learn/topic/allergens/"
     html = client.get(reverse("learn-topic", args=["allergens"])).content.decode()
@@ -245,27 +256,32 @@ def test_achievements_show_an_even_number_on_desktop(member, yogurt):
 
 
 @pytest.mark.django_db
-def test_magazine_cover_titles_follow_featured_articles(client):
+def test_magazine_picks_are_editors_picks_and_latest_are_newest(client):
     from core.models import LearnArticle
 
-    def cover_titles(topic):
+    def slugs(section):
         html = client.get(reverse("learn")).content.decode()
-        block = html.split(f'href="/learn/topic/{topic}/"')[1].split("mag-slot")[0]
-        return re.findall(r'class="mag-title[^"]*" href="/learn/([\w-]+)/"', block)
+        block = html.split(f'id="mag-{section}-h"')[1].split("</section>")[0]
+        return re.findall(r'class="mag-(?:pick|card)" href="/learn/([\w-]+)/"', block)
 
-    # No featured article in Allergens: its newest article shows.
-    LearnArticle.objects.filter(topic__key="allergens").update(featured=False)
-    newest = LearnArticle.objects.filter(topic__key="allergens").latest("published_at")
-    assert cover_titles("allergens") == [newest.slug]
-    # At most 2 per topic, featured only, never unpublished ones.
-    labels = LearnArticle.objects.filter(topic__key="labels")
-    labels.update(featured=True)
-    shown = cover_titles("labels")
-    assert len(shown) == min(2, labels.count())
-    hidden = labels.get(slug=shown[0])
+    published = LearnArticle.objects.filter(published=True)
+    published.update(editors_pick=False)
+    chosen = list(published.order_by("published_at")[:2])  # two older articles, picked
+    LearnArticle.objects.filter(pk__in=[a.pk for a in chosen]).update(editors_pick=True)
+    picks = slugs("picks")
+    assert picks[:2] == [a.slug for a in sorted(chosen, key=lambda a: a.published_at, reverse=True)]
+    assert len(picks) == 3  # topped up with the newest article
+    latest = slugs("latest")
+    # The newest articles that are not picks first; only when there are too few others, the
+    # newest picks fill the remaining places.
+    order = [a.slug for a in published.order_by("-published_at")]
+    expected = ([s for s in order if s not in picks] + [s for s in order if s in picks])[:4]
+    assert len(latest) == 4 and latest == expected
+    # Unpublished articles never show.
+    hidden = LearnArticle.objects.get(slug=picks[0])
     hidden.published = False
     hidden.save()
-    assert hidden.slug not in cover_titles("labels")
+    assert hidden.slug not in slugs("picks") + slugs("latest")
 
 
 @pytest.mark.django_db
@@ -294,6 +310,10 @@ def test_daily_summary_day_arrows(member_client, member):
 def test_magazine_search_suggestions(client):
     html = client.get(reverse("learn")).content.decode()
     assert 'hx-get="/learn/suggest/"' in html and 'id="mag-suggest"' in html
+    assert html.index('class="mag-search"') < html.index('id="mag-latest-h"')
+    # Desktop: a search button beside "Explore the latest", to the search page.
+    head = html.split('class="mag-latest-head"')[1].split("</div>")[0]
+    assert 'class="mag-search-btn" href="/learn/search/"' in head
     assert client.get(reverse("learn-suggest"), {"q": "s"}).content.decode().strip() == ""
     html = client.get(reverse("learn-suggest"), {"q": "sugar"}).content.decode()
     titles = re.findall(r'class="mag-suggest-title">([^<]+)<', html)

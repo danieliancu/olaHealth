@@ -5,7 +5,7 @@
   <li><a class="suggest-item" href="{{ p.link }}">
     {% if p.front_image_url %}<img class="suggest-thumb" src="{{ p.front_image_url|img }}" alt="" width="40" height="40">{% else %}<img class="suggest-thumb" src="{% asset 'img/placeholder' %}" alt="" width="40" height="40">{% endif %}
     <span class="suggest-text"><span class="suggest-name">{{ p.name|default:_("Unnamed product") }}</span><span class="suggest-meta">{{ p.brand }}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</span></span>
-    {% if p.nutriscore_grade %}<span class="grade grade-sm grade-{{ p.nutriscore_grade }}"><span class="sr-only">Nutri-Score </span>{{ p.nutriscore_grade|upper }}</span>{% endif %}
+    {% if p.foodo_value is not None %}<span class="foodo-chip" aria-label="{% blocktranslate with v=p.foodo_value %}Foodo Score {{ v }} out of 100{% endblocktranslate %}">{{ p.foodo_value }}<small>/100</small></span>{% endif %}
   </a></li>
   {% empty %}
   <li class="suggest-item" aria-disabled="true"><span class="suggest-empty">{% blocktranslate %}No products match “{{ q }}”{% endblocktranslate %}</span></li>

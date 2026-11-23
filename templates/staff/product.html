@@ -42,10 +42,11 @@
 {% endif %}
 
 <section class="card">
-  <h2>Foodo Score v2{% if not foodo_score_public %} (not public){% endif %}</h2>
+  <h2>Foodo Score</h2>
   {% with sc=foodo_score %}
   <ul class="staff-facts">
-    <li>Status: <strong>{{ sc.status }}</strong> ({{ sc.version }}){% if sc.status == "ok" %}: Nutri-Score {{ sc.nutriscore.grade|upper }}, {{ sc.nutriscore.points|default_if_none:"no" }} points, {{ sc.nutriscore.version }} algorithm{% endif %}</li>
+    <li>Status: <strong>{{ sc.status }}</strong> ({{ sc.version }}, {{ sc.foodo.formula }}){% if sc.status == "ok" %}: <strong>{{ sc.foodo.value }}/100</strong> (band {{ sc.foodo.band }}){% endif %}</li>
+    <li>Nutri-Score: {{ sc.nutriscore.grade|upper|default:"—" }}, {{ sc.nutriscore.points|default_if_none:"—" }} points, {{ sc.nutriscore.version|default:"—" }} algorithm, category {{ sc.nutriscore.category|default:"unknown" }}</li>
     {% for r in sc.reasons %}<li>{{ r.code }}: {{ r.text }}</li>{% endfor %}
     <li>NOVA: {{ sc.separate.nova.status }}{% if sc.separate.nova.group %} (group {{ sc.separate.nova.group }}){% endif %}; additives: {{ sc.separate.additives.status }}{% if sc.separate.additives.count is not None %} ({{ sc.separate.additives.count }}){% endif %}</li>
     <li>Missing: {{ sc.missing|join:", "|default:"—" }}</li>

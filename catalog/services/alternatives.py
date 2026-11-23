@@ -28,6 +28,7 @@ from django.core.cache import cache
 from django.urls import reverse
 
 from assessments.score import (
+    foodo_value,
     indicators_from_snapshots,
     is_better,
     score_for_revision,
@@ -105,13 +106,14 @@ def reference_categories(product: Product) -> list[str]:
 
 
 def search_off_cached(
-    category: str, country: str = UK, *, client: OFFClient | None = None
+    category: str, country: str | None = UK, *, client: OFFClient | None = None
 ) -> list[dict[str, Any]]:
-    """Raw OFF search results for (category, country), cached 24 h. ``[]`` on OFF errors."""
+    """Raw OFF search results for (category, country), cached 24 h. ``[]`` on OFF errors.
+    Without a country (not detected), all countries."""
     from catalog.services.lookup import off_circuit_open
 
     # v2: results now carry the Nutri-Score version; older cached results did not.
-    key = f"alternatives:off-search:v2:{country}:{category}"[:250]
+    key = f"alternatives:off-search:v2:{country or 'world'}:{category}"[:250]
     cached = cache.get(key)
     if cached is not None:
         return cached
@@ -119,7 +121,7 @@ def search_off_cached(
         return []
     try:
         products = (client or default_client()).search(
-            category, country, page_size=SEARCH_PAGE_SIZE
+            category, country or "", page_size=SEARCH_PAGE_SIZE
         )
     except OFFError as exc:
         logger.info("OFF search failed for %s/%s: %s", category, country, exc.kind)
@@ -255,17 +257,21 @@ def alternatives(
     user=None,
     limit: int = 3,
     *,
-    country: str = UK,
+    country: str | None = UK,
     client: OFFClient | None = None,
 ) -> list[dict[str, Any]]:
-    """Up to ``limit`` products with a strictly better official Nutri-Score grade in the same
-    Nutri-Score version, best grade first.
+    """Up to ``limit`` better products listed for ``country`` on Open Food Facts.
+
+    ``by="foodo"`` (Foodo Score shown): only the product's own commercial category, the same
+    Nutri-Score version and calculation category, a strictly higher Foodo Score (a tie after
+    rounding is excluded), highest first. ``by="grade"`` (public, before the Foodo Score is
+    public): a strictly better official letter, same version and category; the parent
+    category is tried when the category has too few.
 
     Each item: ``source`` ("local" or "off"), ``product_id`` (local) / ``off_code``,
-    ``name``, ``brand``, ``quantity``, ``image``, ``url``, ``grade`` and ``reference_grade``
-    (official Nutri-Score letters), ``nutriscore_version``, ``score_detail`` (the full
-    ``score.v2`` result), ``category``, ``advantage`` (main one), ``advantages`` and
-    ``trade_offs`` (lists of short sentences).
+    ``name``, ``brand``, ``quantity``, ``image``, ``url``, ``foodo`` (0–100), ``grade`` and
+    ``reference_grade`` (official letters), ``nutriscore_version``, ``score_detail`` (the full
+    result), ``category``, ``advantage`` (main one), ``advantages`` and ``trade_offs``.
     """
     from catalog.services.catalog_mode import local_catalogue_active
     from myola.page import facts_from_product
@@ -283,18 +289,18 @@ def alternatives(
     prefs, avoid_ids, avoid_codes = _user_filters(user)
     own_code = off_normalize(product.off_code) if product.off_code else None
 
+    categories = reference_categories(product)[:1]  # the same commercial category only
     chosen: dict[str, dict[str, Any]] = {}
     seen: set[str] = {str(product.pk)} | ({own_code} if own_code else set())
-    for level, category in enumerate(reference_categories(product)):
+    for level, category in enumerate(categories):
         candidates: list[dict[str, Any]] = []
+        local = Product.objects.filter(
+            categories__contains=[category], current_revision__isnull=False, listable=True
+        )
+        if country:
+            local = local.filter(countries__contains=[country])
         local = (
-            Product.objects.filter(
-                categories__contains=[category],
-                countries__contains=[country],
-                current_revision__isnull=False,
-                listable=True,
-            )
-            .exclude(pk=product.pk)
+            local.exclude(pk=product.pk)
             .select_related("current_revision")
             .prefetch_related("current_revision__assessments")
             .order_by("-completeness", "name")[:local_limit]
@@ -330,12 +336,7 @@ def alternatives(
 
     ranked = sorted(
         chosen.values(),
-        key=lambda c: (
-            c["level"],
-            c["score"]["nutriscore"]["grade"],
-            c["facts"].name.lower(),
-            c["off_code"] or "",
-        ),
+        key=lambda c: (-foodo_value(c["score"]), c["facts"].name.lower(), c["off_code"] or ""),
     )[:limit]
     results = []
     for cand in ranked:
@@ -343,8 +344,10 @@ def alternatives(
         advantages, trade_offs = compare(ref_facts, ref_ind, facts, cand["indicators"])
         grade = cand["score"]["nutriscore"]["grade"]
         ref_grade = ref_score["nutriscore"]["grade"]
-        if not advantages:  # cannot happen (strictly better grade), kept as a safe default
-            advantages = [f"Nutri-Score {grade.upper()} vs {ref_grade.upper()}"]
+        if not advantages:
+            advantages = [
+                f"Foodo Score {foodo_value(cand['score'])}/100 vs {foodo_value(ref_score)}/100"
+            ]
         results.append(
             {
                 "source": cand["source"],
@@ -355,6 +358,8 @@ def alternatives(
                 "quantity": facts.quantity,
                 "image": facts.image,
                 "url": facts.url,
+                "foodo": foodo_value(cand["score"]),
+                "reference_foodo": foodo_value(ref_score),
                 "grade": grade,
                 "reference_grade": ref_grade,
                 "nutriscore_version": ref_score["nutriscore"]["version"],

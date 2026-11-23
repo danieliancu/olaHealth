@@ -24,7 +24,7 @@
     {% translate "Category" as l_cat %}{% translate "Country" as l_country %}{% translate "Completeness" as l_comp %}
     {% include "partials/facet_select.html" with name="category" label=l_cat options=facets.category value=form.category.value %}
     {% include "partials/facet_select.html" with name="country" label=l_country options=facets.country value=form.country.value %}
-    {% include "partials/facet_select.html" with name="nutriscore" label="Nutri-Score" options=facets.nutriscore value=form.nutriscore.value %}
+    {% translate "Foodo Score" as l_score %}{% include "partials/facet_select.html" with name="score" label=l_score options=facets.score value=form.score.value %}
     {% include "partials/facet_select.html" with name="completeness" label=l_comp options=facets.completeness value=form.completeness.value %}
   </div>
   <div class="sort-row">
@@ -34,9 +34,6 @@
   </div>
 </form>
 
-{% if mixed_versions %}
-  <p class="notice notice-warn">{% icon "triangle-alert" 18 %}<span>{% translate "Nutri-Score grades here come from different algorithm versions (2021 and 2023). They are listed by letter but are not directly comparable." %}</span></p>
-{% endif %}
 
 {% include "partials/compare_link.html" %}
 <p class="caption" role="status">{% blocktranslate count counter=page.paginator.count %}{{ counter }} product{% plural %}{{ counter }} products{% endblocktranslate %}</p>
@@ -48,7 +45,6 @@
       <a href="{% if diary %}{{ p.diary_url }}{% else %}{% url 'product' p.pk %}{% endif %}" class="product-link">{{ p.name|default:_("Unnamed product") }}</a>{% if p.quality_issues %} <span class="partial quality-pill" title="{{ p.quality_labels|join:', ' }}">{% translate "Incomplete data" %}</span>{% endif %}
       <p class="meta">{% if p.brand %}{{ p.brand }}{% endif %}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</p>
       <p class="scores">
-        {% if p.nutriscore_grade %}<span class="grade grade-sm grade-{{ p.nutriscore_grade }}" title="Nutri-Score {{ p.nutriscore_grade|upper }}{% if p.nutriscore_version %} ({{ p.nutriscore_version }}){% endif %}"><span class="sr-only">Nutri-Score </span>{{ p.nutriscore_grade|upper }}</span>{% endif %}
         {% if p.nova_group %}<span class="processing processing-{{ p.nova_group }}"><span class="dot" aria-hidden="true"></span>{{ p.nova_group|processing }}</span>{% endif %}
       </p>
       {% include "partials/card_actions.html" %}

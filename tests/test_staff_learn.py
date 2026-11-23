@@ -168,14 +168,14 @@ def test_magazine_cover_month_photo_and_place(editor, client, settings, tmp_path
 
     settings.MEDIA_ROOT = tmp_path
     html = client.get(reverse("learn")).content.decode()
-    assert "<span data-cover-month>November 2026</span>" in html  # from the migration
-    assert "cover-head.webp" in html  # the built-in photo and its head cut-out
+    assert "data-cover-month" not in html  # the month is no longer shown
+    assert "img/learn/cover.webp" in html and "cover-head" not in html  # the built-in photo
 
     buf = io.BytesIO()
     Image.new("RGB", (1400, 626), "#0e290d").save(buf, "PNG")
     photo = SimpleUploadedFile("c.png", buf.getvalue(), content_type="image/png")
     data = {"month": "2027-01", "photo_size": "100", "photo_x": "-112", "photo_y": "4",
-            "mobile_x": "65", "mobile_y": "20", "mobile_zoom": "110"}  # fmt: skip
+            "mobile_zoom": "120", "mobile_x": "-10", "mobile_y": "-5"}  # fmt: skip
     r = client.post(reverse("staff:learn-covers"), {**data, "image": photo})
     assert r.status_code == 302
     assert MagazineCover.objects.count() == 1  # one issue, no archive
@@ -183,20 +183,59 @@ def test_magazine_cover_month_photo_and_place(editor, client, settings, tmp_path
     assert cover.month.isoformat() == "2027-01-01" and cover.image.name.endswith(".webp")
 
     html = client.get(reverse("learn")).content.decode()
-    assert "<span data-cover-month>January 2027</span>" in html
-    assert "cover-head.webp" not in html and 'src="/learn/cover/photo/?v=' in html
+    assert 'class="mag-issue-card"' in html  # the phone cover card
+    assert "img/learn/cover.webp" not in html and 'src="/learn/cover/photo/?v=' in html
     assert client.get(reverse("learn-cover-image"))["Content-Type"] == "image/webp"
     css = client.get(reverse("learn-cover-style")).content.decode()
-    assert (
-        css == ".mag-cover{--photo-h:100;--photo-x:-112;--photo-y:4;--m-x:65;--m-y:20;--m-zoom:110}"
+    assert css == (
+        ".mag-cover{--photo-h:100;--photo-x:-112;--photo-y:4;--m-zoom:120;--m-x:-10;--m-y:-5}"
     )
 
     r = client.post(reverse("staff:learn-covers"), {**data, "photo_size": "900"})
     assert r.status_code == 200  # out of range: not saved
     page = client.get(reverse("staff:learn-covers")).content.decode()
-    assert 'form="cover-form"' in page and 'data-photo="mx"' in page
+    assert 'form="cover-form"' in page and 'data-photo="x"' in page
+    assert 'data-photo="mz"' in page  # the photo in the phone cover card
     # The phone preview: the only page that may be framed, by this site only.
     r = client.get(reverse("staff:learn-cover-preview"))
     assert "frame-ancestors 'self'" in r["Content-Security-Policy"]
     assert r["X-Frame-Options"] == "SAMEORIGIN"
     assert "frame-ancestors 'none'" in client.get(reverse("learn"))["Content-Security-Policy"]
+
+
+@pytest.mark.django_db
+def test_set_cover_photo_command_imports_like_an_upload(settings, tmp_path):
+    import io
+
+    from django.core.management import call_command
+    from PIL import Image
+
+    from core.models import MagazineCover
+    from staff.models import StaffAction
+
+    settings.MEDIA_ROOT = tmp_path
+    for name in ("first.png", "second.png"):
+        img = Image.new("RGB", (3000, 2000), "#1d5530")
+        buf = io.BytesIO()
+        img.save(buf, "PNG")
+        (tmp_path / name).write_bytes(buf.getvalue())
+    call_command("set_cover_photo", str(tmp_path / "first.png"))
+    first = MagazineCover.load().image.name
+    assert first.endswith(".webp")
+    call_command("set_cover_photo", str(tmp_path / "second.png"), "--fit")
+    cover = MagazineCover.load()
+    assert cover.image.name != first and not cover.image.storage.exists(first)  # no orphan
+    with cover.image.open("rb") as fh:
+        assert Image.open(fh).size == (3000, 2000)  # WebP, never enlarged (cap: 3200 px)
+    assert (cover.photo_size, cover.photo_x, cover.photo_y) == (100, -75, 0)
+    assert StaffAction.objects.filter(action="magazine_cover_save").count() == 2
+
+
+def test_two_lines_filter():
+    from core.templatetags.ui import two_lines
+
+    assert two_lines("Allergens") == "Allergens"
+    assert two_lines("Reading the label") == "Reading<br>the label"
+    assert two_lines("Scores and processing") == "Scores and<br>processing"  # 10 | 10
+    assert two_lines("Ingredients and additives") == "Ingredients<br>and additives"
+    assert two_lines("<b>x</b> y") == "&lt;b&gt;x&lt;/b&gt;<br>y"  # escaped

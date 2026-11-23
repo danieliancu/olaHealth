@@ -39,7 +39,7 @@
           <span class="ap-text">
             <strong>{{ p.name|default:_("Unnamed product") }}</strong>
             {% if p.brand %}<small>{{ p.brand }}</small>{% endif %}
-            {% if p.nutriscore_grade %}<span class="ap-grade grade grade-sm grade-{{ p.nutriscore_grade }}" title="Nutri-Score {{ p.nutriscore_grade|upper }}">{{ p.nutriscore_grade|upper }}</span>{% endif %}
+            {% if p.foodo_value is not None %}<span class="foodo-chip" aria-label="{% blocktranslate with v=p.foodo_value %}Foodo Score {{ v }} out of 100{% endblocktranslate %}">{{ p.foodo_value }}<small>/100</small></span>{% endif %}
           </span>
         </a>
         <a class="ap-ask" href="{% url 'chat' %}?context=product:{{ p.pk }}" aria-label="{% blocktranslate with name=p.name|default:_('this product') %}Ask Foodo about {{ name }}{% endblocktranslate %}" title="{% translate 'Ask Foodo about this product' %}">{% icon "message-circle" 18 %}</a></li>{% endfor %}

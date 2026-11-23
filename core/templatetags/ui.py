@@ -220,6 +220,23 @@ def breakable(text) -> str:
 
 
 @register.filter
+def two_lines(text):
+    """A title of more than one word on two lines, split where the two lines are most even
+    ("Reading the label" -> "Reading<br>the label"); one word stays as it is. Escaped."""
+    from django.utils.html import escape
+
+    words = str(text or "").split()
+    if len(words) < 2:
+        return escape(" ".join(words))
+    total = len(" ".join(words))
+    best = min(
+        range(1, len(words)),
+        key=lambda i: (abs(len(" ".join(words[:i])) * 2 - total), i),
+    )
+    return format_html("{}<br>{}", " ".join(words[:best]), " ".join(words[best:]))
+
+
+@register.filter
 def notif_parts(body) -> tuple[str, str]:
     """A notification body split into what every screen shows and the detail shown only on
     wider screens: '“Title”: a 4-minute read in Topic.' -> ('“Title”', ': a 4-minute read…')."""

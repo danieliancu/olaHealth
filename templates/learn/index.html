@@ -1,15 +1,13 @@
 {% extends "base.html" %}
 {% load i18n ui static %}
-{% block title %}{% translate "Magazine" %}{% endblock %}
-{% block head %}<meta name="description" content="{% translate 'Food news and short, calm reads: Nutri-Score, NOVA, E numbers, allergens and hidden sugar.' %}">
+{% block title %}{% translate "Foodo Magazine" %}{% endblock %}
+{% block head %}<meta name="description" content="{% translate 'Foodo Magazine: short, calm reads on food labels, scores, processing, E numbers, allergens and hidden sugar.' %}">
 <link rel="preload" href="{% static 'fonts/sourceserif4-latin-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="{% static 'fonts/montserrat-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
 {% if cover_style_url %}<link rel="stylesheet" href="{{ cover_style_url }}">{% endif %}{% endblock %}
 {% block body_class %}is-mag-page{% endblock %}
 {% block content %}
-{# The Magazine cover: fixed, no scrolling. Topics keep their places; their titles are the featured articles. #}
+{# The Magazine cover: phones, the "FOODO" cover card and lists; desktop, the photo with glass cards. #}
 <div class="mag-stage">
-  <div class="mag-bg" aria-hidden="true"></div>
   {% include "learn/partials/cover.html" %}
 </div>
 {% endblock %}

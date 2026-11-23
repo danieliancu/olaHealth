@@ -150,7 +150,7 @@ suggest new calorie, weight or nutrient targets, and never give doses, diagnoses
 treatment. For health questions suggest a GP, pharmacist or registered dietitian.
 - Never claim a product is safe for an allergy or intolerance: the label is the reference.
 - To suggest something to buy or eat, only use "available_products" and say why from their \
-data (for example Nutri-Score); never other products.
+data (for example the Foodo Score, out of 100); never other products.
 - Calm and kind: no judgement about what or how much they ate. If "sensitive" is true, never \
 mention calories, weight or targets.
 - Reply in the language of the user's question (British English when unsure). At most 4 short \

@@ -3,9 +3,10 @@
 const preview = document.querySelector("[data-cover-preview]");
 if (preview) {
   const phone = document.querySelector("[data-cover-phone]");
-  const vars = { h: "--photo-h", x: "--photo-x", y: "--photo-y", mx: "--m-x", my: "--m-y", mz: "--m-zoom" };
-  const defaults = { h: 133, x: -26, y: -7, mx: 50, my: 0, mz: 100 };
-  const groups = { desktop: ["h", "x", "y"], phone: ["mx", "my", "mz"] };
+  const vars = { h: "--photo-h", x: "--photo-x", y: "--photo-y", mz: "--m-zoom", mx: "--m-x", my: "--m-y" };
+  // A 3:2 photo over the whole 3:2 cover, and over the whole 3:2 phone card.
+  const defaults = { h: 100, x: -75, y: 0, mz: 100, mx: 0, my: 0 };
+  const groups = { desktop: ["h", "x", "y"], phone: ["mz", "mx", "my"] };
   const sliders = [...document.querySelectorAll("input[data-photo]")];
   let photoUrl = "";
   let monthText = "";
@@ -29,11 +30,11 @@ if (preview) {
   };
   const setPhoto = () =>
     roots().forEach((r) => {
-      const img = r.querySelector("[data-cover-photo]");
-      if (!photoUrl || !img) return;
-      img.removeAttribute("srcset");
-      img.src = photoUrl;
-      r.querySelector(".mag-head")?.remove(); // the cut-out belongs to the built-in photo
+      if (!photoUrl) return;
+      r.querySelectorAll("[data-cover-photo]").forEach((img) => {
+        img.removeAttribute("srcset");
+        img.src = photoUrl;
+      });
     });
   const setMonth = () =>
     roots().forEach((r) => {
@@ -45,6 +46,12 @@ if (preview) {
     setPhoto();
     setMonth();
   };
+
+  // The desktop cover is drawn at 1440 × 960 and scaled to the preview box.
+  const inner = preview.querySelector(".mag-preview-inner");
+  const fit = () => inner?.style.setProperty("--scale", String(preview.clientWidth / 1440));
+  fit();
+  if ("ResizeObserver" in window) new ResizeObserver(fit).observe(preview);
 
   sliders.forEach((s) => s.addEventListener("input", () => apply(s)));
   phone?.addEventListener("load", refresh);

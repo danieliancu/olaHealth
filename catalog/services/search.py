@@ -14,13 +14,22 @@ from catalog.services.revisions import fold
 SORTS = {
     "relevance": "Relevance",
     "name": "Name",
-    "nutriscore": "Nutri-Score (A first)",
+    "score": "Foodo Score (highest first)",
     "completeness": "Most complete data",
     "updated": "Recently updated",
 }
 COMPLETENESS = {"high": (80, 101), "medium": (50, 80), "low": (0, 50)}
+# Foodo Score ranges (assessments/foodo.py display bands); "none": no score.
+SCORE_RANGES = {"80": (80, 101), "60": (60, 80), "40": (40, 60), "20": (20, 40), "0": (0, 20)}
 # Every possible value of the fixed facets; only those with products are shown.
-NUTRISCORE_OPTIONS = {"a": "A", "b": "B", "c": "C", "d": "D", "e": "E", "none": "No Nutri-Score"}
+SCORE_OPTIONS = {
+    "80": "80–100",
+    "60": "60–79",
+    "40": "40–59",
+    "20": "20–39",
+    "0": "0–19",
+    "none": "No score",
+}
 COMPLETENESS_OPTIONS = {"high": "80% or more", "medium": "50–79%", "low": "Below 50%"}
 
 
@@ -29,7 +38,7 @@ class SearchParams:
     q: str = ""
     category: str = ""
     country: str = ""
-    nutriscore: str = ""
+    score: str = ""
     completeness: str = ""
     sort: str = "relevance"
     # Staff only: also products kept out of listings for missing name or nutrition data.
@@ -48,11 +57,12 @@ def _filtered(params: SearchParams, skip: str = "") -> QuerySet[Product]:
         qs = qs.filter(categories__contains=[params.category])
     if params.country and skip != "country":
         qs = qs.filter(countries__contains=[params.country])
-    if skip != "nutriscore":
-        if params.nutriscore in ("a", "b", "c", "d", "e"):
-            qs = qs.filter(nutriscore_grade=params.nutriscore)
-        elif params.nutriscore == "none":
-            qs = qs.filter(nutriscore_grade="")
+    if skip != "score":
+        if params.score in SCORE_RANGES:
+            low, high = SCORE_RANGES[params.score]
+            qs = qs.filter(foodo_value__gte=low, foodo_value__lt=high)
+        elif params.score == "none":
+            qs = qs.filter(foodo_value__isnull=True)
     if params.completeness in COMPLETENESS and skip != "completeness":
         low, high = COMPLETENESS[params.completeness]
         qs = qs.filter(completeness__gte=low, completeness__lt=high)
@@ -85,11 +95,9 @@ def search_products(params: SearchParams) -> QuerySet[Product]:
     sort = params.sort if params.sort in SORTS else "relevance"
     if sort == "relevance" and term:
         qs = qs.order_by("-similarity", "name", "id")
-    elif sort == "nutriscore":
-        # Empty grade (unknown / not current) sorts last; ties broken by version, then name.
-        qs = qs.annotate(
-            grade_sort=Func(F("nutriscore_grade"), Value(""), function="NULLIF")
-        ).order_by(F("grade_sort").asc(nulls_last=True), "nutriscore_version", "name", "id")
+    elif sort == "score":
+        # No score (unknown, not applicable, not current...) sorts last.
+        qs = qs.order_by(F("foodo_value").desc(nulls_last=True), "name", "id")
     elif sort == "completeness":
         qs = qs.order_by("-completeness", "name", "id")
     elif sort == "updated":
@@ -103,6 +111,7 @@ def search_products(params: SearchParams) -> QuerySet[Product]:
         "quantity",
         "nutriscore_grade",
         "nutriscore_version",
+        "foodo_value",
         "nova_group",
         "completeness",
         "front_image_url",
@@ -150,20 +159,21 @@ def _tag_facet(params: SearchParams, field: str, skip: str, names_model) -> list
 
 def facets(params: SearchParams) -> dict[str, list[FacetOption]]:
     """Filter options that match the products we have now, given the other filters."""
-    grades = dict(
-        _filtered(params, "nutriscore")
-        .values_list("nutriscore_grade")
-        .annotate(n=Count("id"))
-        .order_by()
+    ranges = _filtered(params, "score").aggregate(
+        none=Count("id", filter=Q(foodo_value__isnull=True)),
+        **{
+            f"r{key}": Count("id", filter=Q(foodo_value__gte=low, foodo_value__lt=high))
+            for key, (low, high) in SCORE_RANGES.items()
+        },
     )
-    nutriscore = [
+    score = [
         FacetOption(
             value,
             label,
-            grades.get("" if value == "none" else value, 0),
-            params.nutriscore == value,
+            ranges["none" if value == "none" else f"r{value}"],
+            params.score == value,
         )
-        for value, label in NUTRISCORE_OPTIONS.items()
+        for value, label in SCORE_OPTIONS.items()
     ]
     buckets = _filtered(params, "completeness").aggregate(
         **{
@@ -178,7 +188,7 @@ def facets(params: SearchParams) -> dict[str, list[FacetOption]]:
     return {
         "category": _tag_facet(params, "categories", "category", Category),
         "country": _tag_facet(params, "countries", "country", Country),
-        "nutriscore": [o for o in nutriscore if o.count or o.selected],
+        "score": [o for o in score if o.count or o.selected],
         "completeness": [o for o in completeness if o.count or o.selected],
     }
 

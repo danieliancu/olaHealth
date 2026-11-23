@@ -41,8 +41,8 @@ def _describe(product) -> str:
     brand = f" ({product.brand})" if product.brand else ""
     lines = [f"{name}{brand}"]
     details = []
-    if getattr(product, "nutriscore_grade", ""):
-        details.append(f"Nutri-Score {product.nutriscore_grade.upper()}")
+    if getattr(product, "foodo_value", None) is not None:
+        details.append(f"Foodo Score {product.foodo_value}/100")
     nova = getattr(product, "nova_group", None)
     if nova in PROCESSING:
         details.append(PROCESSING[nova])

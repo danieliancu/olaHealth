@@ -13,15 +13,45 @@
 <section class="card">
   <h2>{% translate "Indicators" %}</h2>
   <ul>
-    <li>{% translate "Nutri-Score and NOVA are imported from Open Food Facts, with the Nutri-Score algorithm version (2021 or 2023) when available." %}</li>
-    {% if foodo_score_public %}<li id="foodo-score">{% translate "Foodo Score is the official Nutri-Score (grade A to E and its points) that Open Food Facts computed for the product, with the algorithm version. AskFoodo adds no weights of its own and does not combine it into a 0–100 total, because no public methodology combines Nutri-Score, processing and additives. It is shown only when the Nutri-Score is known, current, versioned and not contradicted by the package; otherwise the page says why. Grades of different versions are never compared. Processing (NOVA), additives, data completeness and your own diets, allergies and goals are shown separately and never change it. It is an orientative indicator, not a medical assessment, and it has not been validated clinically or by a nutrition professional." %}</li>{% endif %}
-    <li>{% translate "A Nutri-Score printed on the package is shown separately from the one computed by Open Food Facts." %}</li>
+    <li>{% translate "The Nutri-Score points, grade and algorithm version (2021 or 2023) and the NOVA group are imported from Open Food Facts. AskFoodo shows the Nutri-Score only as the Foodo Score (0–100), explained below." %}</li>
+    <li>{% translate "A Nutri-Score printed on the package is used only to check the data: when it disagrees with the one computed by Open Food Facts, no score is shown until the data is checked." %}</li>
     <li>{% translate "Each indicator shows whether data is available, missing, not applicable or conflicting, and whether it is up to date with Open Food Facts." %}</li>
     <li>{% translate "When our moderators correct nutrition facts or ingredients, indicators computed from the earlier data are marked “not current” instead of being shown as valid." %}</li>
     <li>{% translate "Missing information is never treated as zero, and the absence of listed allergens never means a product is allergen-free." %}</li>
-    <li>{% translate "The Compare page puts values side by side on the same basis (per 100 g or per 100 ml) and never designates a winner. Alternatives are the same kind of food with a better Nutri-Score in the same algorithm version." %}</li>
-    <li>{% translate "Grades of different Nutri-Score versions are never compared. Processing (NOVA) and additives are shown separately with their own explanation; additives are listed, not assessed." %}</li>
+    <li>{% translate "The Compare page puts values side by side on the same basis (per 100 g or per 100 ml) and never designates a winner. Alternatives are the same kind of food listed for your country on Open Food Facts, with a better score; availability in shops is unknown." %}</li>
+    <li>{% translate "Foodo Scores from different Nutri-Score versions or calculation categories are never ranked together. Processing (NOVA) and additives are shown separately with their own explanation; additives are listed, not assessed." %}</li>
     <li>{% translate "“Data completeness” measures how much key information is present. It is not a health rating." %}</li>
+  </ul>
+</section>
+
+<section class="card" id="foodo-score" aria-labelledby="foodo-h">
+  <h2 id="foodo-h">{% translate "Foodo Score" %}</h2>
+  <p>{% translate "The Foodo Score is AskFoodo’s conversion of the official Nutri-Score to a scale from 0 to 100, where 100 is the most favourable end and 0 the least. It uses the Nutri-Score points and grade that Open Food Facts computed for the product, with the algorithm version and the calculation category (general foods, cheese, red meat, fats, oils, nuts and seeds, drinks, water). It is an orientative indicator of nutritional quality per 100 g or 100 ml, not a medical assessment, and it has not been validated clinically or by a nutrition professional." %}</p>
+  <h3>{% translate "How it is calculated" %}</h3>
+  <ol>
+    <li>{% translate "The official grade band (A to E) is found from the Nutri-Score points, with the official thresholds of that version and category." %}</li>
+    <li>{% translate "Each grade has an AskFoodo display band: A 80–100, B 60–79, C 40–59, D 20–39, E 0–19. These bands are AskFoodo’s own choice for display." %}</li>
+    <li>{% translate "Inside the band, fewer Nutri-Score points give a higher score, in a straight line:" %} <code>foodo = L + (U − L) × (p_max − p) / (p_max − p_min)</code>. {% translate "L and U are the ends of the Foodo band, p the Nutri-Score points, p_min and p_max the lowest and highest official points of that grade for the category and version." %}</li>
+    <li>{% translate "The result is rounded once, to the nearest whole number, halves up. Water, graded A by its category, gets the middle of the A band (90)." %}</li>
+  </ol>
+  <p><strong>{% translate "Example:" %}</strong> {% translate "a general food (2023 algorithm) with 5 Nutri-Score points is grade C, whose official points run from 3 to 10. Foodo = 40 + (59 − 40) × (10 − 5) / (10 − 3) = 53.57, shown as 54/100." %}</p>
+  <h3>{% translate "Official thresholds used" %}</h3>
+  <div class="table-wrap"><table class="compare-table">
+    <thead><tr><th scope="col">{% translate "Version · category" %}</th><th scope="col">A</th><th scope="col">B</th><th scope="col">C</th><th scope="col">D</th><th scope="col">E</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">2023 · {% translate "general foods, cheese" %}</th><td>−17 … 0</td><td>1 … 2</td><td>3 … 10</td><td>11 … 18</td><td>19 … 55</td></tr>
+      <tr><th scope="row">2023 · {% translate "red meat products" %}</th><td>−12 … 0</td><td>1 … 2</td><td>3 … 10</td><td>11 … 18</td><td>19 … 55</td></tr>
+      <tr><th scope="row">2023 · {% translate "fats, oils, nuts and seeds" %}</th><td>−17 … −6</td><td>−5 … 2</td><td>3 … 10</td><td>11 … 18</td><td>19 … 55</td></tr>
+      <tr><th scope="row">2023 · {% translate "drinks" %}</th><td>{% translate "water only" %}</td><td>−18 … 2</td><td>3 … 6</td><td>7 … 9</td><td>10 … 54</td></tr>
+      <tr><th scope="row">2021 · {% translate "general foods, cheese, fats" %}</th><td>−15 … −1</td><td>0 … 2</td><td>3 … 10</td><td>11 … 18</td><td>19 … 40</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">{% translate "Sources: Nutri-Score Scientific Committee reports (2022 foods, 2023 drinks), the Nutri-Score Q&A of Santé publique France (June 2024) and the 2017 French decree, as implemented by Open Food Facts. Drinks under the older 2021 version are not converted yet; neither is any other version or category: those products show a short message instead of a score, as do products with missing, contradictory or not current Nutri-Score data." %}</p>
+  <h3>{% translate "What the score does not say" %}</h3>
+  <ul>
+    <li>{% translate "A difference of 10 Foodo points is not a clinical or percentage difference in how healthy a food is. The scale only places the official Nutri-Score result on 0–100 for easier reading." %}</li>
+    <li>{% translate "Scores are comparable only between products of the same calculation category and Nutri-Score version." %}</li>
+    <li>{% translate "Processing (NOVA), additives, allergens, portion size and your personal targets are not part of it; they are shown separately." %}</li>
   </ul>
 </section>
 

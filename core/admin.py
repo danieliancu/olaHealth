@@ -36,9 +36,9 @@ class LearnTopicAdmin(ModelAdmin):
 
 @admin.register(LearnArticle)
 class LearnArticleAdmin(ModelAdmin):
-    list_display = ["title", "topic", "minutes", "featured", "published", "updated_at"]
-    list_filter = ["topic", "featured", "published", "noindex"]
-    list_editable = ["featured", "published"]
+    list_display = ["title", "topic", "minutes", "editors_pick", "published", "updated_at"]
+    list_filter = ["topic", "editors_pick", "published", "noindex"]
+    list_editable = ["editors_pick", "published"]
     search_fields = ["title", "summary", "body", "seo_title", "meta_description"]
     prepopulated_fields = {"slug": ["title"]}
     readonly_fields = ["created_at", "updated_at"]
@@ -62,7 +62,10 @@ class LearnArticleAdmin(ModelAdmin):
                 "Keep the title under 70 and the description under 160 characters.",
             },
         ),
-        ("Publishing", {"fields": ["published", "featured", "order", "created_at", "updated_at"]}),
+        (
+            "Publishing",
+            {"fields": ["published", "editors_pick", "order", "created_at", "updated_at"]},
+        ),
     ]
 
     def get_view_on_site_url(self, obj=None):

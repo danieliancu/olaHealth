@@ -9,6 +9,7 @@ from catalog.models import Category
 from catalog.services.alternatives import alternatives, reference_categories
 from catalog.services.importer import import_off_product
 from off.client import OFFClient, OFFError
+from tests.nutri import nutriscore_fields
 
 BASE = "https://off.test"
 UK = "en:united-kingdom"
@@ -64,10 +65,12 @@ def test_partial_data_lists_missing_and_clamps():
 
 
 def test_score_for_product_uses_current_snapshots(db, off_payload):
-    product = import_off_product(off_payload())  # Nutri-Score B (2023, 1 point), NOVA 1
+    product = import_off_product(off_payload())  # 2023 general, 1 point (B band) -> 79, NOVA 1
     result = score_for_product(product)
-    assert result["version"] == "score.v2" and result["status"] == "ok"
+    assert result["version"] == "score.v3" and result["status"] == "ok"
     assert (result["nutriscore"]["grade"], result["nutriscore"]["points"]) == ("b", 1)
+    # General foods 2023, B band 1..2 -> 60 + 19·(2 − 1)/(2 − 1) = 79.
+    assert result["foodo"]["value"] == 79 and result["nutriscore"]["category"] == "general"
     assert result["separate"]["nova"]["group"] == 1 and result["missing"] == []
 
 
@@ -75,12 +78,12 @@ def test_score_for_product_uses_current_snapshots(db, off_payload):
 
 
 def make(off_payload, code, grade, nova, sugars, **changes):
+    ns = nutriscore_fields(grade, points=changes.pop("points", None))
     payload = off_payload(
         code=code,
         product_name=changes.pop("name", f"Yogurt {code[-3:]}"),
-        nutriscore_grade=grade,
         nova_group=nova,
-        nutriscore={},
+        **ns,
         countries_tags=changes.pop("countries_tags", [UK]),
         nutriments={"sugars_100g": sugars, "salt_100g": 0.1, "saturated-fat_100g": 2},
         nutrient_levels={"sugars": "high" if sugars > 12.5 else "low", "salt": "low"},
@@ -90,6 +93,7 @@ def make(off_payload, code, grade, nova, sugars, **changes):
 
 
 def off_item(code, grade, nova, sugars, **changes):
+    ns = nutriscore_fields(grade, points=changes.pop("points", None))
     return {
         "code": code,
         "product_name": changes.pop("name", f"OFF yogurt {code[-3:]}"),
@@ -102,8 +106,7 @@ def off_item(code, grade, nova, sugars, **changes):
         "allergens_tags": ["en:milk"],
         "traces_tags": [],
         "nutriments": {"sugars_100g": sugars, "salt_100g": 0.1},
-        "nutriscore_grade": grade,
-        "nutriscore_version": "2023",
+        **ns,
         "nova_group": nova,
         "nutrient_levels": {"sugars": "high" if sugars > 12.5 else "low"},
         "image_front_url": "https://images.openfoodfacts.org/x/front.jpg",
@@ -239,7 +242,7 @@ def test_restrictions_and_avoid_list(reference, off_payload, off_client, member)
         assert "peanuts" not in str(call.request.url)
 
 
-def test_parent_category_fallback(reference, off_client):
+def test_parent_category_is_not_used(reference, off_client):
     Category.objects.create(tag="en:yogurts", name="Yogurts", parents=["en:dairy-desserts"])
     assert reference_categories(reference) == ["en:yogurts", "en:dairy-desserts"]
     with respx.mock(assert_all_called=False) as mock:
@@ -265,11 +268,9 @@ def test_parent_category_fallback(reference, off_client):
             )
         )
         result = alternatives(reference, client=off_client)
-    assert [r["name"] for r in result] == ["Kefir"]
-    assert [c.request.url.params["categories_tags"] for c in route.calls] == [
-        "en:yogurts",
-        "en:dairy-desserts",
-    ]
+    # Only the product's own commercial category: the parent is never searched.
+    assert result == []
+    assert [c.request.url.params["categories_tags"] for c in route.calls] == ["en:yogurts"]
 
 
 def test_reference_without_enough_data(db, off_payload, off_client):
@@ -340,6 +341,59 @@ def test_broad_categories_only_give_no_alternatives(db, off_payload, off_client,
         assert alternatives(vague, client=off_client) == []
         html = client.get(reverse("product-alternatives", args=[vague.pk])).content.decode()
     assert not route.calls
-    assert "We haven&#x27;t found a suitable alternative yet." in html or (
-        "We haven't found a suitable alternative yet." in html
+    assert "We haven&#x27;t found a better alternative yet." in html or (
+        "We haven't found a better alternative yet." in html
     )
+
+
+# --- Ranking by Foodo Score (shown to staff now, to everyone after activation) -----------------
+
+
+def test_foodo_ranking_strictly_higher_same_category_highest_first(reference, off_client):
+    # Reference: D with 14 points (2023 general foods) -> 20 + 19·(18 − 14)/7 = 30.86 -> 31.
+    items = [
+        off_item("5000000000201", "d", 4, 14, name="Yogurt same score"),  # same score: excluded
+        off_item(
+            "5000000000202", "d", 4, 13, points=13, name="Yogurt score 34"
+        ),  # 20 + 19·5/7 = 33.57 -> 34
+        off_item("5000000000203", "c", 4, 5, name="Yogurt score 54"),  # 40 + 19·5/7 = 53.57 -> 54
+        off_item("5000000000204", "b", 4, 5, name="Yogurt score 79"),  # 60 + 19·1/1 = 79
+        off_item(  # a drink: other calculation category, never compared
+            "5000000000205",
+            "b",
+            1,
+            1,
+            name="Yogurt drink score 60",
+            **nutriscore_fields("b", category="beverage"),
+        ),
+    ]
+    with respx.mock(assert_all_called=False) as mock:
+        search_route(mock, items)
+        result = alternatives(reference, client=off_client, limit=10)
+    assert [(r["name"], r["foodo"]) for r in result] == [
+        ("Yogurt score 79", 79),
+        ("Yogurt score 54", 54),
+        ("Yogurt score 34", 34),
+    ]
+    assert all(r["reference_foodo"] == 31 for r in result)
+
+
+def test_without_a_reference_score_nothing_is_called_better(db, off_payload, off_client):
+    cache.clear()
+    product = make(off_payload, "5000000000001", "d", 4, 14, points=3)  # letter vs points clash
+    assert score_for_product(product)["status"] == "inconsistent"
+    with respx.mock(assert_all_called=False) as mock:
+        route = search_route(mock, [off_item("5000000000101", "a", 1, 3)])
+        assert alternatives(product, client=off_client) == []
+    assert route.call_count == 0
+
+
+def test_country_is_used_in_the_search_and_its_cache(reference, off_client):
+    with respx.mock(assert_all_called=False) as mock:
+        route = search_route(mock, [])
+        alternatives(reference, client=off_client, country="en:romania")
+        alternatives(reference, client=off_client, country="en:united-kingdom")
+        alternatives(reference, client=off_client, country="en:romania")  # cached
+        alternatives(reference, client=off_client, country=None)  # not detected: everywhere
+    sent = [c.request.url.params.get("countries_tags") for c in route.calls]
+    assert sent == ["en:romania", "en:united-kingdom", None]

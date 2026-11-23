@@ -1,18 +1,21 @@
 """Foodo Score.
 
-``score.v2`` (current): the official Nutri-Score that Open Food Facts computed for the
-product, with its algorithm version, or an explicit reason why there is none. NOVA and
-additives are returned beside it, never inside it. No weights of our own. See
-docs/assessment-rules.md, section "Foodo Score (score.v2)".
+``score.v3`` (current): "Foodo Score" x/100, AskFoodo's conversion of the official Nutri-Score
+points that Open Food Facts computed (``assessments.foodo``: official grade band from the
+points, for the algorithm version and calculation category, then AskFoodo display bands with
+linear interpolation). It keeps the original Nutri-Score points, grade, version and category,
+or gives an explicit reason why there is no value. NOVA, additives, allergens, portion and
+personal targets are never part of it. docs/assessment-rules.md, "Foodo Score (score.v3)".
 
-``score.v1`` (retired, :func:`foodo_score_v1`): a 0–100 total with our own weights. Kept for
-reference only; nothing user-facing uses it.
+``score.v2`` (retired): the official Nutri-Score letter only. ``score.v1`` (retired,
+:func:`foodo_score_v1`): a 0–100 total with our own weights; kept for reference only.
 
 :func:`foodo_score` is pure and deterministic: it reads indicator objects with the attributes
 of :class:`assessments.models.AssessmentSnapshot` (``indicator``, ``data_status``, ``value``,
 ``algorithm_version``, ``warnings``, ``origin`` and optionally
 ``invalidated_by_local_change``), so it accepts snapshots and
-:class:`assessments.rules.IndicatorSpec` alike, and touches no database.
+:class:`assessments.rules.IndicatorSpec` alike, plus OFF's ``nutriscore`` object (per-version
+results with the calculation-category flags), and touches no database.
 """
 
 from __future__ import annotations
@@ -22,7 +25,9 @@ import json
 from collections.abc import Iterable
 from typing import Any
 
-VERSION = "score.v2"
+from assessments import foodo
+
+VERSION = "score.v3"
 VERSION_V1 = "score.v1"
 
 GRADES = ("a", "b", "c", "d", "e")
@@ -32,11 +37,14 @@ OK = "ok"
 NOT_ENOUGH_DATA = "not_enough_data"
 NOT_APPLICABLE = "not_applicable"
 CONFLICTING = "conflicting"
+UNSUPPORTED = "unsupported"
+INCONSISTENT = "inconsistent"
 
 REASONS = {
-    "nutriscore_official": (
-        "Official Nutri-Score computed by Open Food Facts with the {version} algorithm. "
-        "It is an orientative indicator; the label on the product is the reference."
+    "foodo_converted": (
+        "AskFoodo's conversion of the official Nutri-Score computed by Open Food Facts "
+        "({version} algorithm, {category}). It is an orientative indicator; the label on the "
+        "product is the reference."
     ),
     "nutriscore_missing": (
         "Open Food Facts has no Nutri-Score for this product, so no score is shown."
@@ -54,10 +62,34 @@ REASONS = {
         "Open Food Facts ({computed}), so no score is shown until the data is checked."
     ),
     "nutriscore_version_unknown": (
-        "The Nutri-Score algorithm version is unknown, so the grade cannot be compared and no "
-        "score is shown."
+        "The Nutri-Score algorithm version is unknown, so no score is shown."
     ),
-    "nutriscore_points_missing": "Open Food Facts gives the grade but not the points.",
+    "category_unknown": (
+        "The Nutri-Score calculation category (food, drink, cheese, fat...) cannot be "
+        "identified from the data, so no score is shown."
+    ),
+    "category_version_unsupported": (
+        "AskFoodo does not convert this Nutri-Score version and category yet, so no score is shown."
+    ),
+    "nutriscore_points_missing": (
+        "Open Food Facts gives the Nutri-Score grade but not its points, so no score is shown."
+    ),
+    "points_out_of_range": (
+        "The Nutri-Score points are outside the official range for this category, so no score "
+        "is shown until the data is checked."
+    ),
+    "grade_mismatch": (
+        "The Nutri-Score grade does not match its points under the official thresholds, so no "
+        "score is shown until the data is checked."
+    ),
+}
+CATEGORY_LABELS = {
+    "general": "general foods",
+    "cheese": "cheese",
+    "red_meat": "red meat products",
+    "fats": "fats, oils, nuts and seeds",
+    "beverage": "beverages",
+    "water": "water",
 }
 
 
@@ -77,11 +109,12 @@ def _value(item: Any) -> dict[str, Any]:
     return item.value if isinstance(getattr(item, "value", None), dict) else {}
 
 
-def _points(value: Any) -> int | None:
+def _points(value: Any) -> int | float | None:
+    """The points as published (an int, or a float kept so a non-integer is caught later)."""
     if isinstance(value, bool) or not isinstance(value, int | float):
         return None
-    if isinstance(value, float):
-        return int(value) if value.is_integer() else None
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
     return value
 
 
@@ -112,7 +145,18 @@ def _additives(item: Any | None) -> dict[str, Any]:
     return {"status": "available", "tags": clean, "count": len(clean), **base}
 
 
-def _hash_inputs(items: list[Any | None]) -> str:
+def category_flags(nutriscore_data: Any, version: str) -> dict[str, Any] | None:
+    """OFF's calculation-category flags (``is_*``) of one Nutri-Score version, or ``None``."""
+    if not isinstance(nutriscore_data, dict):
+        return None
+    entry = nutriscore_data.get(version)
+    data = entry.get("data") if isinstance(entry, dict) else None
+    if not isinstance(data, dict):
+        return None
+    return {k: data[k] for k in sorted(data) if k.startswith("is_")}
+
+
+def _hash_inputs(items: list[Any | None], flags: dict[str, Any] | None) -> str:
     rows = [
         None
         if item is None
@@ -126,24 +170,38 @@ def _hash_inputs(items: list[Any | None]) -> str:
         }
         for item in items
     ]
-    blob = json.dumps(rows, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    blob = json.dumps(
+        {"indicators": rows, "category_flags": flags},
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
     return hashlib.sha256(blob.encode()).hexdigest()
 
 
-def foodo_score(indicators: Iterable[Any]) -> dict[str, Any]:
-    """``score.v2`` of one product from its indicators (pure, deterministic)."""
+def foodo_score(indicators: Iterable[Any], *, nutriscore_data: Any = None) -> dict[str, Any]:
+    """``score.v3`` of one product (pure, deterministic).
+
+    ``nutriscore_data`` is OFF's ``nutriscore`` object (keyed by version, each with ``data``
+    holding the calculation-category flags), from ``revision.off_payload`` or a raw OFF
+    product: the same normalisation for API, dump and search data.
+    """
     items = list(indicators)
     ns, nova, additives = (_first(items, n) for n in ("nutriscore", "nova", "additives"))
 
     value = _value(ns) if ns is not None else {}
     grade = str(value.get("grade") or "").lower().strip()
     version = str(getattr(ns, "algorithm_version", "") or "").strip() if ns else ""
+    flags = category_flags(nutriscore_data, version) if version else None
+    category = foodo.category_for(version, flags) if flags is not None else None
+    points = _points(value.get("score"))
     other_versions = value.get("other_versions")
     nutriscore: dict[str, Any] = {
         "status": ns.data_status if ns is not None else "missing_data",
-        "grade": None,
-        "points": None,
+        "grade": grade if grade in GRADES else None,  # original, kept for checking
+        "points": points,  # original
         "version": version or None,
+        "category": category,
         "source": OFF,
         "other_versions": dict(sorted(other_versions.items()))
         if isinstance(other_versions, dict)
@@ -151,6 +209,7 @@ def foodo_score(indicators: Iterable[Any]) -> dict[str, Any]:
         "packaging_grade": None,
         "warnings": list(getattr(ns, "warnings", None) or []) if ns is not None else [],
     }
+    result_foodo: dict[str, Any] = {"value": None, "band": None, "formula": foodo.FORMULA}
     reason_args: dict[str, str] = {}
     known = ("available", "conflicting", "not_applicable")
     if (
@@ -172,22 +231,29 @@ def foodo_score(indicators: Iterable[Any]) -> dict[str, Any]:
         reason_args = {"packaging": packaging.upper() or "?", "computed": grade.upper()}
     elif not version:
         status, code = NOT_ENOUGH_DATA, "nutriscore_version_unknown"
+    elif category is None:
+        status, code = UNSUPPORTED, "category_unknown"
+    elif (version, category) not in foodo.OFFICIAL:
+        status, code = UNSUPPORTED, "category_version_unsupported"
     else:
-        status, code = OK, "nutriscore_official"
-        reason_args = {"version": version}
-        nutriscore["grade"] = grade
-        nutriscore["points"] = _points(value.get("score"))
+        conversion = foodo.convert(points, version, category)
+        if conversion.error == "points_missing":
+            status, code = NOT_ENOUGH_DATA, "nutriscore_points_missing"
+        elif conversion.error:
+            status, code = INCONSISTENT, conversion.error
+        elif conversion.band.lower() != grade:
+            status, code = INCONSISTENT, "grade_mismatch"
+        else:
+            status, code = OK, "foodo_converted"
+            result_foodo.update(value=conversion.value, band=conversion.band)
+            reason_args = {"version": version, "category": CATEGORY_LABELS[category]}
 
     separate = {"nova": _nova(nova), "additives": _additives(additives)}
     missing: list[str] = []
     if code == "nutriscore_missing":
         missing.append("nutriscore")
-    reasons = [{"code": code, "text": REASONS[code].format(**reason_args)}]
-    if status == OK and nutriscore["points"] is None:
+    if code == "nutriscore_points_missing":
         missing.append("nutriscore_points")
-        reasons.append(
-            {"code": "nutriscore_points_missing", "text": REASONS["nutriscore_points_missing"]}
-        )
     if separate["nova"]["status"] not in ("available", "not_applicable"):
         missing.append("nova")
     if separate["additives"]["status"] != "available":
@@ -196,32 +262,47 @@ def foodo_score(indicators: Iterable[Any]) -> dict[str, Any]:
     return {
         "version": VERSION,
         "status": status,
+        "foodo": result_foodo,
         "nutriscore": nutriscore,
-        "comparable_key": f"nutriscore:{version}" if status == OK else None,
+        "comparable_key": f"nutriscore:{version}:{category}" if status == OK else None,
         "separate": separate,
         "missing": missing,
-        "reasons": reasons,
-        "inputs_hash": _hash_inputs([ns, nova, additives]),
+        "reasons": [{"code": code, "text": REASONS[code].format(**reason_args)}],
+        "inputs_hash": _hash_inputs([ns, nova, additives], flags),
     }
 
 
+def foodo_value(score: dict[str, Any] | None) -> int | None:
+    """The Foodo Score (0–100) of a result, or ``None`` when there is none. 0 is a value."""
+    if not isinstance(score, dict) or score.get("status") != OK:
+        return None
+    return (score.get("foodo") or {}).get("value")
+
+
+def _comparable(candidate: dict[str, Any], reference: dict[str, Any]) -> bool:
+    return (
+        candidate.get("version") == VERSION == reference.get("version")
+        and candidate.get("status") == OK == reference.get("status")
+        and candidate.get("comparable_key") == reference.get("comparable_key")
+    )
+
+
 def is_better(candidate: dict[str, Any], reference: dict[str, Any]) -> bool:
-    """A strictly better official grade, in the same Nutri-Score version."""
-    if candidate.get("version") != VERSION or reference.get("version") != VERSION:
-        return False
-    if candidate.get("status") != OK or reference.get("status") != OK:
-        return False
-    if candidate.get("comparable_key") != reference.get("comparable_key"):
-        return False
-    return candidate["nutriscore"]["grade"] < reference["nutriscore"]["grade"]
+    """A strictly higher Foodo Score, with the same Nutri-Score version and calculation
+    category. Equal values after rounding are not better."""
+    return _comparable(candidate, reference) and (foodo_value(candidate) > foodo_value(reference))
 
 
 def score_from_off(product: dict[str, Any]) -> dict[str, Any]:
-    """``score.v2`` of a raw OFF product object (e.g. a search result), read with the same
+    """``score.v3`` of a raw OFF product object (e.g. a search result), read with the same
     rules as an imported product."""
     from assessments.rules import derive_from_off
 
-    return with_provenance(foodo_score(derive_from_off(product)), source="off_api", data_id=None)
+    return with_provenance(
+        foodo_score(derive_from_off(product), nutriscore_data=product.get("nutriscore")),
+        source="off_api",
+        data_id=None,
+    )
 
 
 # Provenance added to a stored result: where the data came from and which data it was.
@@ -236,7 +317,7 @@ def score_source(revision_source: str) -> str:
 
 def with_provenance(result: dict[str, Any], *, source: str, data_id: str | None) -> dict[str, Any]:
     """The result with its data source and the identifier of the data used (the revision's
-    content hash). Provenance never changes status, grade or points."""
+    content hash). Provenance never changes the status or the value."""
     return {**result, "source": source, "data_id": data_id}
 
 
@@ -254,18 +335,23 @@ def needs_recompute(stored: Any) -> bool:
     )
 
 
+def nutriscore_data_of(revision: Any) -> Any:
+    payload = getattr(revision, "off_payload", None)
+    return payload.get("nutriscore") if isinstance(payload, dict) else None
+
+
 def for_revision(revision: Any) -> dict[str, Any]:
     """Compute (never read) the result of a revision, with its provenance."""
     return with_provenance(
-        foodo_score(revision.assessments.all()),
+        foodo_score(revision.assessments.all(), nutriscore_data=nutriscore_data_of(revision)),
         source=score_source(getattr(revision, "source", "")),
         data_id=getattr(revision, "content_hash", None),
     )
 
 
 def score_for_revision(revision: Any) -> dict[str, Any]:
-    """The stored ``score.v2`` result of a revision, or computed now (without writing) for a
-    revision whose stored result is missing or outdated (``needs_recompute``); the batch job
+    """The stored result of a revision, or computed now (without writing) for a revision whose
+    stored result is missing or outdated (``needs_recompute``); the batch job
     ``assessments.tasks.recompute_foodo_scores`` stores those. Another version is never
     returned."""
     if revision is None:
@@ -276,27 +362,39 @@ def score_for_revision(revision: Any) -> dict[str, Any]:
     return for_revision(revision)
 
 
-def public_enabled() -> bool:
-    """Whether the Foodo Score is shown publicly under that name (staff Settings)."""
-    from staff.models import SiteSettings
-
-    return SiteSettings.load().foodo_score_public
-
-
 def score_for_product(product: Any) -> dict[str, Any]:
     """Foodo Score of a catalogue product's current revision."""
     return score_for_revision(getattr(product, "current_revision", None))
 
 
+STATUS_MESSAGES = {
+    NOT_ENOUGH_DATA: "Not enough data",
+    NOT_APPLICABLE: "Doesn't apply to this product",
+    CONFLICTING: "Data being checked",
+    INCONSISTENT: "Data being checked",
+    UNSUPPORTED: "Not available for this kind of product yet",
+}
+
+
+def display(score: dict[str, Any] | None) -> dict[str, Any]:
+    """What a page shows: ``{"value": 0–100 or None, "message": short text}``."""
+    value = foodo_value(score)
+    if value is not None:
+        return {"value": value, "message": ""}
+    status = (score or {}).get("status") or NOT_ENOUGH_DATA
+    message = STATUS_MESSAGES.get(status, STATUS_MESSAGES[NOT_ENOUGH_DATA])
+    return {"value": None, "message": message}
+
+
 def summary(score: dict[str, Any]) -> dict[str, Any]:
-    """The facts an AI model may rephrase (Ask Foodo): no number unless the status is ok."""
-    ns = score.get("nutriscore") or {}
+    """The facts an AI model may rephrase (Ask Foodo): the Foodo value or why there is none;
+    no Nutri-Score letter or raw points."""
+    shown = display(score)
     return {
         "version": score.get("version"),
         "status": score.get("status"),
-        "nutriscore_grade": ns.get("grade"),
-        "nutriscore_points": ns.get("points"),
-        "nutriscore_version": ns.get("version") if score.get("status") == OK else None,
+        "foodo_score": f"{shown['value']}/100" if shown["value"] is not None else None,
+        "message": shown["message"] or None,
         "reasons": [r["text"] for r in score.get("reasons") or []],
     }
 

@@ -278,11 +278,8 @@ def _record_visit(request: HttpRequest, product: Product, code: str) -> None:
 
 
 def _for_you(request: HttpRequest, facts) -> dict | None:
-    """Restriction states for the signed-in user's diets and allergies (server-side), and what
-    one declared portion gives towards their daily targets. Both are personal and never
-    change the product's score."""
-    from myola.contribution import portion_contribution
-
+    """Restriction states for the signed-in user's diets and allergies (server-side). Personal:
+    never changes the product's score."""
     if not request.user.is_authenticated:
         return None
     profile = Profile.objects.filter(user=request.user).first()
@@ -312,7 +309,6 @@ def _for_you(request: HttpRequest, facts) -> dict | None:
         "has_prefs": bool(diets or allergens),
         "summary": ", ".join(names),
         "edit_url": PROFILE_RESTRICTIONS_URL,
-        "contribution": portion_contribution(facts.data, profile),
     }
 
 
@@ -394,9 +390,11 @@ def product_detail(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
     context["quality_pills"] = presenters.quality_pills(product, data, context["flags"])
     context["explain"] = {k: explanations.indicator(k) for k in explanations.INDICATORS}
     context["for_you"] = _for_you(request, facts_from_product(product, snapshots))
-    from assessments.score import public_enabled
+    from assessments.score import display, score_for_product
 
-    context["foodo_score_public"] = public_enabled()
+    result = score_for_product(product)
+    context["foodo"] = display(result)
+    context["foodo_result"] = result
     context["login_url"] = _login_url(request.get_full_path())
     context["chat_context"] = f"product:{product.pk}"
     context["note_open"] = request.GET.get("note") == "1"
@@ -614,10 +612,6 @@ def product_list(request: HttpRequest) -> HttpResponse:
         for p in page.object_list:
             p.diary_url = diary_target.add_url(p.pk, target)
     _annotate_cards(request, list(page.object_list))
-    mixed_versions = (
-        params.sort == "nutriscore"
-        and len({p.nutriscore_version for p in page.object_list if p.nutriscore_grade}) > 1
-    )
     return render(
         request,
         "catalog/products.html",
@@ -625,7 +619,6 @@ def product_list(request: HttpRequest) -> HttpResponse:
             "form": form,
             "page": page,
             "query": query.urlencode(),
-            "mixed_versions": mixed_versions,
             "facets": facets(params),
             "hidden_count": len(hidden),
             "login_url": _login_url(request.get_full_path()),
@@ -823,14 +816,11 @@ def _latest_export() -> Path | None:
 
 @require_GET
 def sources(request: HttpRequest) -> HttpResponse:
-    from assessments.score import public_enabled
-
     export = _latest_export()
     return render(
         request,
         "catalog/sources.html",
         {
-            "foodo_score_public": public_enabled(),
             "export": export,
             "export_size": export.stat().st_size if export else 0,
             "export_mtime": export.stat().st_mtime if export else None,
@@ -879,24 +869,34 @@ def off_image(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
 @require_GET
 @rate_limited("product_view")
 def product_alternatives(request: HttpRequest, pk) -> HttpResponse:
-    """Foodo Score of a product and up to 3 better alternatives (htmx fragment or full page)."""
-    from assessments.score import public_enabled, score_for_product
-    from catalog.presenters import additive_label
-    from catalog.services.alternatives import alternatives
+    """Up to 3 better alternatives listed for the user's market (htmx fragment or full page).
 
+    The market comes from the browser: ``?tz=`` (its time zone, sent by the page) or the
+    language region; see ``myola.services.market``. The user never has to pick it."""
+    from myola.services import market
+
+    market.remember_timezone(request, (request.GET.get("tz") or "").strip()[:64])
     product = get_object_or_404(
         Product.objects.select_related("current_revision"), pk=pk, current_revision__isnull=False
     )
-    score = score_for_product(product)  # stored with the revision (score.v2)
+    return _alternatives_response(request, product)
+
+
+def _alternatives_response(request: HttpRequest, product: Product) -> HttpResponse:
+    from assessments.score import score_for_product
+    from catalog.services.alternatives import alternatives
+    from myola.services import market
+
+    country = market.country_for(request)
+    score = score_for_product(product)  # stored with the revision
     user = request.user if request.user.is_authenticated else None
-    items = alternatives(product, user=user) if score.get("status") == "ok" else []
-    tags = score["separate"]["additives"]["tags"] or []
+    items = alternatives(product, user=user, country=country) if score.get("status") == "ok" else []
     context = {
         "product": product,
         "score": score,
-        "additive_names": [additive_label(t) for t in tags],
         "alternatives": items,
-        "score_public": public_enabled(),
+        "country": country,
+        "country_name": market.name(country) if country else "",
     }
     if request.headers.get("HX-Request"):
         return render(request, "catalog/partials/alternatives.html", context)

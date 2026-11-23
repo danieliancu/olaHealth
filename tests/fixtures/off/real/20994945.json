@@ -135,10 +135,23 @@
  },
  "nutriscore": {
   "2021": {
+   "data": {
+    "is_beverage": 0,
+    "is_cheese": 1,
+    "is_fat": 0,
+    "is_water": 0
+   },
    "grade": "a",
    "score": -2
   },
   "2023": {
+   "data": {
+    "is_beverage": 0,
+    "is_cheese": 1,
+    "is_fat_oil_nuts_seeds": 0,
+    "is_red_meat_product": 0,
+    "is_water": 0
+   },
    "grade": "b",
    "score": 1
   }

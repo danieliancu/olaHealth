@@ -47,7 +47,6 @@ class ProductDetailSerializer(ProductSummarySerializer):
     field_sources = serializers.JSONField(source="current_revision.field_sources")
     indicators = serializers.SerializerMethodField()
     foodo_score = serializers.SerializerMethodField()
-    foodo_score_public = serializers.SerializerMethodField()
     sync_status = serializers.CharField(source="sync_label")
     off_synced_at = serializers.DateTimeField()
     identifiers = serializers.SerializerMethodField()
@@ -62,7 +61,6 @@ class ProductDetailSerializer(ProductSummarySerializer):
             "field_sources",
             "indicators",
             "foodo_score",
-            "foodo_score_public",
             "sync_status",
             "off_synced_at",
             "identifiers",
@@ -88,26 +86,12 @@ class ProductDetailSerializer(ProductSummarySerializer):
             )
         return result
 
-    def _score_public(self) -> bool:
-        from assessments.score import public_enabled
-
-        if not hasattr(self, "_public"):
-            self._public = public_enabled()
-        return self._public
-
-    def get_foodo_score_public(self, obj: Product) -> bool:
-        return self._score_public()
-
-    def get_foodo_score(self, obj: Product) -> dict | None:
-        """``score.v2`` (docs/assessment-rules.md): grade and points are null unless ``ok``.
-        ``null`` while the Foodo Score is not public, except for staff (for checking); the
-        official Nutri-Score stays in ``nutriscore`` and ``indicators``."""
+    def get_foodo_score(self, obj: Product) -> dict:
+        """The stored ``score.v3`` result (docs/assessment-rules.md): ``foodo.value`` is the
+        score 0–100, ``null`` unless ``status`` is ``ok``. The source Nutri-Score fields stay in
+        ``nutriscore`` and ``indicators`` for compatibility."""
         from assessments.score import score_for_product
 
-        request = self.context.get("request")
-        staff = bool(request and getattr(request.user, "is_staff", False))
-        if not (self._score_public() or staff):
-            return None
         return score_for_product(obj)
 
     def get_identifiers(self, obj: Product) -> list[dict]:

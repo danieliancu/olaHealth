@@ -78,6 +78,7 @@ class Comparison:
     warnings: list[str] = field(default_factory=list)
     nutriscore: list[dict[str, Any]] = field(default_factory=list)
     nutriscore_note: str = ""
+    foodo_note: str = ""
     nova: list[dict[str, Any]] = field(default_factory=list)
     groups: list[Group] = field(default_factory=list)
     differences: list[str] = field(default_factory=list)
@@ -172,21 +173,31 @@ def compare(products: list[Product]) -> Comparison:
     return build_comparison(products, snapshots, facts, scores=scores)
 
 
-def _nutriscore_from_score(score: dict[str, Any]) -> dict[str, str]:
-    """Nutri-Score cell from a stored ``score.v2`` result: a grade only when it is ``ok``."""
+def _nutriscore_from_score(score: dict[str, Any]) -> dict[str, Any]:
+    """Nutri-Score cell from a stored result: the published letter while it is current and
+    not contradicted by the package (as before the Foodo Score), plus the Foodo Score
+    (``foodo``, 0–100) or the short message shown instead of it."""
+    from assessments.score import display
+
     ns = score.get("nutriscore") or {}
-    ok = score.get("status") == "ok"
+    shown = display(score)
     reason = (score.get("reasons") or [{}])[0].get("code")
-    if ok:
+    published = (
+        ns.get("status") == "available" and bool(ns.get("grade")) and bool(ns.get("version"))
+    )
+    if published:
         status = "available"
     elif reason == "nutriscore_not_current":
         status = "not_current"
     else:
         status = score.get("status") or "missing_data"
     return {
-        "grade": (ns.get("grade") or "").upper() if ok else "",
+        "grade": (ns.get("grade") or "").upper() if published else "",
         "version": ns.get("version") or "",
         "status": status,
+        "foodo": shown["value"],
+        "message": shown["message"],
+        "comparable_key": score.get("comparable_key"),
     }
 
 
@@ -238,6 +249,12 @@ def build_comparison(
         n = snapshots[p.current_revision_id].get("nova")
         group = (n.value or {}).get("group") if n and not n.invalidated_by_local_change else None
         result.nova.append({"group": group, "label": NOVA_LABELS.get(group, "") if group else ""})
+    keys = {n.get("comparable_key") for n in result.nutriscore if n.get("foodo") is not None}
+    if len(keys) > 1:
+        result.foodo_note = _(
+            "These Foodo Scores come from different Nutri-Score versions or calculation "
+            "categories (for example a drink and a food) and are not directly comparable."
+        )
     if len(versions) > 1:
         result.nutriscore_note = _(
             "These grades were computed with different Nutri-Score algorithm versions (%s) "

@@ -7,16 +7,41 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def store(revisions) -> int:
+    """Recompute and store the result of these revisions (derived columns only: the
+    revision's ``foodo_score`` and its product's ``foodo_value``). Returns how many changed."""
+    from assessments.score import foodo_value, for_revision
+    from catalog.models import Product, ProductRevision
+
+    changed = []
+    for revision in revisions:
+        result = for_revision(revision)
+        if result != revision.foodo_score:
+            revision.foodo_score = result
+            changed.append(revision)
+    ProductRevision.objects.bulk_update(changed, ["foodo_score"], batch_size=500)
+    products = list(
+        Product.objects.filter(current_revision__in=[r.pk for r in changed]).only(
+            "pk", "current_revision_id", "foodo_value"
+        )
+    )
+    by_revision = {r.pk: r for r in changed}
+    for p in products:
+        p.foodo_value = foodo_value(by_revision[p.current_revision_id].foodo_score)
+    Product.objects.bulk_update(products, ["foodo_value"], batch_size=500)
+    return len(changed)
+
+
 def recompute_foodo_scores(batch: int = 500) -> int:
-    """Store the current ``score.v2`` result on current revisions that lack it, hold another
-    rules version or no provenance (``assessments.score.needs_recompute``).
+    """Store the current result (``assessments.score.VERSION``) on current revisions that
+    lack it, hold another rules version or no provenance (``score.needs_recompute``).
 
     Only the derived ``ProductRevision.foodo_score`` column is written (``bulk_update``): the
     revision data, approved corrections and history are untouched. Returns how many were
     updated; run repeatedly until it returns 0 (``manage.py recompute_foodo_scores``, which
     also has ``--all`` to recompute every current revision).
     """
-    from assessments.score import for_revision, needs_recompute
+    from assessments.score import needs_recompute
     from catalog.models import Product, ProductRevision
 
     current = Product.objects.filter(current_revision__isnull=False).values("current_revision_id")
@@ -29,14 +54,7 @@ def recompute_foodo_scores(batch: int = 500) -> int:
             ids.append(r.pk)
             if len(ids) >= batch:
                 break
-    changed = []
-    revisions = revisions.filter(pk__in=ids)
-    for revision in revisions:
-        result = for_revision(revision)
-        if result != revision.foodo_score:
-            revision.foodo_score = result
-            changed.append(revision)
-    ProductRevision.objects.bulk_update(changed, ["foodo_score"], batch_size=500)
+    changed = store(revisions.filter(pk__in=ids))
     if changed:
-        logger.info("recompute_foodo_scores: %s revisions updated", len(changed))
-    return len(changed)
+        logger.info("recompute_foodo_scores: %s revisions updated", changed)
+    return changed

@@ -4,7 +4,7 @@ Three steps, so that an AI provider can later replace only the wording:
 
 * ``detect_intent(text)`` picks one of the known intents (or None);
 * ``build_facts(user, context, product)`` collects the facts the answer may use: the product's
-  recorded values, Nutri-Score, processing level and restriction states, the user's preferences,
+  recorded values, Foodo Score, processing level and restriction states, the user's preferences,
   lists and scans, confirmed and active memories, and notes only when the user allows it;
 * ``rule_answer(intent, facts)`` phrases the answer from those facts alone.
 
@@ -34,7 +34,7 @@ PERSONAL = "personal"
 SUGGESTIONS: dict[str, list[tuple[str, str]]] = {
     "product": [
         ("values", "What are the key values?"),
-        ("indicators", "What do Nutri-Score and processing mean?"),
+        ("indicators", "What do the Foodo Score and processing mean?"),
         ("restrictions", "Does it fit my restrictions?"),
         ("remember", "What do you remember?"),
     ],
@@ -167,9 +167,15 @@ def build_facts(user, context: str, product=None, question: str = "") -> dict[st
         .order_by("-created_at")
     )
     scans = lists.recent(user, scans_only=True, limit=5)
+    payload = product_payload(product) if product is not None else None
+    if payload is not None:
+        from assessments.score import score_for_product, summary
+
+        # Answers about the score use the Foodo Score (x/100), never the Nutri-Score letter.
+        payload["foodo"] = summary(score_for_product(product))
     return {
         "context": context,
-        "product": product_payload(product) if product is not None else None,
+        "product": payload,
         "energy_visible": profile.energy_visible,
         "goal": str(P.GOALS[profile.goal][0]) if profile.goal in P.GOALS else "",
         "diets": [(d, str(P.DIETS[d][0])) for d in prefs["diets"]],
@@ -201,11 +207,14 @@ def rule_answer(intent: str | None, facts: dict[str, Any]) -> str:
         if not p:
             lines.append("Open a product and ask there: I explain that product's indicators.")
         else:
+            foodo = p.get("foodo") or {}
             lines.append(
-                f"Nutri-Score {p['nutriscore'].upper()}, as published by Open Food Facts (A is "
-                "the most favourable, E the least), computed per 100 g or 100 ml."
-                if p.get("nutriscore")
-                else "The source gives no Nutri-Score for this product."
+                f"Foodo Score {foodo['foodo_score']}: AskFoodo's conversion of the official "
+                "Nutri-Score from Open Food Facts to a 0-100 scale (100 is the most "
+                "favourable), per 100 g or 100 ml."
+                if foodo.get("foodo_score")
+                else "No Foodo Score for this product: "
+                f"{(foodo.get('message') or 'not enough data').lower()}."
             )
             lines.append(
                 f"Processing: {PROCESSING[p['nova']]}, judged from the ingredient list. It says "
@@ -358,22 +367,18 @@ def ai_facts_for(
             "quantity": (p.get("product") or {}).get("quantity", ""),
             "basis": (p.get("facts") or {}).get("basis_label", ""),
             "values": {k: v.get("display") for k, v in values.items()},
-            "nutriscore": p.get("nutriscore", ""),
             "nova": p.get("nova"),
         }
     }
     if p.get("nova") in PROCESSING:
         out["product"]["processing"] = PROCESSING[p["nova"]]
     if product is not None:
-        from assessments.score import public_enabled, score_for_product, summary
-
         levels = _levels(product)
         if levels:
             out["product"]["levels"] = levels
-        # Computed by code (score.v2: the official Nutri-Score); the AI only rephrases it.
-        # Sent only once the Foodo Score is public; the Nutri-Score is in "product" anyway.
-        if public_enabled():
-            out["foodo_score"] = summary(score_for_product(product))
+        # Computed by code (score.v3, x/100); the AI only rephrases it, never a letter.
+        if p.get("foodo") is not None:
+            out["foodo_score"] = p["foodo"]
         if with_ingredients:
             out["product"].update(_ingredient_facts(product))
     if with_preferences:
@@ -385,7 +390,7 @@ def ai_facts_for(
 # The very last fallback: shown only if every other answer came back blank.
 NO_ANSWER = (
     "Sorry, I couldn't put an answer together just now. The label details are on the product "
-    "page; you can also ask about its sugar, salt, fat, Nutri-Score or processing."
+    "page; you can also ask about its sugar, salt, fat, Foodo Score or processing."
 )
 
 

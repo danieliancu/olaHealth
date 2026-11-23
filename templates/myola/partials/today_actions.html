@@ -2,7 +2,7 @@
   <h2 class="dash-title dash-title-sm" id="actions-h">{% translate "Quick actions" %}</h2>
   <ul class="quick-actions stagger">
     <li><a class="qa qa-primary" href="{{ scan_url }}"><span class="qa-icon">{% icon "scan-barcode" 20 %}</span><span class="qa-text"><strong>{% translate "Scan a barcode" %}</strong><small>{% translate "Check the label, then add it to your diary" %}</small></span></a></li>
-    <li><a class="qa" href="{% url 'products' %}"><span class="qa-icon">{% icon "search" 20 %}</span><span class="qa-text"><strong>{% translate "Search products" %}</strong><small>{% translate "Nutri-Score, allergens and healthier picks for any food" %}</small></span></a></li>
+    <li><a class="qa" href="{% url 'products' %}"><span class="qa-icon">{% icon "search" 20 %}</span><span class="qa-text"><strong>{% translate "Search products" %}</strong><small>{% translate "Foodo Score, allergens and healthier picks for any food" %}</small></span></a></li>
     <li><a class="qa" href="{% url 'chat' %}?context=personal"><span class="qa-icon">{% icon "message-circle" 20 %}</span><span class="qa-text"><strong>{% translate "Ask Foodo" %}</strong><small>{% translate "Questions about your lists and scans" %}</small></span></a></li>
     <li><a class="qa" href="{% url 'learn' %}"><span class="qa-icon">{% icon "book-open" 20 %}</span><span class="qa-text"><strong>{% translate "Magazine" %}</strong>{% translate "Topics that help you choose, magazine style" as fallback %}<small>{% include "partials/learn_ticker.html" %}</small></span></a></li>
   </ul>
