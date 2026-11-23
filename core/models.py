@@ -169,7 +169,7 @@ class MagazineCover(models.Model):
         default=0, validators=[MinValueValidator(-100), MaxValueValidator(100)]
     )
     mobile_zoom = models.PositiveSmallIntegerField(
-        default=100, validators=[MinValueValidator(100), MaxValueValidator(250)]
+        default=100, validators=[MinValueValidator(20), MaxValueValidator(250)]
     )
     updated_at = models.DateTimeField(auto_now=True)
 

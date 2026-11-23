@@ -370,7 +370,7 @@ class MagazineCoverForm(forms.ModelForm):
             "mobile_x": "The photo fills the phone screen: which part stays in view "
             "(0 left, 100 right).",
             "mobile_y": "Moves the photo up or down, % of the screen's height (minus: higher).",
-            "mobile_zoom": "100: the whole height of the photo.",
+            "mobile_zoom": "100: the whole height of the photo; less: smaller (it still fills the width).",
         }
         widgets = {
             "photo_size": _slider(40, 300, "h"),
@@ -378,7 +378,7 @@ class MagazineCoverForm(forms.ModelForm):
             "photo_y": _slider(-100, 100, "y"),
             "mobile_x": _slider(0, 100, "mx"),
             "mobile_y": _slider(-100, 100, "my"),
-            "mobile_zoom": _slider(100, 250, "mz"),
+            "mobile_zoom": _slider(20, 250, "mz"),
         }
 
     def clean_month(self):

@@ -17,6 +17,7 @@
       {# Suggestions as you type, under the box (desktop) #}
       <div class="mag-suggest" id="mag-suggest" aria-live="polite"></div>
     </form>
+    <div class="mag-cols">{# phones: every topic in one column on the left; desktop: no box of its own #}
     {% for side in sides %}
     <div class="mag-col mag-col-{{ side.name }}">
       {% for slot in side.slots %}
@@ -27,6 +28,7 @@
       {% endfor %}
     </div>
     {% endfor %}
+    </div>
     </div>
     {# A permanent floating message at the foot of the cover, like the app's messages: the titles are links. #}
     <p class="mag-cta">{% icon "book-open" 18 %}<span class="mag-cta-tap">{% translate "Tap any title to read it" %}</span><span class="mag-cta-click">{% translate "Click any title to read it" %}</span></p>
