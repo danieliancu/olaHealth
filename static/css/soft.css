@@ -838,6 +838,17 @@ svg.meter.level-over .meter-fill { fill: #e5484d; }
 .product-more .card > .about > :not(summary), .product-more .note-card > form { margin-left: 1.25rem; margin-right: 1.25rem; }
 .product-more .note-card > form { margin-top: 0; }
 .ingredients-fold { margin-top: 1rem; border-top: 1px solid #f3f4f6; padding-top: .5rem; }
+/* Ingredients and allergens: the whole card on the app green, white text (5.4:1). The allergen
+   box keeps its own light background and dark text, so the warning stays as it is. */
+.ingredients-card { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ingredients-card h2, .ingredients-card .sub-title, .ingredients-card .ing-name,
+.ingredients-card .allergen-word, .ingredients-card .ingredients-fold > summary .icon { color: #fff; }
+.ingredients-card .caption, .ingredients-card .ing-detail { color: rgba(255, 255, 255, .85); }
+.ingredients-card .ingredients-fold { border-top-color: rgba(255, 255, 255, .25); }
+.ingredients-card .allergen-box { color: var(--text); }
+.ingredients-card .allergen-box .caption { color: var(--muted); }
+.ingredients-card .ingredient-list li { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .25); }
+.ingredients-card .ingredient-list li::before { background: #fff; color: var(--accent-strong); border-color: #fff; }
 .ingredients-fold > summary { display: flex; align-items: center; gap: .5rem; cursor: pointer; list-style: none; min-height: 44px; }
 .ingredients-fold > summary::-webkit-details-marker { display: none; }
 .ingredients-fold > summary .sub-title { margin: 0; }
@@ -1058,7 +1069,10 @@ html { scroll-behavior: smooth; }
 .ap-card { flex: 1; min-width: 0; display: flex; align-items: center; gap: .75rem; padding: .5rem; border-radius: 12px; color: var(--text); text-decoration: none; transition: background-color .2s; }
 .ap-card:hover { background: var(--accent-tint-2); }
 .ap-img { flex: none; width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--accent-tint-2); display: grid; place-items: center; color: var(--accent); }
-.ap-text { display: grid; gap: .1rem; min-width: 0; }
+.ap-text { display: grid; gap: .1rem; min-width: 0; flex: 1; }
+/* The arrow at the end: the whole card opens the product. */
+.ap-go { flex: none; margin-left: auto; color: var(--muted); transition: transform .2s, color .2s; }
+.ap-card:hover .ap-go { color: var(--accent); transform: translateX(2px); }
 .ap-text strong { font-size: var(--fs-sm); font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .ap-text small { font-size: var(--fs-xs); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ap-grade { margin-top: .2rem; }
@@ -1483,10 +1497,25 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
 
 /* Ask Foodo: helpful / not helpful under AI answers */
 .chat-bubble { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; min-width: 0; }
-/* Ask Foodo: the products and Magazine articles an answer used (built by the app). */
-.chat-sources { list-style: none; margin: .15rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .2rem; font-size: .85rem; }
-.chat-sources a { display: inline-flex; align-items: center; gap: .35rem; }
-.chat-sources .icon { flex: none; }
+/* Ask Foodo: the products and Magazine articles an answer used (built by the app), as
+   vertical lists of cards under the answer, the full width of the chat; each card one link. */
+.chat-msg.has-cards { max-width: 100%; width: 100%; }
+.chat-msg.has-cards .chat-bubble { flex: 1; align-items: stretch; }
+.chat-msg.has-cards .chat-bubble > p { align-self: flex-start; }
+.chat-cards { margin-top: .5rem; }
+.chat-cards-title { margin: 0 0 .4rem; font-size: .8rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
+.chat-card-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.chat-card {
+  display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 10px 12px; box-sizing: border-box;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; color: var(--text); text-decoration: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.chat-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(17, 24, 39, .06); }
+.chat-card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.chat-card-img { flex: none; width: 52px; height: 52px; border-radius: 10px; object-fit: cover; background: #f3f4f6; }
+.chat-card-text { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.chat-card-text strong { font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.chat-card-text small { color: var(--muted); font-size: .85rem; line-height: 1.3; }
 .chat-rate { display: flex; gap: .15rem; margin: 0; padding-left: .35rem; }
 .chat-rate-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
 .chat-rate-btn:hover { background: rgba(17, 24, 39, .06); color: var(--text); }
@@ -1883,3 +1912,5 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
   .page-head > .head-tools .head-bell { order: 1; margin-left: auto; }
   .page-head > .head-tools .range-switch { order: 2; flex: 1 1 100%; }
 }
+/* Quick note (product page): "Save note" the full width, with more room above it. */
+.note-card .note-save { width: 100%; margin-top: .75rem; }
