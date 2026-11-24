@@ -3,22 +3,25 @@
     {% csrf_token %}
     <h2>{% translate "New note" %}</h2>
     {% if note_form.non_field_errors %}<p class="field-error">{{ note_form.non_field_errors|join:" " }}</p>{% endif %}
-    <label for="mo-note-text">{% translate "Note" %}</label>
-    <textarea id="mo-note-text" name="text" maxlength="2000" required{% if note_form.text.errors %} aria-invalid="true" aria-describedby="mo-note-text-error"{% endif %}>{{ note_form.text.value|default_if_none:"" }}</textarea>
+    {# No labels above the fields: the placeholder, the first option and the product field say it (labels stay for screen readers). #}
+    <label for="mo-note-text" class="sr-only">{% translate "Your note" %}</label>
+    <textarea id="mo-note-text" name="text" maxlength="2000" required placeholder="{% translate 'Your note' %}"{% if note_form.text.errors %} aria-invalid="true" aria-describedby="mo-note-text-error"{% endif %}>{{ note_form.text.value|default_if_none:"" }}</textarea>
     {% if note_form.text.errors %}<p class="field-error" id="mo-note-text-error">{{ note_form.text.errors|join:" " }}</p>{% endif %}
-    <div class="grid-2">
+    <div class="grid-2 note-fields">
       <div>
-        <label for="mo-note-kind">{% translate "Type" %}</label>
+        <label for="mo-note-kind" class="sr-only">{% translate "Type" %}</label>
         <select id="mo-note-kind" name="kind">
+          <option value=""{% if not note_form.kind.value %} selected{% endif %}>{% translate "Type" %}</option>
           {% for value, label in kind_labels.items %}<option value="{{ value }}"{% if note_form.kind.value == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
       </div>
       <div>
-        <label for="mo-note-product">{% translate "Product (optional)" %}</label>
-        <select id="mo-note-product" name="product">
-          <option value="">{% translate "No product" %}</option>
-          {% for p in known_products %}<option value="{{ p.id }}"{% if note_form.product.value|stringformat:"s" == p.id|stringformat:"s" %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
-        </select>
+        <label for="mo-note-product" class="sr-only">{% translate "Product (optional): type to search or pick from the list" %}</label>
+        <div class="note-product-pick">{% icon "search" 16 %}
+          <input id="mo-note-product" type="text" name="product_name" list="mo-note-products" maxlength="200" autocomplete="off" placeholder="{% translate 'Product' %}" value="{{ note_form.product_name.value|default_if_none:'' }}"{% if note_form.product_name.errors or note_form.product.errors %} aria-invalid="true"{% endif %}>
+          <datalist id="mo-note-products">{% for p in known_products %}<option value="{{ p.name }}"></option>{% endfor %}</datalist>
+        </div>
+        {% if note_form.product_name.errors %}<p class="field-error">{{ note_form.product_name.errors|join:" " }}</p>{% endif %}
         {% if note_form.product.errors %}<p class="field-error">{{ note_form.product.errors|join:" " }}</p>{% endif %}
       </div>
     </div>

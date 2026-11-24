@@ -140,7 +140,6 @@ table.compare .compare-head button.compare-remove:hover { background: #fde3df; b
 
 /* Foodo Score in the product card: the number is the grade; the bar is only a visual aid. */
 .foodo-meter { display: grid; gap: .15rem; margin: 0 0 .6rem; max-width: 15rem; }
-.foodo-label { margin: 0; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .foodo-value { margin: 0; display: flex; align-items: baseline; gap: .15rem; line-height: 1; }
 .foodo-value strong { font-size: 2.4rem; font-weight: 800; color: var(--text, #111827); font-variant-numeric: tabular-nums; }
 .foodo-value span { font-size: 1rem; font-weight: 600; color: var(--muted); }

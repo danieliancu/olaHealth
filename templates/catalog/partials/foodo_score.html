@@ -1,6 +1,5 @@
 {% load i18n %}{# Foodo Score of the product (hero). Needs: foodo = {"value", "message"}; foodo_result (staff). #}
 <div class="foodo-meter{% if foodo.value is None %} is-empty{% endif %}"{% if foodo.value is not None %} data-value="{{ foodo.value }}"{% endif %}>
-  <p class="foodo-label">{% translate "Foodo Score" %}</p>
   {% if foodo.value is not None %}
     <p class="foodo-value" aria-label="{% blocktranslate with v=foodo.value %}Foodo Score {{ v }} out of 100{% endblocktranslate %}"><strong aria-hidden="true">{{ foodo.value }}</strong><span aria-hidden="true">/100</span></p>
     <div class="foodo-track" aria-hidden="true"><span class="foodo-mark"></span></div>

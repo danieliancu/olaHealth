@@ -57,9 +57,12 @@
       <ul>
         {% for a in latest %}
         <li><a class="mag-card" href="{% url 'learn-article' a.slug %}">
-          {# Desktop: with its photo; phones: the title only #}
-          {% if a.image_url %}<img class="mag-card-img" src="{{ a.image_url }}" alt="{{ a.image_alt }}" loading="lazy" decoding="async">{% endif %}
-          <span class="mag-card-title">{{ a.title }}</span>{% icon "chevron-right" 18 "mag-go" %}
+          {# With its photo, as in Editor's picks #}
+          {% if a.image_url %}<img class="mag-card-img" src="{{ a.image_url }}" alt="{{ a.image_alt }}" loading="lazy" decoding="async">{% else %}<span class="mag-card-img mag-thumb-empty" aria-hidden="true">{% icon a.icon 22 %}</span>{% endif %}
+          <span class="mag-card-text"><span class="mag-card-title">{{ a.title }}</span>
+            {# Phones: the reading time, as in Editor's picks #}
+            <span class="mag-time">{% icon "clock" 14 %}{% blocktranslate count n=a.minutes %}{{ n }} min read{% plural %}{{ n }} min read{% endblocktranslate %}</span></span>
+          {% icon "chevron-right" 18 "mag-go" %}
         </a></li>
         {% endfor %}
       </ul>

@@ -66,7 +66,7 @@
 <nav class="pager" aria-label="{% translate 'Pages' %}">
   {% if page.has_previous %}<a class="btn btn-outline btn-small" href="?{{ query }}&amp;page={{ page.previous_page_number }}" rel="prev">{% icon "chevron-left" 16 %}<span>{% translate "Previous" %}</span></a>{% endif %}
   <span>{% blocktranslate with n=page.number total=page.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktranslate %}</span>
-  {% if page.has_next %}<a class="btn btn-outline btn-small" href="?{{ query }}&amp;page={{ page.next_page_number }}" rel="next"><span>{% translate "Next" %}</span>{% icon "arrow-right" 16 %}</a>{% endif %}
+  {% if page.has_next %}<a class="btn btn-outline btn-small" href="?{{ query }}&amp;page={{ page.next_page_number }}" rel="next"><span>{% translate "Next" %}</span>{% icon "chevron-right" 16 %}</a>{% endif %}
 </nav>
 {% endif %}
 </div>

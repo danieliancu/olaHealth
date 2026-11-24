@@ -137,7 +137,7 @@ def test_learn_index_topic_and_article(client):
     latest = html.split('id="mag-latest-h"')[1].split("</section>")[0]
     assert picks.count('class="mag-pick"') == 3 and latest.count('class="mag-card"') == 4
     assert "min read" in picks and "<img" in picks  # picks: photo and reading time
-    assert "mag-card-img" in latest and "min read" not in latest  # photo on desktop only
+    assert "mag-card-img" in latest and "min read" in latest  # as in the picks
     assert "FOODO" not in html  # the card holds only the photo and the topics
     assert 'style="' not in html  # no inline styles (CSP)
     r = client.get(reverse("learn") + "?topic=allergens")

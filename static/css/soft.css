@@ -1723,7 +1723,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
 
 /* ---------- Phones: light page, the green "FOODO" cover card, then lists (attachment 2) ---------- */
 @media (max-width: 767px) {
-  .mag-photo-box, .mag-topic-list, .mag-card-img, .mag-search-btn { display: none; }
+  .mag-photo-box, .mag-topic-list, .mag-search-btn { display: none; }
   .mag-wrap { padding: 1.25rem 1rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
   .mag-title-big { font-size: 3.4rem; line-height: .95; letter-spacing: -.01em; }
   /* The cover card: the photo (placed in Staff → Magazine → Cover), the topics on its left. */
@@ -1746,11 +1746,12 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
   }
   .mag-issue-topics a .icon { flex: none; }
   .mag-picks h2, .mag-latest h2 { font-size: 2.1rem; margin-bottom: .75rem; }
-  .mag-picks ul { display: grid; gap: .75rem; }
-  .mag-pick { display: flex; align-items: center; gap: .9rem; padding: .6rem; background: #fff; border: 1px solid #ece7dd; border-radius: 16px; }
-  .mag-pick img, .mag-pick .mag-thumb-empty { flex: none; width: 112px; height: 78px; border-radius: 12px; object-fit: cover; }
-  .mag-pick-text { display: flex; flex-direction: column; gap: .35rem; min-width: 0; flex: 1; }
-  .mag-pick-title { font-size: 1.05rem; }
+  /* "Explore the latest" uses the same cards as "Editor's picks": photo, title size, card. */
+  .mag-picks ul, .mag-latest ul { display: grid; gap: .75rem; }
+  .mag-pick, .mag-card { display: flex; align-items: center; gap: .9rem; padding: .6rem; background: #fff; border: 1px solid #ece7dd; border-radius: 16px; }
+  .mag-pick img, .mag-pick .mag-thumb-empty, .mag-card-img { flex: none; width: 112px; height: 78px; border-radius: 12px; object-fit: cover; }
+  .mag-pick-text, .mag-card-text { display: flex; flex-direction: column; gap: .35rem; min-width: 0; flex: 1; }
+  .mag-pick-title, .mag-card-title { flex: 1; min-width: 0; font-size: 1.05rem; }
   .mag-search {
     position: relative; display: flex; align-items: center; gap: .6rem; min-height: 48px; padding: 0 1rem;
     background: #fff; border: 1px solid #ddd6c9; border-radius: 999px; color: #4b5563;
@@ -1769,10 +1770,6 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
   .mag-suggest-title { font-weight: 600; }
   .mag-suggest-all { display: flex; align-items: center; gap: .3rem; padding: .6rem .7rem; font-weight: 600; color: var(--mag-deep) !important; }
   .mag-suggest-none { margin: 0; padding: .6rem .7rem; color: #6b7280; }
-  .mag-latest ul { background: #fff; border: 1px solid #ece7dd; border-radius: 16px; overflow: hidden; }
-  .mag-latest li + li { border-top: 1px solid #f1ece3; }
-  .mag-card { display: flex; align-items: center; gap: .75rem; min-height: 52px; padding: .75rem 1rem; }
-  .mag-card-title { flex: 1; font-size: 1rem; font-weight: 600; }
 }
 
 /* ---------- Desktop: the photo over the whole cover, glass panels on it, all within one width ----------
@@ -1831,7 +1828,8 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
   .mag-card { display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 8px; border-radius: 16px 16px 0 0; background: rgba(255, 255, 255, .7); box-shadow: none; box-sizing: border-box; }
   .mag-card-title { flex: 1; min-width: 0; font-size: .95rem;
     display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  .mag-card .mag-go { display: none; }
+  .mag-card-text { flex: 1; min-width: 0; }
+  .mag-card .mag-go, .mag-card .mag-time { display: none; }
   .mag-card:hover { background: #fff; }
   .mag-pick:hover .mag-pick-title, .mag-card:hover .mag-card-title { text-decoration: underline; text-underline-offset: 3px; }
 }

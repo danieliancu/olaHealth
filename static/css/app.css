@@ -750,36 +750,46 @@ html:has(.chat-dialog[open]) { overflow: hidden; }
   .chat-form .btn-send { min-height: 44px; }
   [data-chat-empty] { margin: 0; font-size: .8rem; }
 }
-/* Notes: type and date on top, the text as the main content, the product as a quiet link. */
+/* Notes: one row: type and date pills, the note (it wraps in its own column), then edit and
+   delete at the end, never covered by the text. The product is a quiet pill after the note. */
 .note-item {
-  position: relative; padding: .85rem .9rem .9rem 1.05rem; background: var(--surface);
+  position: relative; display: flex; align-items: center; gap: .65rem;
+  padding: .6rem .6rem .6rem 1.05rem; background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
 }
-.note-item::before { content: ""; position: absolute; left: 0; top: .85rem; bottom: .85rem; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+.note-item::before { content: ""; position: absolute; left: 0; top: .6rem; bottom: .6rem; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
 .note-item.kind-avoid::before { background: #c2410c; }
 .note-item.kind-taste::before { background: #c99a00; }
 .note-item.kind-general::before { background: #c5cad3; }
-.note-top { display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem; }
-.note-kind { font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent-strong); }
-.note-item.kind-avoid .note-kind { color: #9a3412; }
-.note-item.kind-taste .note-kind { color: #7a5d00; }
-.note-item.kind-general .note-kind { color: var(--muted); }
-.note-date { font-size: .8rem; color: var(--muted); }
-.note-date::before { content: "·"; margin-right: .5rem; }
-.note-actions { margin-left: auto; display: flex; gap: .15rem; margin-right: -.35rem; }
+.note-pills { flex: none; display: flex; align-items: center; gap: .3rem; }
+.note-kind, .note-date {
+  display: inline-flex; align-items: center; min-height: 22px; padding: 0 .55rem; border-radius: 999px; white-space: nowrap;
+}
+.note-kind { font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent-strong); background: var(--accent-soft); }
+.note-item.kind-avoid .note-kind { color: #9a3412; background: #fdebe1; }
+.note-item.kind-taste .note-kind { color: #7a5d00; background: #fbf1cf; }
+.note-item.kind-general .note-kind { color: #4b5563; background: #f1f2f4; }
+.note-date { font-size: .75rem; color: var(--muted); background: #f5f6f8; }
+.note-body { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
+.note-actions { flex: none; margin-left: auto; display: flex; gap: .15rem; }
 .note-action {
   display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%;
   background: transparent; color: var(--muted); cursor: pointer;
 }
 .note-action:hover { background: var(--accent-soft); color: var(--accent-strong); }
 .note-action.is-danger:hover { background: #fde3df; color: #b42318; }
-.note-item .note-text { font-size: 1.02rem; line-height: 1.45; color: var(--text); margin: 0; }
+.note-item .note-text { font-size: 1rem; line-height: 1.4; color: var(--text); margin: 0; min-width: 0; }
 .note-product {
-  display: inline-flex; align-items: center; gap: .4rem; margin-top: .6rem; padding: .3rem .65rem;
-  border-radius: 999px; background: #f5f6f8; color: #374151; font-size: .85rem; font-weight: 500; text-decoration: none; max-width: 100%;
+  display: inline-flex; align-items: center; gap: .4rem; padding: .2rem .6rem;
+  border-radius: 999px; background: #f5f6f8; color: #374151; font-size: .8rem; font-weight: 500; text-decoration: none; max-width: 100%;
 }
 .note-product span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-product:hover { background: var(--accent-soft); color: var(--accent-strong); }
+.note-item > .mytrack-note-edit { flex: 1; min-width: 0; } /* editing: the form takes the row */
+/* New note: the product field types and picks in one line (a search icon inside). */
+.note-product-pick { position: relative; display: flex; align-items: center; }
+.note-product-pick .icon { position: absolute; left: .7rem; color: var(--muted); pointer-events: none; }
+.note-product-pick input { width: 100%; padding-left: 2.1rem; }
 /* ================= Journal MVP: home, onboarding, Today, Progress, Profile ================= */
 .header-tools { display: flex; align-items: center; gap: .15rem; margin-left: auto; }
 .header-account { color: var(--muted); cursor: default; }

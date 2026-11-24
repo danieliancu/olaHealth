@@ -20,10 +20,16 @@ NOTE_KIND_LABELS = {
 
 class NoteForm(forms.Form):
     text = forms.CharField(label=_("Note"), max_length=2000, widget=forms.Textarea)
+    # The new-note form shows "Type" as the empty first option: no choice means a plain note.
     kind = forms.ChoiceField(
-        label=_("Type"), choices=list(NOTE_KIND_LABELS.items()), initial=Note.Kind.GENERAL
+        label=_("Type"), choices=list(NOTE_KIND_LABELS.items()), required=False
     )
     product = forms.UUIDField(label=_("Product (optional)"), required=False)
+    # The new-note form: one field to type a product's name or pick it from the list.
+    product_name = forms.CharField(max_length=200, required=False)
+
+    def clean_kind(self) -> str:
+        return self.cleaned_data.get("kind") or Note.Kind.GENERAL
 
     def clean_product(self):
         pk = self.cleaned_data.get("product")
@@ -33,6 +39,21 @@ class NoteForm(forms.Form):
         if product is None:
             raise forms.ValidationError(_("This product is not available."))
         return product
+
+    def clean(self):
+        data = super().clean()
+        name = (data.pop("product_name", "") or "").strip()
+        if data.get("product") is None and name and "product" not in self.errors:
+            product = (
+                Product.objects.filter(name__iexact=name, current_revision__isnull=False)
+                .order_by("-updated_at")
+                .first()
+            )
+            if product is None:
+                self.add_error("product_name", _("Pick a product from the list."))
+            else:
+                data["product"] = product
+        return data
 
 
 class MemoryForm(forms.Form):

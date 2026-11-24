@@ -459,3 +459,24 @@ def test_account_name_sets_the_greeting(member_client, member):
     member.refresh_from_db()
     assert member.first_name == "Ana Maria"
     assert member_client.post(reverse("account-name"), {"first_name": "x" * 31}).status_code == 200
+
+
+def test_new_note_without_labels_type_optional_and_product_by_name(member_client, member, yogurt):
+    page = member_client.get(reverse("ask-foodo"), {"tab": "notes"}).content.decode()
+    assert 'placeholder="Your note"' in page and '<option value="" selected>Type</option>' in page
+    assert 'list="mo-note-products"' in page and 'placeholder="Product"' in page
+    # No type chosen: a plain note; the product picked by its name.
+    r = member_client.post(
+        reverse("notes-create"), {"text": "Kids like it", "kind": "", "product_name": yogurt.name}
+    )
+    assert r.status_code == 302
+    note = Note.objects.get(user=member, text="Kids like it")
+    assert note.kind == Note.Kind.GENERAL and note.product == yogurt
+    r = member_client.post(
+        reverse("notes-create"), {"text": "x", "product_name": "No such product"}, **HX
+    )
+    assert "Pick a product from the list." in r.content.decode()
+    # One row: pills first, then the note, then the actions.
+    page = member_client.get(reverse("ask-foodo"), {"tab": "notes"}).content.decode()
+    row = page.split(f'id="note-{note.pk}"')[1].split("</li>")[0]
+    assert row.index("note-pills") < row.index("note-text") < row.index("note-actions")
