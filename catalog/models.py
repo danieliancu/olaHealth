@@ -371,3 +371,67 @@ class CatalogImport(models.Model):
 
     def __str__(self) -> str:
         return f"Import #{self.pk} ({self.status})"
+
+
+class OffDeltaFile(models.Model):
+    """One Open Food Facts daily delta file (``openfoodfacts_products_<from>_<to>.json.gz``)
+    and what processing it did (``catalog.services.delta``). Never a ``CatalogImport``: a delta
+    can never switch the local catalogue on or off.
+
+    ``done`` only when every line was read and processed without an error; the sync then
+    counts as complete up to ``end_ts``. ``next_line``: where an interrupted run resumes."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending"
+        RUNNING = "running"
+        DONE = "done"
+        FAILED = "failed"
+
+    name = models.CharField(max_length=120, unique=True)
+    start_ts = models.BigIntegerField()  # OFF timestamps (UTC seconds) of the interval
+    end_ts = models.BigIntegerField()
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    size_bytes = models.BigIntegerField(null=True, blank=True)
+    sha256 = models.CharField(max_length=64, blank=True)
+    lines = models.PositiveIntegerField(default=0)  # lines read so far
+    next_line = models.PositiveIntegerField(default=1)
+    added = models.PositiveIntegerField(default=0)
+    updated = models.PositiveIntegerField(default=0)
+    unchanged = models.PositiveIntegerField(default=0)
+    skipped = models.PositiveIntegerField(default=0)
+    errors = models.PositiveIntegerField(default=0)
+    report = models.JSONField(default=dict, blank=True)  # skip reasons, errors, policy, timings
+    attempts = models.PositiveSmallIntegerField(default=0)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["start_ts"]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.status})"
+
+
+class OffDeltaState(models.Model):
+    """Where the delta sync stands (one row). ``start_from``: the OFF time from which changes
+    must be applied (the archive's provenance minus a safety overlap); ``synced_until``: the
+    end of the last interval of an unbroken chain of done files from ``start_from``; ``gap``:
+    why the chain cannot be complete (the oldest delta OFF still offers starts later)."""
+
+    start_from = models.BigIntegerField(null=True, blank=True)
+    start_note = models.TextField(blank=True)
+    synced_until = models.BigIntegerField(null=True, blank=True)
+    gap = models.TextField(blank=True)
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    last_report = models.JSONField(default=dict, blank=True)
+
+    def __str__(self) -> str:
+        return f"Delta sync until {self.synced_until}"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls) -> OffDeltaState:
+        return cls.objects.get_or_create(pk=1)[0]

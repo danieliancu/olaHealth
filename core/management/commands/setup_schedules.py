@@ -23,6 +23,8 @@ SCHEDULES = [
     ("purge-old-ai-answers", "ai.tasks.purge_old_ai_answers", Schedule.DAILY),
     # Ask Foodo's Magazine passages: articles seeded by migrations, embeddings that failed.
     ("index-magazine-passages", "core.passages.refresh_all", Schedule.HOURLY),
+    # Open Food Facts daily deltas (catalog/services/delta.py), in a process of its own.
+    ("off-delta-sync", "catalog.tasks.start_off_delta_sync", Schedule.DAILY),
 ]
 
 

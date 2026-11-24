@@ -246,6 +246,18 @@ OFF_DUMP_MIN_PRODUCTS = env_int("OFF_DUMP_MIN_PRODUCTS", 1000)
 OFF_DUMP_MAX_FAILED_RATIO = float(env("OFF_DUMP_MAX_FAILED_RATIO", "0.005"))
 # Local candidates read per category for alternatives once the local catalogue is active.
 OFF_LOCAL_ALTERNATIVES_LIMIT = env_int("OFF_LOCAL_ALTERNATIVES_LIMIT", 300)
+# Daily delta sync (catalog/services/delta.py, docs/off-local-catalogue.md). Products already
+# in the catalogue are always updated; new products are added only for these markets (OFF
+# country tags, comma-separated; "all" for every market; empty: none).
+OFF_DELTA_INDEX_URL = env(
+    "OFF_DELTA_INDEX_URL", "https://static.openfoodfacts.org/data/delta/index.txt"
+)
+OFF_DELTA_NEW_PRODUCT_COUNTRIES = [
+    c.strip() for c in env("OFF_DELTA_NEW_PRODUCT_COUNTRIES", "").split(",") if c.strip()
+]
+OFF_DELTA_OVERLAP_HOURS = env_int("OFF_DELTA_OVERLAP_HOURS", 48)
+OFF_DELTA_DIR = Path(env("OFF_DELTA_DIR", str(EXPORT_ROOT / "offdelta")))
+OFF_DELTA_TIMEOUT = env_int("OFF_DELTA_TIMEOUT", 300)
 
 # Abuse limits (per session and per IP, fixed windows) -------------------------
 RATE_LIMITS = {

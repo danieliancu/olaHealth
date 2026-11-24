@@ -53,6 +53,15 @@
     {% for c in run.report.checks %}<li>{% if c.ok %}ok{% else %}<strong>failed</strong>{% endif %}: {{ c.check }} ({{ c.detail }})</li>{% endfor %}
   </ul>
   {% else %}<p>No catalogue import yet (docs/off-local-catalogue.md).</p>{% endif %}{% endwith %}
+  <h3>Daily Open Food Facts sync</h3>
+  {% with d=delta %}{% if d.configured %}
+  <ul class="staff-facts">
+    <li>Synced until <strong>{{ d.synced_until }}</strong> (start point {{ d.start_from }}); last run {{ d.last_run_at|default:"never" }}{% if d.last_status %}: <strong>{{ d.last_status }}</strong>{% endif %}</li>
+    <li>Policy: known products always updated; new products: {{ d.policy.new_products }}</li>
+    {% for f in d.recent %}<li>{{ f.name }}: <strong>{{ f.status }}</strong>, read {{ f.lines }}, added {{ f.added }}, updated {{ f.updated }}, unchanged {{ f.unchanged }}, skipped {{ f.skipped }}, errors {{ f.errors }}</li>{% endfor %}
+  </ul>
+  {% if d.gap %}<p class="notice notice-warn">{% icon "triangle-alert" 18 %}<span>Gap in the sync: {{ d.gap }}</span></p>{% endif %}
+  {% else %}<p>Not run yet (manage.py sync_off_delta, docs/off-local-catalogue.md).</p>{% endif %}{% endwith %}
 </section>
 {% if s.site.maintenance_message %}<p class="notice notice-warn">{% icon "info" 18 %}<span>Maintenance message is on: “{{ s.site.maintenance_message }}”</span></p>{% endif %}
 {% endwith %}

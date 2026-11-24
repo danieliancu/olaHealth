@@ -190,12 +190,52 @@ docker compose -f compose.yaml -f compose.dev.yaml up -d   # migrate runs at sta
 * Products that were already in the app and are also in the sample are updated in place (same
   product, one more revision when the data differ), never duplicated.
 
+## Daily sync (OFF delta files)
+
+`python manage.py sync_off_delta` (scheduled daily as `off-delta-sync`;
+`catalog/services/delta.py`). OFF publishes one file per day with every product changed in that
+interval, listed in `https://static.openfoodfacts.org/data/delta/index.txt`
+(`openfoodfacts_products_<from>_<to>.json.gz`, UTC timestamps, the same JSONL objects as the
+dump). OFF keeps about two weeks of them.
+
+* **Start point** (`OffDeltaState.start_from`): the archive's provenance, i.e. the newest
+  `last_modified_t` imported from the dump, capped by the verified import's export date, minus
+  `OFF_DELTA_OVERLAP_HOURS` (48). The overlap is safe: a line older than the stored copy is never
+  applied and an identical one creates no revision. `--since <ts>` sets it by hand;
+  `--reset-start` recomputes it after a new full import.
+* **Gap.** If OFF's oldest delta starts after the start point, the changes in between are in no
+  delta: the gap is shown in Staff → Dashboard and nothing is marked synced past it. Recovery:
+  import a newer full dump (`import_off_dump`), then `sync_off_delta --reset-start`.
+* **Policy.** Known products (from the dump, the API or a contribution with a barcode) are always
+  processed, also when OFF changes or removes their country. New products are added only for the
+  markets in `OFF_DELTA_NEW_PRODUCT_COUNTRIES` (OFF country tags, comma-separated; `all` for every
+  market; default: none). The policy is in every report.
+* **Same mapping.** `import_off_product(source="off_dump")`: nutrition, photos, Foodo Score and
+  reconciliation as for the dump; approved local corrections stay locked.
+* **Complete or not at all.** A file is downloaded to `.part`, checked against
+  `Content-Length` and read to the gzip end (CRC and length checked there). It is `done` only
+  when every line was processed without an error. Skips are not errors: `invalid_code`,
+  `not_in_policy`; `unchanged_older` / `unchanged_same` are counted as unchanged. A failed file
+  stops the run and is started again from line 1 next time. `synced_until` follows only an
+  unbroken chain of done files.
+* **Repeatable.** One run at a time (PostgreSQL advisory lock). An interrupted file resumes at
+  `next_line` (saved every 500 lines). Lines processed twice change nothing, so there are no
+  duplicate products or revisions.
+* **Never a catalogue import.** A delta creates no `CatalogImport`, so it cannot switch the
+  local catalogue mode on or off.
+* **Worker.** The scheduled task only starts the command as its own process (the worker's task
+  timeout is 60 s); output goes to `OFF_DELTA_DIR/sync.log` (`/data/exports/offdelta`).
+
+```sh
+docker compose -f compose.yaml -f compose.dev.yaml exec web python manage.py sync_off_delta --plan
+docker compose -f compose.yaml -f compose.dev.yaml exec web python manage.py sync_off_delta --max-files 1
+```
+
 ## Next stage (not done yet)
 
 * **Bulk loading** of the full dump (millions of products): the current importer uses one
   transaction per product, which is correct but slow; a bulk path (COPY into staging tables,
   batched revisions) is needed for the full file.
-* **Sync through OFF's delta exports** (daily changes) instead of re-importing everything,
-  and removal of products deleted from OFF.
+* **Removal of products deleted from OFF** (they simply stop appearing in deltas).
 * **OFF API v3** for single-product reads and refreshes.
-* Scheduling of regular imports and alerts on rejected ones.
+* Alerts on rejected imports and failed delta runs (today: Staff → Dashboard).

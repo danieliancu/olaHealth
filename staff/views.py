@@ -112,9 +112,14 @@ def pretty(value: Any) -> str:
 
 @staff_view()
 def dashboard(request: HttpRequest) -> HttpResponse:
+    from catalog.services import delta
     from catalog.services.catalog_mode import describe
 
-    context = {"stats": services.dashboard_stats(), "catalogue": describe()}
+    context = {
+        "stats": services.dashboard_stats(),
+        "catalogue": describe(),
+        "delta": delta.describe(),
+    }
     return staff_render(request, "staff/dashboard.html", context, "dashboard")
 
 

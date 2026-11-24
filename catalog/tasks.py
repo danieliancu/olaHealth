@@ -92,3 +92,25 @@ def sync_taxonomies() -> str:
 
     call_command("sync_taxonomies")
     return "ok"
+
+
+def start_off_delta_sync() -> str:
+    """Daily schedule: start ``manage.py sync_off_delta`` as its own process and return at
+    once. A delta takes minutes, longer than the worker's task timeout (``Q_CLUSTER``), and
+    the broker would hand a long task to a second worker; the command's advisory lock keeps
+    a second start from running at the same time. Output: ``OFF_DELTA_DIR/sync.log``."""
+    import subprocess
+    import sys
+
+    folder = settings.OFF_DELTA_DIR
+    folder.mkdir(parents=True, exist_ok=True)
+    with (folder / "sync.log").open("ab") as log:
+        proc = subprocess.Popen(  # noqa: S603 - fixed command, no user input
+            [sys.executable, str(settings.BASE_DIR / "manage.py"), "sync_off_delta"],
+            cwd=settings.BASE_DIR,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    return f"started sync_off_delta (pid {proc.pid})"
