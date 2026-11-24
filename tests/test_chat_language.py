@@ -104,7 +104,7 @@ def test_language_without_templates_is_phrased_once_by_the_ai(member, pizzas, pr
 
 def test_romanian_question_about_uk_products(member, fishes, provider):
     out = ask(member, "personal", "Recomandă-mi un pește cu cele mai puține grăsimi")
-    assert out.details["lang"] == "ro" and out.details["markets"] == [UK]
+    assert out.details["lang"] == "ro" and out.details["request"]["market"] == UK
     assert "Regatul Unit" in out.text and "0,7 g" in out.text
     assert out.sources[0]["url"] == reverse("product", args=[fishes[2].pk])
 

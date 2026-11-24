@@ -507,7 +507,16 @@ def test_scanned_product_question_without_a_product(member, pizzas, provider):
 
 @pytest.fixture
 def fishes(db, off_payload):
+    from catalog.models import Category
+
     cache.clear()
+    for tag, en, ro, parents in (
+        ("en:seafood", "Seafood", "Fructe de mare", []),
+        ("en:fishes", "Fishes", "Pești", ["en:seafood"]),
+        ("en:fatty-fishes", "Fatty fishes", "Pești grași", ["en:fishes"]),
+    ):
+        Category.objects.create(tag=tag, name=en, parents=parents,
+                                names={"en": [en], "ro": [ro]})  # fmt: skip
     tags = ["en:seafood", "en:fishes", "en:fatty-fishes"]
 
     def fish(code, name, fat, tags=tags):
@@ -537,7 +546,8 @@ def test_recommendation_resolves_these_fats_from_the_conversation(member, fishes
     assert [s["url"] for s in answer.sources] == [
         reverse("product", args=[fishes[0].pk]), reverse("product", args=[fishes[1].pk]),
     ]  # fmt: skip
-    assert answer.details["subject"] == "omega-3" and answer.details["origin"] == "conversation"
+    request = answer.details["request"]
+    assert request["subject"] == "omega-3" and request["subject_origin"] == "conversation"
 
 
 def test_recommendation_by_a_recorded_nutrient(member, fishes, provider):

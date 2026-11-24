@@ -25,6 +25,16 @@ def _isolated_storage(settings, tmp_path):
 
 
 @pytest.fixture(autouse=True)
+def _fresh_concept_index():
+    """The catalogue concept index is cached per process: each test sees its own categories."""
+    from catalog.services import concepts
+
+    concepts.reset_index()
+    yield
+    concepts.reset_index()
+
+
+@pytest.fixture(autouse=True)
 def _no_real_embeddings(monkeypatch):
     """Never call the real embeddings API (the container may hold an OpenAI key): Magazine
     search uses full text unless a test installs fake embeddings."""

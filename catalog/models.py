@@ -312,6 +312,9 @@ class Category(models.Model):
     tag = models.CharField(max_length=200, primary_key=True)
     name = models.CharField(max_length=300)
     parents = ArrayField(models.CharField(max_length=200), default=list, blank=True)
+    # Every name and synonym OFF gives, per language ({"en": [...], "fr": [...]}): how a
+    # question in any language finds the category (catalog.services.concepts).
+    names = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["name"]

@@ -220,7 +220,11 @@ def capital(text: str) -> str:
 # ---------- Rule answers (myola.services.chat.rule_answer) ----------
 # Only the answers that hold no free English text are written here; those quoting restriction
 # reasons, memories or preferences keep the English text and the translation path.
-RULE_LANGS_INTENTS = frozenset({None, "values", "indicators", "avoid", "scans"})
+RULE_LANGS_INTENTS = frozenset({None, "values", "indicators", "avoid", "scans", "diary", "saved"})
+MEALS = {
+    "en": {"breakfast": "Breakfast", "lunch": "Lunch", "dinner": "Dinner", "snack": "Snack"},
+    "ro": {"breakfast": "Mic dejun", "lunch": "Prânz", "dinner": "Cină", "snack": "Gustare"},
+}
 
 VALUE_NAMES = {
     "en": {"energy-kcal": "Energy", "sugars": "Sugars", "saturated-fat": "Saturates",
@@ -265,6 +269,10 @@ T["en"].update({
     "val_none": "No values per 100 g or 100 ml are recorded for this product.",
     "val_line": "{Basis}: {values}.",
     "val_missing": "Not recorded: {names}.",
+    "diary_list": "Today in your diary: {items}.",
+    "diary_none": "Nothing in your diary today yet.",
+    "saved_list": "You saved: {names}.",
+    "saved_none": "You haven't saved any product yet.",
     "avoid_list": "You marked as Avoid: {names}.",
     "avoid_none": "You haven't marked any product as Avoid.",
     "scans_list": "Your recent scans: {items}. A scan is not a purchase.",
@@ -290,6 +298,10 @@ T["ro"].update({
     "val_none": "Pentru acest produs nu sunt înregistrate valori la 100 g sau la 100 ml.",
     "val_line": "{Basis}: {values}.",
     "val_missing": "Neînregistrate: {names}.",
+    "diary_list": "Azi în jurnal: {items}.",
+    "diary_none": "Încă nu ai nimic în jurnal azi.",
+    "saved_list": "Ai salvat: {names}.",
+    "saved_none": "Încă nu ai salvat niciun produs.",
     "avoid_list": "Ai marcat „De evitat”: {names}.",
     "avoid_none": "Nu ai marcat niciun produs „De evitat”.",
     "scans_list": "Scanările tale recente: {items}. O scanare nu înseamnă o cumpărare.",
@@ -302,6 +314,10 @@ T["ro"].update({
     "from_type": " (dedus din tipul produsului)",
     "in_english": " (citat în engleză)",
 })  # fmt: skip
+
+
+def meal(lang: str, key: str) -> str:
+    return MEALS[lang_of(lang)].get(key, key)
 
 
 def quote(lang: str, text: str) -> str:
@@ -370,3 +386,45 @@ def card_value(lang: str, nutrient: str, value, unit: str, basis: str) -> str:
 def group_title(kind: str, lang: str) -> str:
     titles = GROUPS[kind]
     return titles.get(lang or "", titles["en"])
+
+
+# ---------- Searches of the shared catalogue (rag.answer_request) ----------
+T["en"].update({
+    "found_none": "I found no “{kind}” listed for {where} in the AskFoodo catalogue.",
+    "found_list": "“{kind}” listed for {where} in the AskFoodo catalogue ({n}):",
+    "found_more": "… and {n} more.",
+    "found_no_values": "I found {n} “{kind}” listed for {where} in the AskFoodo catalogue, but "
+                       "none has a declared {what} value per 100 g, so I can't compare them.",
+    "found_missing": "{n} without a comparable {what} value were left out.",
+    "group_head": "The {n} products of the previous answer, {what} {basis}:",
+    "group_head_one": "The product of the previous answer, {what} {basis}:",
+    "group_best_low": "Lowest {what}: {name}.",
+    "group_best_high": "Highest {what}: {name}.",
+    "group_no_values": "None of the {n} products of the previous answer has a comparable {what} "
+                       "value (declared per 100 g or 100 ml), so I can't compare them.",
+    "group_no_values_one": "The product of the previous answer has no comparable {what} value "
+                           "(declared per 100 g or 100 ml).",
+    "ask_which": "Which products? Ask about a kind of product first, then compare them.",
+    "ask_criterion": "Compare them on what? For example: less sugar, less salt, more fibre.",
+})  # fmt: skip
+T["ro"].update({
+    "found_none": "Nu am găsit „{kind}” listate pentru {where} în catalogul AskFoodo.",
+    "found_list": "„{kind}” listate pentru {where} în catalogul AskFoodo ({n}):",
+    "found_more": "… și încă {n}.",
+    "found_no_values": "Am găsit {n} „{kind}” listate pentru {where} în catalogul AskFoodo, dar "
+                       "niciunul nu are o valoare declarată pentru {what} la 100 g, așa că nu "
+                       "le pot compara.",
+    "found_missing": "Am lăsat deoparte {n} fără o valoare comparabilă pentru {what}.",
+    "group_head": "Cele {n} produse din răspunsul anterior, {what} {basis}:",
+    "group_head_one": "Produsul din răspunsul anterior, {what} {basis}:",
+    "group_best_low": "Cu cea mai mică valoare de {what}: {name}.",
+    "group_best_high": "Cu cea mai mare valoare de {what}: {name}.",
+    "group_no_values": "Niciunul dintre cele {n} produse din răspunsul anterior nu are o "
+                       "valoare comparabilă pentru {what} (declarată la 100 g sau 100 ml), așa "
+                       "că nu le pot compara.",
+    "group_no_values_one": "Produsul din răspunsul anterior nu are o valoare comparabilă pentru "
+                           "{what} (declarată la 100 g sau 100 ml).",
+    "ask_which": "Care produse? Întreabă mai întâi despre un tip de produs, apoi le comparăm.",
+    "ask_criterion": "După ce să le compar? De exemplu: mai puțin zahăr, mai puțină sare, mai "
+                     "multe fibre.",
+})  # fmt: skip

@@ -56,6 +56,19 @@ def display_name(tag: str, entry: dict[str, Any]) -> str:
     return text[:1].upper() + text[1:]
 
 
+def all_names(entry: dict[str, Any]) -> dict[str, list[str]]:
+    """Names and synonyms per language, each listed once."""
+    out: dict[str, list[str]] = {}
+    for key in ("name", "synonyms"):
+        values = entry.get(key) if isinstance(entry.get(key), dict) else {}
+        for lang, items in values.items():
+            for item in items if isinstance(items, list) else [items]:
+                text = str(item or "").strip()[:200]
+                if text and text not in out.setdefault(str(lang)[:8], []):
+                    out[str(lang)[:8]].append(text)
+    return out
+
+
 def _first(entry: dict[str, Any], key: str) -> str:
     value = entry.get(key)
     if isinstance(value, dict):
@@ -89,6 +102,7 @@ class Command(BaseCommand):
                         tag=tag[:200],
                         name=display_name(tag, entry),
                         parents=[p for p in entry.get("parents", []) if isinstance(p, str)],
+                        names=all_names(entry),
                     )
                     for tag, entry in categories.items()
                     if isinstance(entry, dict)
@@ -96,7 +110,7 @@ class Command(BaseCommand):
                 batch_size=2000,
                 update_conflicts=True,
                 unique_fields=["tag"],
-                update_fields=["name", "parents"],
+                update_fields=["name", "parents", "names"],
             )
             Country.objects.bulk_create(
                 [

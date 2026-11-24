@@ -73,6 +73,12 @@ VALUE_NAMES = [
 ]
 
 _RULES = [
+    # The user's own data: what they ate (the diary) and what they saved, from the database.
+    (
+        "diary",
+        re.compile(r"(am|ai) m[aâ]ncat|did i eat|have i eaten|i ate|what i ate|jurnal|my diary"),
+    ),
+    ("saved", re.compile(r"am salvat|salvate|i saved|have i saved|my saved|favorit|favourite")),
     ("indicators", re.compile(r"nutri|nova|score|scor|grade|procesa|processing")),
     ("values", re.compile(r"sugar|salt|fat|protein|fibre|fiber|calor|energy|value|valori|valoare")),
     ("remember", re.compile(r"remember|memor")),
@@ -156,6 +162,18 @@ def _relevant_notes(user, product, question: str) -> list[str]:
     return out
 
 
+def _diary_today(user, profile) -> list[tuple[str, str]]:
+    """Today's diary entries (meal, food), in the user's own day."""
+    from myola.models import DiaryEntry
+    from myola.services.profiles import local_today
+
+    return list(
+        DiaryEntry.objects.filter(user=user, date=local_today(profile))
+        .order_by("created_at")
+        .values_list("meal", "name")[:30]
+    )
+
+
 def build_facts(user, context: str, product=None, question: str = "") -> dict[str, Any]:
     """Everything an answer may use, as plain data (safe to hand to an AI provider later)."""
     profile = get_profile(user)
@@ -182,6 +200,15 @@ def build_facts(user, context: str, product=None, question: str = "") -> dict[st
         "memories": list(used_in_replies(user).values_list("text", flat=True)),
         "notes": _relevant_notes(user, product, question) if profile.use_notes else [],
         "avoid": [m.product.name or "Unnamed product" for m in avoid],
+        "saved": [
+            m.product.name or "Unnamed product"
+            for m in ProductMark.objects.filter(
+                user=user, kind__in=[ProductMark.Kind.FAVORITE, ProductMark.Kind.BUY_OFTEN]
+            )
+            .select_related("product")
+            .order_by("-created_at")[:20]
+        ],
+        "diary_today": _diary_today(user, profile),
         "scans": [
             (v.product.name or "Unnamed product", timezone.localtime(v.created_at).date())
             for v in scans
@@ -292,6 +319,20 @@ def rule_answer(intent: str | None, facts: dict[str, Any], lang: str = "en") -> 
         summary = _prefs_summary(facts)
         if summary:
             lines.append(f"Your preferences: {summary}.")
+    elif intent == "diary":
+        lines.append(
+            W.t(lang, "diary_list", items="; ".join(
+                f"{W.meal(lang, meal)}: {name}" for meal, name in facts["diary_today"]
+            ))
+            if facts["diary_today"]
+            else W.t(lang, "diary_none")
+        )  # fmt: skip
+    elif intent == "saved":
+        lines.append(
+            W.t(lang, "saved_list", names=", ".join(facts["saved"]))
+            if facts["saved"]
+            else W.t(lang, "saved_none")
+        )
     elif intent == "avoid":
         lines.append(
             W.t(lang, "avoid_list", names=", ".join(facts["avoid"]))
@@ -327,7 +368,9 @@ def rule_answer(intent: str | None, facts: dict[str, Any], lang: str = "en") -> 
 # Intents answered only by the rules, never by the AI provider: allergen/diet checks (a
 # product name or ingredient list must never be able to talk the model into "safe") and
 # everything about the user's own data (lists, scans, memories, preferences).
-RULE_ONLY_INTENTS = frozenset({"restrictions", "remember", "avoid", "scans", "prefs"})
+RULE_ONLY_INTENTS = frozenset(
+    {"restrictions", "remember", "avoid", "scans", "prefs", "diary", "saved"}
+)
 
 
 MAX_INGREDIENTS_CHARS = 1500  # long lists are cut (about 400 tokens at most)
@@ -647,17 +690,26 @@ def _data_answer(user, context, text, product, sources, details, lang="en") -> s
                         previous.get("basis") or "per_100g",
                     ))  # fmt: skip
         return answer
-    if rag.wants_recommendation(text, product):
-        # "Ce pește îmi recomanzi…", "Unde găsesc…": the whole catalogue, in any chat (also
-        # one started from the diary); "these fats" is read from the user's earlier messages.
-        earlier = list(
-            ChatMessage.objects.filter(user=user, context=context, role=ChatMessage.Role.USER)
-            .order_by("-created_at", "-pk")
-            .values_list("text", flat=True)[:4]
-        )
-        answer, links, found = rag.recommend(text, earlier, user, lang)
-        sources.extend(links)
-        details.update(found)
+    # Products of the shared catalogue ("Ce produse de lapte de cocos există în UK?",
+    # "Ce pește îmi recomanzi?", "Care dintre ele are mai puțin zahăr?", "Dar în România?"),
+    # in any chat, also one started from the diary. One reading of the request
+    # (rag.interpret) drives the query, the answer and the cards.
+    earlier = list(
+        ChatMessage.objects.filter(user=user, context=context, role=ChatMessage.Role.USER)
+        .order_by("-created_at", "-pk")
+        .values_list("text", flat=True)[:4]
+    )
+    previous = (
+        ChatMessage.objects.filter(user=user, context=context, role=ChatMessage.Role.OLA)
+        .order_by("-created_at", "-pk")
+        .values_list("details", flat=True)
+        .first()
+    )
+    request = rag.interpret(text, previous, product, user, earlier)
+    if request is not None:
+        answer, cards, found = rag.answer_request(request, earlier, lang)
+        sources.extend(cards)
+        details.update({k: v for k, v in found.items() if not k.startswith("lang")})
         return answer
     if product is not None:
         nutrient = rag.nutrient_asked(text)
@@ -826,7 +878,7 @@ def _personal_data(intent: str | None, facts: dict) -> str:
     page): "private" (notes, memories, lists, scans, goal: sent to the AI provider only with
     "Let Ask Foodo use my diary, lists, notes and memories" on), "diets" (diet and allergy
     names: with that switch or "Use my diets and allergies in AI answers") or "public"."""
-    if facts.get("notes") or intent in ("remember", "avoid", "scans"):
+    if facts.get("notes") or intent in ("remember", "avoid", "scans", "diary", "saved"):
         return "private"
     if intent == "prefs":
         return "private" if facts.get("goal") else "diets"

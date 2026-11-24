@@ -671,21 +671,9 @@ def value_answer(product: Product, nutrient: str, lang: str = "en") -> tuple[str
     return text, details
 
 
-# ---------- Recommendations from the whole catalogue ----------
-# Foods named in a question -> OFF category tags (Romanian and English words).
-FOODS: dict[str, tuple[str, ...]] = {
-    "en:fishes": ("pește", "peste", "pești", "pesti", "peşte", "fish"),
-    "en:pizzas": ("pizza",),
-    "en:yogurts": ("iaurt", "yogurt", "yoghurt"),
-    "en:breakfast-cereals": ("cereale", "cereal"),
-    "en:cheeses": ("brânz", "branz", "cheese"),
-    "en:breads": ("pâine", "paine", "bread"),
-    "en:chocolates": ("ciocolat", "chocolate"),
-    "en:biscuits": ("biscui",),
-    "en:vegetable-oils": (" ulei", "uleiuri", " oil", " oils"),
-    "en:butters": (" unt ", " untul", " butter"),
-    "en:milks": ("lapte", " milk"),
-}
+# ---------- Requests on the shared catalogue ----------
+# One reading of a question about products of the catalogue (``interpret``), used for the
+# database query, the answer and the cards, and kept on the answer (``details["request"]``).
 # Things people ask for that the catalogue does not record as a nutrient. ``off_key``: the OFF
 # field read from the stored OFF data when a product has it; ``category``: where OFF files the
 # foods it applies to ("fatty fishes" for omega-3 in fish), used only when the value is missing.
@@ -701,39 +689,27 @@ RECOMMEND_WORDS = (
     "unde pot gasi", "where can i find", "where do i find", "where can i get", "ce produs are",
     "ce produse au", "what product has", "which product has", "which products have",
 )  # fmt: skip
+# Asking what the catalogue holds ("Ce produse … există?", "Which … are sold in the UK?").
+DISCOVER_WORDS = (
+    " există", " exista", " exist", " existe ", "are there", "is there", " available",
+    " sold", " sell ", " listed", "do you have", " aveți", " aveti", " hay ", "gibt es",
+    "y a-t-il", "il y a", " găsesc", " gasesc", " caut", " find",
+)  # fmt: skip
+ASK_WORDS = (" ce ", " care ", " which ", " what ", " quel", " qué ", " que ", " welche",
+             " quale", " qual ", " jaki", " jaka")  # fmt: skip
 ANAPHORA = (
     "aceste", "acestea", "astea", "acelea", "aceleași", "aceleasi", "acesta", "these", "those",
     "them", "this fat", "such",
 )  # fmt: skip
 THIS_PRODUCT = ("scanat", "scanned", "this one", "this product", "acest produs", "acesta",
                 "decât produsul", "decat produsul", "than this")  # fmt: skip
-
-
-def food_of(text: str) -> str | None:
-    t = _norm(text)
-    for tag, words in FOODS.items():
-        if _has(t, words):
-            return tag
-    return None
-
-
-def wants_recommendation(text: str, product: Product | None) -> bool:
-    """ "Recomandă-mi…", "Ce produs are…", "Unde găsesc…": a search of the whole catalogue
-    (not a comparison with the open product: those name "this one" or a criterion)."""
-    t = _norm(text)
-    food = food_of(text)
-    if food is None or not _has(t, RECOMMEND_WORDS + COMPARE_WORDS):
-        return False
-    if product is not None and food not in (product.categories or []):
-        return not _has(t, THIS_PRODUCT)  # another kind of food than the open product
-    if product is None and not _has(t, THIS_PRODUCT):
-        # The general chat has no open product: "Ce iaurt are mai puțin zahăr?" searches the
-        # catalogue ("than the scanned one" still asks to open a product first).
-        return True
-    if not _has(t, RECOMMEND_WORDS):
-        return False
-    # With a product open, a criterion or "this one" means a comparison with it.
-    return product is None or (criterion_of(text) is None and not _has(t, THIS_PRODUCT))
+# "Care dintre ele…?", "Which of them…?": the products of the previous answer.
+GROUP_WORDS = (
+    "dintre ele", "dintre acestea", "dintre astea", "dintre ei", "dintre cele", "care dintre",
+    "which of them", "which one of them", "which of these", "which of those", "among them",
+    "of these", "of those", "between them", "lequel", "laquelle", "cuál de ellos",
+)  # fmt: skip
+LIST_LIMIT = 8
 
 
 def concept_of(text: str) -> str | None:
@@ -744,140 +720,348 @@ def concept_of(text: str) -> str | None:
     return None
 
 
+def nutrient_in(text: str) -> str | None:
+    """The nutrient this message names (saturated fat before fat), or None."""
+    t = _norm(text)
+    for key, (_, words) in NUTRIENTS.items():
+        if key == "fat" and _has(t, NUTRIENTS["saturated-fat"][1]):
+            continue
+        if _has(t, words):
+            return key
+    return None
+
+
 def subject_of(text: str, earlier: list[str]) -> tuple[str | None, str]:
-    """What the question asks for: a nutrient key or a concept ("omega-3"), and where it came
-    from ("question" or "conversation"). "These fats" and other references are resolved from
-    the user's earlier messages of the same chat, newest first."""
+    """What the question asks the products to have: a nutrient key or a concept ("omega-3"),
+    and where it came from. Only a reference ("aceste grăsimi", "these fats") reads the user's
+    earlier messages; a new question never inherits an earlier criterion."""
     t = _norm(text)
     own = concept_of(text)
     if own:
         return own, "question"
-    for key, (_, words) in NUTRIENTS.items():
-        if key == "fat" and _has(t, NUTRIENTS["saturated-fat"][1]):
-            continue
-        if _has(t, words) and not _has(t, ANAPHORA):
-            return key, "question"
-    if _has(t, ANAPHORA) or not any(_has(t, w) for _, w in NUTRIENTS.values()):
+    named = nutrient_in(text)
+    if _has(t, ANAPHORA):
+        # "Aceste grăsimi" after a message about omega-3: the thing the catalogue does not
+        # record; otherwise the nutrient this message names wins over earlier ones.
         for message in earlier:
-            found = concept_of(message)
+            found = concept_of(message) or (None if named else nutrient_in(message))
             if found:
                 return found, "conversation"
-            m = f" {message.lower()} "
-            for key, (_, words) in NUTRIENTS.items():
-                if _has(m, words):
-                    return key, "conversation"
-    for key, (_, words) in NUTRIENTS.items():
-        if _has(t, words):
-            return key, "question"
-    return None, ""
+    return (named, "question") if named else (None, "")
 
 
-def recommend(text: str, earlier: list[str], user=None, lang: str = "en"):
-    """``(answer, sources, details)``: 1-3 real products of the catalogue for the food asked
-    for, sold in the market of the question (else the user's), ranked by the value asked for.
-    Each line says what the data confirms; a value the catalogue does not have is said to be
-    missing, never guessed."""
+@dataclass
+class Request:
+    intent: str  # discover | recommend | group | clarify
+    concept: dict[str, Any] = field(default_factory=dict)  # words, original, tags
+    market: str = ""
+    market_source: str = ""  # question | conversation | user
+    subject: str | None = None  # a nutrient key or a concept key ("omega-3")
+    subject_origin: str = ""
+    direction: str = "higher"
+    scope: list[str] = field(default_factory=list)  # product ids ("dintre ele")
+    inherited: list[str] = field(default_factory=list)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "intent": self.intent, "concept": self.concept, "market": self.market,
+            "market_source": self.market_source, "subject": self.subject,
+            "subject_origin": self.subject_origin, "direction": self.direction,
+            "scope": self.scope, "inherited": self.inherited,
+        }  # fmt: skip
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Request:
+        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+
+
+def interpret(text: str, previous: dict | None, product: Product | None, user=None,
+              earlier: list[str] | None = None) -> Request | None:  # fmt: skip
+    """The request a chat message makes on the shared catalogue, or None (another kind of
+    question: the user's own data, a comparison with the open product, the Magazine...).
+
+    * a complete question naming a kind of product starts a new search: its own product, its
+      own criterion (only from this message or a reference such as "these fats"), the market
+      it names, else the app's policy (the user's market);
+    * "care dintre ele / which of them" compares the products of the previous answer;
+    * "dar în România? / and in Romania?" repeats the previous search in another market;
+    * a reference with nothing to refer to asks one short question back."""
+    from catalog.services import concepts
     from myola.context.django_source import user_country
+
+    earlier = earlier or []
+    t = _norm(text)
+    previous = previous or {}
+    before = previous.get("request") or {}
+    direction = "lower" if _has(t, LOWER_WORDS) else "higher"
+    nutrient = nutrient_in(text)
+    if _has(t, GROUP_WORDS):
+        ids = [p["id"] for p in previous.get("products") or [] if p.get("id")]
+        if not ids or not nutrient:
+            return Request("clarify", subject=nutrient, inherited=["products"] if ids else [])
+        return Request("group", concept=before.get("concept") or {}, scope=ids,
+                       subject=nutrient, subject_origin="question", direction=direction,
+                       market=before.get("market", ""), market_source="conversation",
+                       inherited=["products"])  # fmt: skip
+    market = market_of(text)
+    concept = concepts.resolve(text)
+    # A question about products: asking for them ("recomandă", "există", "find") or with a
+    # question word ("ce", "which").
+    asks = _has(t, RECOMMEND_WORDS + DISCOVER_WORDS + ASK_WORDS)
+    named = concept is not None and bool(concept.tags)
+    unknown = concept is not None and not concept.tags and _has(t, RECOMMEND_WORDS + DISCOVER_WORDS)
+    if market and not named and not unknown and not nutrient and before.get("concept"):
+        again = Request.from_dict(before)
+        again.market, again.market_source = market, "question"
+        again.inherited = ["concept", "subject"]
+        if again.intent in ("group", "clarify"):  # the search the group came from
+            again.intent, again.scope = ("recommend" if again.subject else "discover"), []
+        return again
+    if not ((named and asks) or unknown):
+        return None
+    same_kind = product is not None and named and set(concept.tags) & set(product.categories or [])
+    if same_kind and (criterion_of(text) is not None or _has(t, THIS_PRODUCT)):
+        return None  # a comparison with the open product
+    if _has(t, THIS_PRODUCT) and product is None:
+        return None  # "than the scanned product": open a product first
+    subject, origin = subject_of(text, earlier)
+    recommend_words = _has(t, RECOMMEND_WORDS)
+    return Request(
+        intent="recommend" if subject or recommend_words else "discover",
+        concept={"words": list(concept.words), "original": list(concept.original),
+                 "tags": list(concept.tags)},
+        market=market or user_country(user), market_source="question" if market else "user",
+        subject=subject, subject_origin=origin, direction=direction,
+        inherited=["subject"] if origin == "conversation" else [],
+    )  # fmt: skip
+
+
+def concept_label(req: Request, lang: str) -> str:
+    """The kind of product, as the answer names it: the category's name in the answer's
+    language when OFF has it, else its English name, else the question's own words."""
+    from catalog.models import Category
+
+    tags = req.concept.get("tags") or []
+    if tags:
+        row = Category.objects.filter(tag=tags[0]).values_list("name", "names").first()
+        if row:
+            name, names = row
+            return ((names or {}).get(lang) or [name])[0]
+    return " ".join(req.concept.get("original") or req.concept.get("words") or [])
+
+
+def request_products(req: Request):
+    from catalog.services import concepts
+
+    c = concepts.Concept(words=tuple(req.concept.get("words") or ()),
+                         original=tuple(req.concept.get("original") or ()),
+                         tags=tuple(req.concept.get("tags") or ()))  # fmt: skip
+    return concepts.products(c, [req.market] if req.market else [])
+
+
+def _per_100(products: list[Product], nutrient: str) -> dict[Any, tuple]:
+    """Declared, as-sold values per 100 g (else per 100 ml) of the products' current
+    revisions: ``{product_id: (value, unit, basis)}``, plain values only."""
+    rows = NutrientFact.objects.filter(
+        revision_id__in=[p.current_revision_id for p in products], nutrient=nutrient,
+        preparation=AS_SOLD, status="declared", value__isnull=False, modifier__in=["", "~"],
+        basis__in=PER_100,
+    ).values_list("revision_id", "value", "unit", "basis")  # fmt: skip
+    by_rev = {}
+    for rid, value, unit, basis in rows:
+        if rid not in by_rev or basis == "per_100g":
+            by_rev[rid] = (value, unit, basis)
+    return {
+        p.pk: by_rev[p.current_revision_id] for p in products if p.current_revision_id in by_rev
+    }
+
+
+def _same_basis(values: dict[Any, tuple]) -> dict[Any, tuple]:
+    """Only values that can be compared with each other: one basis (per 100 g when there is
+    any, else per 100 ml) and one unit; the others count as having no comparable value."""
+    if not values:
+        return {}
+    bases = {v[2] for v in values.values()}
+    basis = "per_100g" if "per_100g" in bases else next(iter(bases))
+    units = sorted({v[1] for v in values.values() if v[2] == basis})
+    unit = units[0] if units else "g"
+    return {k: v for k, v in values.items() if v[2] == basis and v[1] == unit}
+
+
+def answer_request(req: Request, earlier: list[str], lang: str = "en"):
+    """``(answer, cards, details)`` for a request, written from the data only."""
     from myola.services import chat_text as W
 
-    category = food_of(text)
-    market = market_of(text) or user_country(user)
-    subject, origin = subject_of(text, earlier)
-    lower = _has(f" {(text or '').lower()} ", LOWER_WORDS)
-    found = Product.objects.filter(
-        current_revision__isnull=False, listable=True, categories__contains=[category],
-        countries__contains=[market],
-    )  # fmt: skip
-    kind = category_name(category)
-    where = W.markets([market], lang)
-    details: dict[str, Any] = {"kind": "recommendation", "category": category,
-                               "markets": [market], "subject": subject, "origin": origin,
-                               "candidates": found.count()}  # fmt: skip
-    picks: list[tuple[Product, str]] = []
-    cards: list[dict] = []
+    details: dict[str, Any] = {"kind": "recommendation", "request": req.as_dict()}
+    if req.intent == "clarify":
+        return W.t(lang, "ask_which" if not req.inherited else "ask_criterion"), [], details
+    if req.intent == "group":
+        return _group_answer(req, lang, details)
+    found = request_products(req)
+    label = concept_label(req, lang)
+    where = W.markets([req.market], lang) if req.market else ""
+    total = found.count()
+    details["request"]["filters"] = {
+        "categories": req.concept.get("tags"), "name_words": (
+            req.concept.get("words") if len(req.concept.get("words") or []) > 1 else []),
+        "countries": [req.market] if req.market else [], "listable": True,
+        "nutrient": req.subject if req.subject in NUTRIENTS else None,
+    }  # fmt: skip
+    details["candidates"] = total
     lines: list[str] = []
-    if subject in NUTRIENTS:
-        facts = list(
-            NutrientFact.objects.filter(
-                revision__product__in=found, revision__product__current_revision=F("revision"),
-                nutrient=subject, basis="per_100g", preparation=AS_SOLD, status="declared",
-                value__isnull=False, modifier__in=["", "~"],
-            )
-            .select_related("revision__product")
-            .order_by("value" if lower else "-value", "revision__product__name")[:3]
-        )  # fmt: skip
-        name = W.nutrient(lang, subject)
-        details.update(nutrient=subject, basis="per_100g", unit="g")
-        if not facts:
-            lines.append(W.t(lang, "rec_no_value", kind=kind, where=where, what=name))
-        else:
-            label = W.t(lang, "rec_least" if lower else "rec_most", what=name)
-            lines.append(W.t(lang, "rec_head", kind=kind, where=where, label=label))
-            for f in facts:
-                p = f.revision.product
-                picks.append((p, str(f.value)))
-                cards.append(product_card(p, lang, subject, f.value, f.unit))
-                lines.append(f"- {_name(p)}: {W.number(f.value, f.unit, lang)} {name} "
-                             f"{W.basis(lang, 'per_100g')}")  # fmt: skip
-    elif subject in CONCEPTS:
-        concept = CONCEPTS[subject]
-        key = concept["off_key"]
-        with_value = list(
-            found.filter(
-                **{f"current_revision__off_payload__nutriments__{key}__isnull": False}
-            ).select_related("current_revision")[:50]
-        )
-        with_value.sort(key=lambda p: -float(p.current_revision.off_payload["nutriments"][key]))
-        if with_value:
-            lines.append(W.t(lang, "rec_head", kind=kind, where=where,
-                             label=W.t(lang, "rec_most", what=subject)))  # fmt: skip
-            for p in with_value[:3]:
-                value = p.current_revision.off_payload["nutriments"][key]
-                picks.append((p, str(value)))
+    cards: list[dict] = []
+    picks: list[tuple[Product, Decimal | None, str]] = []
+    if req.subject_origin == "conversation" and req.subject:
+        what = W.nutrient(lang, req.subject) if req.subject in NUTRIENTS else req.subject
+        lines.append(W.t(lang, "rec_context", what=what))
+    if total == 0:
+        lines.append(W.t(lang, "found_none", kind=label, where=where))
+    elif req.subject in NUTRIENTS:
+        products = list(found.select_related("current_revision")[:2000])
+        values = _same_basis(_per_100(products, req.subject))
+        name = W.nutrient(lang, req.subject)
+        if not values:
+            lines.append(W.t(lang, "found_no_values", n=total, kind=label, where=where, what=name))
+            for p in products[:LIST_LIMIT]:
+                picks.append((p, None, ""))
                 cards.append(product_card(p, lang))
-                lines.append(f"- {_name(p)}: {W.number(value, 'g', lang)} {subject} "
-                             f"{W.basis(lang, 'per_100g')}")  # fmt: skip
         else:
-            lines.append(W.t(lang, "rec_missing", kind=kind, where=where, what=subject))
-            narrower = concept["category"].get(category)
-            pool = found.filter(categories__contains=[narrower]) if narrower else found
-            fats = list(
-                NutrientFact.objects.filter(
-                    revision__product__in=pool,
-                    revision__product__current_revision=F("revision"), nutrient="fat",
-                    basis="per_100g", preparation=AS_SOLD, status="declared",
-                    value__isnull=False,
-                )
-                .select_related("revision__product")
-                .order_by("-value", "revision__product__name")[:3]
-            )  # fmt: skip
-            if narrower and fats:
-                lines.append(W.t(lang, "rec_category", category=category_name(narrower),
-                                 what=subject))  # fmt: skip
-                for f in fats:
-                    p = f.revision.product
-                    picks.append((p, None))
-                    cards.append(product_card(p, lang, "fat", f.value, f.unit))
-                    lines.append(
-                        f"- {_name(p)}: {W.t(lang, 'rec_fat', value=W.number(f.value, 'g', lang))}"
-                    )
+            ranked = sorted(products, key=lambda p: (p.pk not in values, (
+                values[p.pk][0] if req.direction == "lower" else -values[p.pk][0])
+                if p.pk in values else 0, p.name))[:3]  # fmt: skip
+            label_c = W.t(lang, "rec_least" if req.direction == "lower" else "rec_most", what=name)
+            lines.append(W.t(lang, "rec_head", kind=label, where=where, label=label_c))
+            for p in ranked:
+                value, unit, basis = values[p.pk]
+                picks.append((p, value, basis))
+                cards.append(product_card(p, lang, req.subject, value, unit, basis))
+                lines.append(f"- {_name(p)}: {W.number(value, unit, lang)} {name} "
+                             f"{W.basis(lang, basis)}")  # fmt: skip
+            missing = len(products) - len(values)
+            if missing:
+                lines.append(W.t(lang, "found_missing", n=missing, what=name))
+            details.update(nutrient=req.subject, basis="per_100g", unit="g")
+    elif req.subject in CONCEPTS:
+        _concept_lines(req, found, label, where, lang, lines, cards, picks)
     else:
-        best = list(found.filter(foodo_value__isnull=False).order_by("-foodo_value", "name")[:3])
-        if best:
-            lines.append(W.t(lang, "rec_head", kind=kind, where=where,
-                             label=W.t(lang, "rec_foodo")))  # fmt: skip
-            for p in best:
-                picks.append((p, None))
+        ordered = list(found.order_by(F("foodo_value").desc(nulls_last=True), "name")[:LIST_LIMIT])
+        key = "found_list" if req.intent == "discover" else "rec_head"
+        if req.intent == "discover":
+            lines.append(W.t(lang, key, kind=label, where=where, n=total))
+        else:
+            lines.append(W.t(lang, key, kind=label, where=where, label=W.t(lang, "rec_foodo")))
+        for p in ordered:
+            picks.append((p, None, ""))
+            if req.intent == "discover":
+                cards.append(product_card(p, lang))
+                lines.append(f"- {_name(p)}")
+            else:
                 cards.append(product_card(p, lang, "foodo", foodo=p.foodo_value))
-                lines.append(f"- {_name(p)}: Foodo Score {p.foodo_value}/100")
-    if not lines:
-        lines.append(W.t(lang, "rec_none", kind=kind, where=where))
-    if origin == "conversation" and subject:
-        lines.insert(0, W.t(lang, "rec_context", what=W.nutrient(lang, subject)
-                            if subject in NUTRIENTS else subject))  # fmt: skip
-    sources = cards
-    details["products"] = [_product_detail(p, Decimal(v) if v else None, None) for p, v in picks]
-    return "\n".join(lines), sources, details
+                lines.append(
+                    f"- {_name(p)}"
+                    + (f": Foodo Score {p.foodo_value}/100" if p.foodo_value else "")
+                )
+        if total > len(ordered):
+            lines.append(W.t(lang, "found_more", n=total - len(ordered)))
+    details["products"] = [_product_detail(p, v, None) for p, v, _ in picks]
+    return "\n".join(lines), cards, details
+
+
+def _concept_lines(req, found, label, where, lang, lines, cards, picks) -> None:
+    """A thing the catalogue does not map ("omega-3"): the OFF value when products have it;
+    else said to be missing, with what the data does confirm (OFF's narrower category and
+    the total fat per 100 g)."""
+    from myola.services import chat_text as W
+
+    concept = CONCEPTS[req.subject]
+    key = concept["off_key"]
+    with_value = list(found.filter(
+        **{f"current_revision__off_payload__nutriments__{key}__isnull": False}
+    ).select_related("current_revision")[:50])  # fmt: skip
+    with_value.sort(key=lambda p: -float(p.current_revision.off_payload["nutriments"][key]))
+    if with_value:
+        lines.append(W.t(lang, "rec_head", kind=label, where=where,
+                         label=W.t(lang, "rec_most", what=req.subject)))  # fmt: skip
+        for p in with_value[:3]:
+            value = p.current_revision.off_payload["nutriments"][key]
+            picks.append((p, Decimal(str(value)), "per_100g"))
+            cards.append(product_card(p, lang))
+            lines.append(f"- {_name(p)}: {W.number(value, 'g', lang)} {req.subject} "
+                         f"{W.basis(lang, 'per_100g')}")  # fmt: skip
+        return
+    lines.append(W.t(lang, "rec_missing", kind=label, where=where, what=req.subject))
+    tags = req.concept.get("tags") or []
+    narrower = next((concept["category"][t] for t in tags if t in concept["category"]), None)
+    if not narrower:
+        return
+    pool = found.filter(categories__contains=[narrower])
+    fats = list(
+        NutrientFact.objects.filter(
+            revision__product__in=pool, revision__product__current_revision=F("revision"),
+            nutrient="fat", basis="per_100g", preparation=AS_SOLD, status="declared",
+            value__isnull=False,
+        ).select_related("revision__product").order_by("-value", "revision__product__name")[:3]
+    )  # fmt: skip
+    if fats:
+        lines.append(W.t(lang, "rec_category", category=category_name(narrower), what=req.subject))
+        for f in fats:
+            p = f.revision.product
+            picks.append((p, None, ""))
+            cards.append(product_card(p, lang, "fat", f.value, f.unit))
+            lines.append(
+                f"- {_name(p)}: {W.t(lang, 'rec_fat', value=W.number(f.value, 'g', lang))}"
+            )
+
+
+def _group_answer(req: Request, lang: str, details: dict):
+    """ "Care dintre ele are mai puțin zahăr?": only the products of the previous answer,
+    compared on the value asked for, on compatible values (declared, as sold, per 100 g or
+    100 ml, the same unit)."""
+    import uuid as uuid_module
+
+    from myola.services import chat_text as W
+
+    ids = []
+    for raw in req.scope:
+        try:
+            ids.append(uuid_module.UUID(str(raw)))
+        except ValueError:
+            continue
+    by_id = Product.objects.select_related("current_revision").in_bulk(ids)
+    products = [by_id[i] for i in ids if i in by_id]
+    name = W.nutrient(lang, req.subject)
+    values = _same_basis(_per_100(products, req.subject))
+    units = {v[1] for v in values.values()}
+    bases = {v[2] for v in values.values()}
+    details["candidates"] = len(products)
+    if not values:
+        key = "group_no_values_one" if len(products) == 1 else "group_no_values"
+        text = W.t(lang, key, n=len(products), what=name)
+        return (
+            text,
+            [product_card(p, lang) for p in products],
+            {**details, "products": [_product_detail(p, None, None) for p in products]},
+        )
+    ranked = sorted((p for p in products if p.pk in values),
+                    key=lambda p: (values[p.pk][0] if req.direction == "lower"
+                                   else -values[p.pk][0], p.name))  # fmt: skip
+    basis = next(iter(bases))
+    key = "group_head_one" if len(products) == 1 else "group_head"
+    lines = [W.t(lang, key, n=len(products), what=name, basis=W.basis(lang, basis))]
+    cards = []
+    for p in ranked:
+        value, unit, _ = values[p.pk]
+        lines.append(f"- {_name(p)}: {W.number(value, unit, lang)}")
+        cards.append(product_card(p, lang, req.subject, value, unit, basis))
+    best = ranked[0]
+    lines.append(W.t(lang, "group_best_low" if req.direction == "lower" else "group_best_high",
+                     name=_name(best), what=name))  # fmt: skip
+    missing = [p for p in products if p.pk not in values]
+    if missing:
+        lines.append(W.t(lang, "found_missing", n=len(missing), what=name))
+    details.update(nutrient=req.subject, basis=basis, unit=next(iter(units)))
+    details["products"] = [_product_detail(p, values[p.pk][0], None) for p in ranked]
+    return "\n".join(lines), cards, details
 
 
 # ---------- Follow-up: "And for 200 g?" ----------
