@@ -165,6 +165,31 @@ PostgreSQL ~49 GB data + indexes before any update; one `pg_dump` ~5.6 GB; a fir
 ~65 h at the pilot rate. Products usable in lists (name, and nutrition or photo): 72%.
 Romania: 51,645 products (~0.5 GB); UK: 201,408 (~2 GB).
 
+## Local working database (2026-11-24)
+
+The app runs locally on **`olahealth_pilot`**: a copy of the app's database (`olahealth`:
+accounts, diaries, notes, chat, contributions, Magazine articles and cover, site settings,
+schedules) with the pilot sample imported into it through the validated importer.
+
+```sh
+# 1. copy the app's database (the originals are not touched)
+docker exec olahealth-postgres-1 sh -c 'createdb -U olahealth -T template0 olahealth_pilot &&
+  pg_dump -U olahealth -Fc olahealth | pg_restore -U olahealth -d olahealth_pilot --no-owner'
+# 2. import the original pilot sample (26,957 lines), with the dump's export time
+MSYS_NO_PATHCONV=1 docker compose -f compose.yaml -f compose.dev.yaml run --rm --no-deps   -e POSTGRES_DB=olahealth_pilot web python manage.py import_off_dump   /app/data/openfoodfacts/pilot/sample.jsonl.gz --exported-at 2026-11-23T19:42:33+00:00
+# 3. use it: POSTGRES_DB=olahealth_pilot in .env, then
+docker compose -f compose.yaml -f compose.dev.yaml up -d   # migrate runs at start
+```
+
+* `pg_dump | pg_restore` keeps every id and relation; a `TEMPLATE` copy is not used because
+  web and worker keep connections to `olahealth`.
+* `tools/off_pilot.py run` is **not** used: it drops its database and applies three artificial
+  corrections (`pilot_after`). `pilot_before`, `pilot_after` and `olahealth` stay as they were.
+* Media (Magazine photos, cover, cached OFF photos) live in the `private_media` volume and are
+  referenced by path, so the copy shows them unchanged.
+* Products that were already in the app and are also in the sample are updated in place (same
+  product, one more revision when the data differ), never duplicated.
+
 ## Next stage (not done yet)
 
 * **Bulk loading** of the full dump (millions of products): the current importer uses one
