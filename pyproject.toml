@@ -60,3 +60,6 @@ ignore = ["S101", "RUF012", "S311", "RUF001", "RUF002", "RUF003"]  # typographic
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106", "S108"]
+# Local measuring tool: fixed commands (gzip, git, pg_dump), constant table names, and https
+# photo URLs taken from the import.
+"tools/off_pilot.py" = ["S310", "S603", "S607", "S608"]

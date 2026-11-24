@@ -52,6 +52,48 @@ Fields read (the same as the API, `off/client.py` `PRODUCT_FIELDS`):
 OFF leaves a field out of a product when it has no value (for example no NOVA group), so a
 missing field on one line is normal; a field missing from the whole dump is not.
 
+### How the dump differs from the API
+
+The dump is written in OFF's current product schema (`schema_version` 1003/1004); the API
+(v2) still answers in the older one. Three differences matter:
+
+* **Photos.** The dump has no `image_front_url` / `image_ingredients_url` /
+  `image_nutrition_url`. `off/images.py` builds the same URLs from the `images` metadata,
+  in either of its two shapes (`images.selected.<kind>.<lc>.rev`, current;
+  `images.<kind>_<lc>.rev`, older):
+  `https://images.openfoodfacts.org/images/products/<path>/<kind>_<lc>.<rev>.400.jpg`, where
+  `<path>` is the code left-padded to 13 digits and split 3/3/3/rest. The language is the
+  product's `lc`, then `lang`, then `en`, then the first available. Direct URLs win when
+  present (API).
+* **Nutrition.** In the current schema `nutriments` is empty and the values are in
+  `nutrition.input_sets` (one set per source, preparation and basis). `off/mapping.py` reads
+  `nutriments` first (API, older lines) and otherwise the sets whose `source` is
+  `packaging` (preferred) or `manufacturer`. OFF's `estimate` sets are never declared values;
+  `value_computed` alone is not a declared value; `mg` becomes `g`;
+  `unspecified_nutrients` become "not on the label"; `no_nutrition_data_on_packaging` means
+  "no nutrition facts on the package". The per-100 basis follows the same rule as
+  `nutriments` (product quantity, else product type), so the API and the dump agree.
+* **`ingredients_lang`** is absent: the ingredient language falls back to `lang`, as before.
+
+Barcodes whose check digit is wrong are skipped (counted as `skipped`), as for the API.
+
+### What is kept per revision
+
+`off_payload` keeps only what the app reads again (`off/fields.py` `STORED_FIELDS`): the API
+field list (`off/client.py` `PRODUCT_FIELDS`) plus `images` (selected photos' `imgid`/`rev`
+only) and `nutrition` (declared sets, our nutrients' `value`/`unit`/`modifier` only).
+Mapping, indicators and the Foodo Score use the same trimmed payload, so `remap_off` from a
+stored payload gives exactly the original import. Older revisions keep their full payload
+(revisions are immutable); `remap_off` reads both.
+
+### Photos on re-import
+
+`importer._sync_off_images`: a payload with no photo information changes nothing; a kind
+missing from the payload keeps its current photo (an OFF photo is switched off only when OFF
+names another photo of the same kind); a kind with an approved local photo keeps it (OFF
+photos of that kind stay off); photos switched off by staff stay off. The import never
+downloads photos: they are cached when first viewed (`catalog/views.py` `off_image`).
+
 ## Import, verification, activation
 
 ```
@@ -86,6 +128,42 @@ mode does not change:
 | same_score_as_api | on a sample, the stored score equals the score of the same OFF data read as an API response |
 
 Once verified, the local catalogue is used at once (no restart needed).
+
+## Pilot (2026-11-23)
+
+`tools/off_pilot.py` (sample → run → compare → check-urls; outputs in the git-ignored
+`data/openfoodfacts/pilot/`). Dump of 2026-11-23: 4,929,984 lines, 86.8 GB uncompressed
+(17.6 KB per line on average), 13.8 GB gzipped.
+
+**Sample.** 26,957 lines: 1,000 at random from each block of 250,000 lines (20 blocks, the
+whole file), plus up to 3,000 Romania, 2,000 UK, 1,000 beverages and 1,000 incomplete lines.
+Same file for both runs, each into a fresh database. Limits: 0.55% of the dump; timings on
+Docker Desktop (Windows, bind-mounted source), not on the VPS.
+
+| | before (old code) | after |
+|---|---|---|
+| imported / skipped (bad barcode) / failed | 25,985 / 972 / 0 | 25,985 / 972 / 0 |
+| verification | verified | verified |
+| first import | 1,293 s (20.9 lines/s) | 1,338 s (20.1 lines/s) |
+| re-import of the same file | 707 s, 0 new revisions | 716 s, 0 new revisions |
+| products with an OFF photo | 0 | 20,306 (front 19,683; ingredients 7,129; nutrition 12,055) |
+| products with nutrition facts | 3,942 | 17,677 |
+| `off_payload` per revision (JSON / stored) | 19.4 KB / 7.4 KB | 3.9 KB / 2.1 KB |
+| database (minus an empty migrated one, 11 MB) | 371 MB (14.3 KB/product) | 271 MB (10.4 KB/product) |
+| `pg_dump -Fc` | 83 MB | 31 MB |
+| photo downloads queued / cache files written | 0 / 0 | 0 / 0 |
+
+Compared product by product: identical Foodo Score, Nutri-Score, NOVA, revisions and
+identifiers for all 25,985; identical product data except 13,735 products that gained their
+nutrition (current schema) and 158 now marked "no nutrition facts on the package". A local
+correction (name + nutrition) on 3 products survived a newer OFF line: values kept, one
+more revision, an open `data_conflict` flag, no duplicates. 150 built photo URLs (front,
+ingredients, nutrition; EAN-13 and EAN-8) all answered 200 `image/jpeg`.
+
+**Whole-dump estimate** (×4.74 M products with a valid barcode; ±15% from the sample):
+PostgreSQL ~49 GB data + indexes before any update; one `pg_dump` ~5.6 GB; a first import
+~65 h at the pilot rate. Products usable in lists (name, and nutrition or photo): 72%.
+Romania: 51,645 products (~0.5 GB); UK: 201,408 (~2 GB).
 
 ## Next stage (not done yet)
 

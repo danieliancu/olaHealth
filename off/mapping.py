@@ -14,10 +14,17 @@ from __future__ import annotations
 import html
 import re
 from typing import Any
-from urllib.parse import urlsplit
 
-from catalog.nutrition import DECLARED, NOT_ON_LABEL, NUTRIENTS, decimal_str, to_decimal
+from catalog.nutrition import (
+    DECLARED,
+    NOT_ON_LABEL,
+    NUTRIENTS,
+    decimal_str,
+    to_canonical_unit,
+    to_decimal,
+)
 from off import basis as basis_rules
+from off import images as off_images
 
 DATA_FIELDS = (
     "name",
@@ -129,6 +136,120 @@ def _facts(product: dict[str, Any]) -> list[dict[str, Any]]:
     return sort_facts(facts)
 
 
+# Current OFF product schema (``schema_version`` 1003+, as in the JSONL dump): the values live
+# in ``nutrition.input_sets`` (one set per source, preparation and basis) and ``nutriments``
+# is empty. Only values printed on the package or given by the manufacturer are declared
+# values; OFF's estimates (``source: "estimate"``) are not. The product API (v2) still sends
+# the older ``nutriments`` object, which is read first and keeps priority.
+DECLARED_SOURCES = ("packaging", "manufacturer")  # in order of preference
+_MODIFIERS = {"<", ">", "~", "<=", ">=", "≤", "≥"}
+
+
+def _declared_sets(product: dict[str, Any]) -> list[dict[str, Any]]:
+    nutrition = product.get("nutrition")
+    if not isinstance(nutrition, dict) or not isinstance(nutrition.get("input_sets"), list):
+        return []
+    sets = [
+        s
+        for s in nutrition["input_sets"]
+        if isinstance(s, dict) and s.get("source") in DECLARED_SOURCES
+    ]
+    return sorted(sets, key=lambda s: DECLARED_SOURCES.index(s["source"]))
+
+
+def _facts_from_nutrition(product: dict[str, Any]) -> list[dict[str, Any]]:
+    """Facts from ``nutrition.input_sets``, with the same basis rule as ``nutriments``."""
+    base, _inferred = basis_with_source(product)
+    facts: list[dict[str, Any]] = []
+    taken: set[tuple[str, str]] = set()
+    for input_set in _declared_sets(product):
+        preparation = input_set.get("preparation")
+        per = input_set.get("per")
+        if preparation not in ("as_sold", "prepared"):
+            continue
+        if per in ("100g", "100ml"):
+            basis = base
+        elif per == "serving":
+            basis = "per_serving"
+        else:
+            continue
+        if (basis, preparation) in taken:
+            continue  # a less preferred source for a basis already read
+        taken.add((basis, preparation))
+        nutrients = input_set.get("nutrients")
+        nutrients = nutrients if isinstance(nutrients, dict) else {}
+        unspecified = input_set.get("unspecified_nutrients")
+        unspecified = set(unspecified) if isinstance(unspecified, list) else set()
+        for nutrient in NUTRIENTS:
+            entry = nutrients.get(nutrient.key)
+            if isinstance(entry, dict) and "value" in entry:
+                value = to_decimal(entry["value"])
+                if value is None or value < 0:
+                    continue  # unparseable or impossible values are treated as unknown
+                try:
+                    value = to_canonical_unit(
+                        value, str(entry.get("unit") or nutrient.unit), nutrient
+                    )
+                except ValueError:
+                    continue  # a unit we cannot convert: unknown, never guessed
+                modifier = entry.get("modifier")
+                facts.append(
+                    _fact(
+                        nutrient.key,
+                        basis,
+                        preparation,
+                        DECLARED,
+                        decimal_str(value),
+                        nutrient.unit,
+                        modifier if modifier in _MODIFIERS else None,
+                    )
+                )
+            elif (
+                nutrient.key in unspecified and preparation == "as_sold" and basis != "per_serving"
+            ):
+                facts.append(
+                    _fact(nutrient.key, basis, preparation, NOT_ON_LABEL, None, nutrient.unit)
+                )
+    return sort_facts(facts)
+
+
+def trim_nutrition(nutrition: Any) -> dict[str, Any] | None:
+    """Only what :func:`_facts_from_nutrition` and ``map_product`` read (stored payload)."""
+    if not isinstance(nutrition, dict):
+        return None
+    out: dict[str, Any] = {}
+    if "no_nutrition_data_on_packaging" in nutrition:
+        out["no_nutrition_data_on_packaging"] = nutrition["no_nutrition_data_on_packaging"]
+    keys = {n.key for n in NUTRIENTS}
+    sets = []
+    for s in _declared_sets({"nutrition": nutrition}):
+        kept = {
+            k: s[k] for k in ("source", "preparation", "per", "unspecified_nutrients") if k in s
+        }
+        nutrients = s.get("nutrients") if isinstance(s.get("nutrients"), dict) else {}
+        kept["nutrients"] = {
+            k: {f: v[f] for f in ("value", "unit", "modifier") if f in v}
+            for k, v in nutrients.items()
+            if k in keys and isinstance(v, dict)
+        }
+        sets.append(kept)
+    if sets:
+        out["input_sets"] = sets
+    return out
+
+
+def _no_nutrition_data(product: dict[str, Any]) -> bool:
+    if product.get("no_nutrition_data") in ("on", True, "1"):
+        return True
+    nutrition = product.get("nutrition")
+    return isinstance(nutrition, dict) and nutrition.get("no_nutrition_data_on_packaging") in (
+        "on",
+        True,
+        "1",
+        1,
+    )
+
+
 def _fact(
     nutrient: str,
     basis: str,
@@ -165,8 +286,8 @@ def _list_section(tags: list[str]) -> dict[str, Any]:
 
 
 def map_product(product: dict[str, Any]) -> dict[str, Any]:
-    facts = _facts(product)
-    if product.get("no_nutrition_data") in ("on", True, "1"):
+    facts = _facts(product) or _facts_from_nutrition(product)
+    if _no_nutrition_data(product):
         nutrition = {"status": "not_on_package", "facts": []}
     elif facts:
         nutrition = {"status": "available", "facts": facts}
@@ -197,14 +318,8 @@ def map_product(product: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def image_urls(product: dict[str, Any], allowed_hosts: list[str]) -> dict[str, str]:
-    """Front/ingredients/nutrition image URLs, only https URLs on allow-listed hosts."""
-    result: dict[str, str] = {}
-    for kind in ("front", "ingredients", "nutrition"):
-        url = product.get(f"image_{kind}_url")
-        if not isinstance(url, str):
-            continue
-        parts = urlsplit(url)
-        if parts.scheme == "https" and parts.hostname in allowed_hosts:
-            result[kind] = url
-    return result
+def image_urls(product: dict[str, Any], allowed_hosts: list[str]) -> dict[str, str] | None:
+    """Front/ingredients/nutrition image URLs (https, allow-listed hosts): the API's direct
+    URLs, else built from the dump's ``images`` metadata; ``None`` when the payload carries
+    no photo information at all (see ``off.images``)."""
+    return off_images.image_urls(product, allowed_hosts)

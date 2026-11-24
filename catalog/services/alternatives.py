@@ -158,7 +158,7 @@ def _off_candidate(raw: dict[str, Any], category: str) -> dict[str, Any] | None:
     data = map_product(raw)
     if not quality.listable(quality.issues(data, has_front_image=True)):
         return None  # no usable name or nutrition data: never suggested
-    image = image_urls(raw, settings.OFF_IMAGE_HOSTS).get("front", "")
+    image = (image_urls(raw, settings.OFF_IMAGE_HOSTS) or {}).get("front", "")
     facts = ProductFacts(
         id=code,
         name=data.get("name") or "",

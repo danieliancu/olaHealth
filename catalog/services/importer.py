@@ -26,6 +26,7 @@ from assessments.rules import derive_from_off
 from catalog.models import Product, ProductIdentifier, ProductImage, ReviewFlag
 from catalog.services.revisions import apply_revision, canonical_json, publish_revision
 from off.codes import ParsedCode, off_normalize
+from off.fields import trim_payload
 from off.mapping import DATA_FIELDS, image_urls, map_product
 
 OFF_IMAGE_LICENSE = "CC BY-SA (Open Food Facts contributors)"
@@ -123,21 +124,41 @@ def _off_modified(payload: dict[str, Any]) -> datetime | None:
     return None
 
 
-def _sync_off_images(product: Product, urls: dict[str, str]) -> bool:
-    """Upsert OFF image references. Returns True when anything changed."""
+def _sync_off_images(product: Product, urls: dict[str, str] | None) -> bool:
+    """Upsert OFF image references. Returns True when anything changed.
+
+    * ``urls is None`` (the payload says nothing about photos): nothing changes.
+    * A kind missing from ``urls`` keeps its current photo: an OFF photo is switched off
+      only when OFF names a different photo of the same kind (incomplete metadata never
+      removes a valid photo).
+    * A kind with an approved local photo (active, from a contribution) keeps it: OFF
+      photos of that kind stay off. Photos switched off by staff stay off.
+    """
+    if urls is None:
+        return False
     changed = False
-    current = {
-        (img.kind, img.remote_url): img
-        for img in product.images.filter(source=ProductImage.Source.OFF)
-    }
-    wanted = {(kind, url) for kind, url in urls.items()}
-    for key, img in current.items():
-        active = key in wanted and not img.hidden_by_staff
+    off = list(product.images.filter(source=ProductImage.Source.OFF))
+    local_kinds = set(
+        product.images.filter(source=ProductImage.Source.CONTRIBUTION, is_active=True).values_list(
+            "kind", flat=True
+        )
+    )
+    for img in off:
+        if img.kind not in urls:
+            continue
+        active = (
+            img.remote_url == urls[img.kind]
+            and not img.hidden_by_staff
+            and img.kind not in local_kinds
+        )
         if img.is_active != active:
             img.is_active = active
             img.save(update_fields=["is_active"])
             changed = True
-    for kind, url in wanted - set(current):
+    known = {(img.kind, img.remote_url) for img in off}
+    for kind, url in urls.items():
+        if (kind, url) in known:
+            continue
         changed = True
         ProductImage.objects.create(
             product=product,
@@ -146,6 +167,7 @@ def _sync_off_images(product: Product, urls: dict[str, str]) -> bool:
             license=OFF_IMAGE_LICENSE,
             attribution=OFF_IMAGE_ATTRIBUTION,
             remote_url=url,
+            is_active=kind not in local_kinds,
         )
     return changed
 
@@ -206,6 +228,9 @@ def import_off_product(
     """
     from catalog.models import ProductRevision
 
+    # Only the fields the app reads again are used and kept (off.fields): a dump line is the
+    # whole product; mapping the trimmed payload keeps remap_off identical to this import.
+    payload = trim_payload(payload)
     from_dump = source == ProductRevision.Source.OFF_DUMP
     off_code = off_normalize(str(payload.get("code") or (parsed.digits if parsed else "")))
     off_data = map_product(payload)
