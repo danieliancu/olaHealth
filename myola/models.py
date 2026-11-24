@@ -345,6 +345,10 @@ class ChatMessage(models.Model):
     # The products and Magazine articles an answer used, linked under it: built by the app
     # from what it selected (``myola.services.rag``), never from the model's text.
     sources = models.JSONField(default=list, blank=True)
+    # Internal: what an answer with retrieval was built from (criterion, market, category,
+    # candidates and why others were left out, the product values). Follow-ups such as
+    # "and for 200 g?" read it; it is never shown.
+    details = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

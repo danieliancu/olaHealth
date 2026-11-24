@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.core.cache import cache
 from django.db import transaction
-from django.db.models import F, Value
+from django.db.models import F, Q, Value
 
 from core.models import ArticlePassage, LearnArticle
 
@@ -32,9 +32,10 @@ logger = logging.getLogger(__name__)
 
 TARGET_CHARS = 700
 MAX_CHARS = 1400
-# Cosine similarity of text-embedding-3-small below which a passage is not relevant enough
-# (unrelated texts score about 0.05-0.25; a passage answering the question 0.35 and more).
-MIN_SIMILARITY = 0.32
+# Cosine similarity (text-embedding-3-large) below which a passage is not relevant enough:
+# on the Magazine, questions it does not answer scored at most 0.23, passages that answer
+# (also asked in Romanian or in other words) 0.28 and more.
+MIN_SIMILARITY = 0.26
 MIN_RANK = 0.01  # full-text fallback (ts_rank_cd with OR of the question's words)
 GEN_KEY = "passages:gen"
 HITS_SECONDS = 3600
@@ -84,6 +85,12 @@ def passages_for(article: LearnArticle) -> list[tuple[str, str]]:
     return [(h[:200], t) for h, t in out if t]
 
 
+def _model() -> str:
+    from ai.embeddings import MODEL as name
+
+    return name
+
+
 def bump_generation() -> None:
     try:
         cache.incr(GEN_KEY)
@@ -124,8 +131,8 @@ def embed_article(article_id: int) -> int:
     from ai import embeddings
 
     rows = list(
-        ArticlePassage.objects.filter(
-            article_id=article_id, article__published=True, embedding__isnull=True
+        ArticlePassage.objects.filter(article_id=article_id, article__published=True).filter(
+            Q(embedding__isnull=True) | ~Q(embedding_model=embeddings.MODEL)
         )
     )
     if not rows:
@@ -149,7 +156,7 @@ def refresh_all() -> dict[str, int]:
     ArticlePassage.objects.exclude(article__published=True).delete()
     embedded = 0
     for article_id in (
-        ArticlePassage.objects.filter(embedding__isnull=True)
+        ArticlePassage.objects.filter(Q(embedding__isnull=True) | ~Q(embedding_model=_model()))
         .values_list("article_id", flat=True)
         .distinct()
     ):
@@ -160,7 +167,7 @@ def refresh_all() -> dict[str, int]:
         "rebuilt": rebuilt,
         "passages": ArticlePassage.objects.count(),
         "embedded": embedded,
-        "without_embedding": ArticlePassage.objects.filter(embedding__isnull=True).count(),
+        "without_embedding": ArticlePassage.objects.exclude(embedding_model=_model()).count(),
     }
 
 
@@ -193,17 +200,38 @@ def _fulltext(question: str, limit: int) -> list[tuple[int, float]]:
         .annotate(rank=SearchRank(F("search"), query, cover_density=True))
         .filter(rank__gte=MIN_RANK)
         .order_by("-rank")
-        .values_list("pk", "rank")[:limit]
+        .values_list("pk", "rank", "search")[: limit * 4]
     )
-    return [(pk, float(rank)) for pk, rank in rows]
+    # One common word is not enough (a question about spinach vitamins must not bring the
+    # E-numbers article for "vitamin"): the passage must hold two of the question's words.
+    needed = min(2, len(words))
+    out = []
+    stems = _stems(words)
+    for pk, rank, vector in rows:
+        lexemes = {t.split(":", 1)[0].strip("'") for t in str(vector or "").split()}
+        if sum(1 for s in stems if s in lexemes) >= needed:
+            out.append((pk, float(rank)))
+    return out[:limit]
+
+
+def _stems(words: list[str]) -> list[str]:
+    """The question's words as the "english" dictionary stems them (stop words dropped)."""
+    from django.db import connection
+
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT array(SELECT DISTINCT lexeme FROM unnest(to_tsvector(%s, %s)))",
+            [FTS_CONFIG, " ".join(words)],
+        )
+        return list(cur.fetchone()[0] or [])
 
 
 def _by_embedding(vector: list[float], limit: int) -> list[tuple[int, float]]:
     from ai.embeddings import cosine
 
     rows = ArticlePassage.objects.filter(
-        article__published=True, embedding__isnull=False
-    ).values_list("pk", "embedding")
+        article__published=True, embedding__isnull=False, embedding_model=_model()
+    ).values_list("pk", "embedding")  # vectors of another model are not comparable
     scored = [(pk, cosine(vector, emb)) for pk, emb in rows]
     scored = [s for s in scored if s[1] >= MIN_SIMILARITY]
     return sorted(scored, key=lambda s: -s[1])[:limit]
@@ -217,7 +245,11 @@ def search(question: str, *, user=None, limit: int = 3) -> list[Hit]:
     question = (question or "").strip()
     if not question:
         return []
-    key = f"passages:hits:{generation()}:" + hashlib.sha256(question.lower().encode()).hexdigest()
+    # Keyed by the cache generation (bumped on every article change) and by whether
+    # embeddings can be used now, so a full-text result is not served once they are back.
+    mode = "e" if embeddings.allowed() else "f"
+    digest = hashlib.sha256(question.lower().encode()).hexdigest()
+    key = f"passages:hits:v2:{generation()}:{mode}:{digest}"
     found = cache.get(key)
     if found is None:
         vector = embeddings.embed_query(question, user=user)

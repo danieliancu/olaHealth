@@ -10,7 +10,7 @@ PRICES: dict[str, tuple[Decimal, Decimal]] = {
     # Approximate OpenAI price, to be verified against the current OpenAI price list.
     "gpt-5-nano": (Decimal("0.05"), Decimal("0.40")),
     # Magazine search (ai/embeddings.py): input tokens only.
-    "text-embedding-3-small": (Decimal("0.02"), Decimal("0")),
+    "text-embedding-3-large": (Decimal("0.13"), Decimal("0")),
 }
 # Unknown models are priced conservatively so the budget errs on the safe side.
 DEFAULT_PRICE = (Decimal("1.00"), Decimal("5.00"))

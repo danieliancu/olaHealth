@@ -1,4 +1,4 @@
-"""Text embeddings for Ask Foodo's Magazine search (OpenAI ``text-embedding-3-small``).
+"""Text embeddings for Ask Foodo's Magazine search (OpenAI ``text-embedding-3-large``).
 
 Used only for published Magazine passages and the user's question, never for user data.
 ``embed()`` returns ``None`` whenever embeddings cannot be used now; the caller then falls back
@@ -26,7 +26,9 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
-MODEL = "text-embedding-3-small"
+# The large model: questions in Romanian find English passages (the small one mixed them up
+# with unrelated ones); a few dozen passages, so the cost stays a fraction of a penny.
+MODEL = "text-embedding-3-large"
 TIMEOUT_SECONDS = 8.0
 BATCH = 64
 QUERY_CACHE_SECONDS = 24 * 3600

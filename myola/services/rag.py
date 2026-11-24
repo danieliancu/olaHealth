@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
+from django.db.models import F
 from django.urls import reverse
 
 from catalog.models import Category, NutrientFact, Product
@@ -42,7 +43,7 @@ MAX_PASSAGES = 2
 # nutrient key -> (English name, words in the app's languages)
 NUTRIENTS: dict[str, tuple[str, tuple[str, ...]]] = {
     "salt": ("salt", ("salt", "sare", "sarea", "sodium", "sodiu", "sel", "sal ", "salz")),
-    "sugars": ("sugars", ("sugar", "zahăr", "zahar", "zaharu", "sucre", "azúcar", "zucchero",
+    "sugars": ("sugar", ("sugar", "zahăr", "zahar", "zaharu", "sucre", "azúcar", "zucchero",
                           "zucker", "cukier")),
     "saturated-fat": ("saturated fat", ("saturated", "saturates", "saturat", "saturées",
                                         "gesättigt")),
@@ -65,6 +66,8 @@ COMPARE_WORDS = (
     "than", "decât", "decat", "compared", "comparison", "față de", "fata de", "que ", "als ",
     "rispetto", "niż", "instead", "alternative", "alternativ", "în loc", "in loc", "vs",
     "which", "what", "ce ", "care", "quel", "cuál", "welche", "quale", "swap", "înlocui",
+    "recommend", "recomand", "suggest", "suger", "another", "other", " alt ", " alta ",
+    " altă ", " alte ", "autre", "otro", "andere",
 )  # fmt: skip
 MARKETS: dict[str, tuple[str, ...]] = {
     "en:united-kingdom": ("uk", "u.k.", "united kingdom", "britain", "british", "england",
@@ -104,7 +107,7 @@ class Match:
 @dataclass
 class Comparison:
     criterion: Criterion
-    market: str
+    markets: list[str]  # OFF country tags the candidates must be sold in (any of them)
     category: str
     category_name: str
     reference: Product | None
@@ -116,6 +119,48 @@ class Comparison:
     candidates: int = 0  # products of that category and market (the reference excluded)
     unknown: int = 0  # candidates without the value on the same basis (not compared)
     problem: str = ""  # why there is no comparison: "no_reference", "no_reference_value", …
+    market_source: str = ""  # "question", "product" (where it is sold), "user" or "" (none)
+    # Why each candidate was left out (diagnostics, kept with the answer, never shown):
+    # avoid, no_value, other_unit, label_bound ("< x" / "> x"), not_better, other_scale.
+    excluded: dict[str, int] = field(default_factory=dict)
+
+    def exclude(self, reason: str) -> None:
+        self.excluded[reason] = self.excluded.get(reason, 0) + 1
+
+    def details(self) -> dict[str, Any]:
+        """What the answer was built from (``ChatMessage.details``; follow-ups read it)."""
+        return {
+            "kind": "comparison",
+            "criterion": {
+                "nutrient": self.criterion.nutrient,
+                "direction": self.criterion.direction,
+            },
+            "markets": self.markets,
+            "market_source": self.market_source,
+            "category": self.category,
+            "basis": self.basis,
+            "unit": self.unit,
+            "candidates": self.candidates,
+            "compared": self.candidates - self.unknown,
+            "excluded": self.excluded,
+            "problem": self.problem,
+            "products": (
+                [_product_detail(self.reference, self.reference_value, self.reference_foodo)]
+                if self.reference is not None
+                else []
+            )
+            + [_product_detail(m.product, m.value, m.foodo) for m in self.matches],
+        }
+
+
+def _product_detail(p: Product, value: Decimal | None, foodo: int | None) -> dict[str, Any]:
+    return {
+        "id": str(p.pk),
+        "name": p.name or "",
+        "brand": p.brand or "",
+        "value": str(value) if value is not None else None,
+        "foodo": foodo,
+    }
 
 
 # ---------- Reading the question ----------
@@ -217,23 +262,44 @@ def _foodo(revision) -> tuple[int | None, dict]:
     return foodo_value(score), score
 
 
+def markets_for(text: str, product: Product | None, user=None) -> tuple[list[str], str]:
+    """Where the candidates must be sold, and why: the market named in the question; else
+    where the scanned product is sold (the user's market first when it is one of them); else
+    the user's market. A product sold elsewhere is never compared with products of another
+    market by default."""
+    from myola.context.django_source import user_country
+
+    named = market_of(text)
+    if named:
+        return [named], "question"
+    mine = user_country(user)
+    if product is not None and product.countries:
+        if mine in product.countries:
+            return [mine], "product"
+        return list(product.countries), "product"
+    if product is not None:
+        return [], ""  # the source does not say where it is sold: no market filter
+    return [mine], "user"
+
+
 def compare_products(text: str, product: Product | None, user=None) -> Comparison | None:
     """The comparison asked for, computed from the database (None: not a comparison)."""
     from catalog.services.alternatives import _user_filters
-    from myola.context.django_source import user_country
 
     criterion = criterion_of(text)
     if criterion is None:
         return None
-    market = market_of(text) or user_country(user)
+    markets, source = markets_for(text, product, user)
     category = category_of(text, product)
     if category is None:
         return None if product is None else Comparison(
-            criterion, market, "", "", product, None, "", "", None, problem="no_category"
+            criterion, markets, "", "", product, None, "", "", None, problem="no_category",
+            market_source=source,
         )  # fmt: skip
     result = Comparison(
-        criterion, market, category, category_name(category), product, None, "", "", None
-    )
+        criterion, markets, category, category_name(category), product, None, "", "", None,
+        market_source=source,
+    )  # fmt: skip
     if product is None:
         result.problem = "no_reference"
         return result
@@ -252,29 +318,37 @@ def compare_products(text: str, product: Product | None, user=None) -> Compariso
         result.reference_foodo = _foodo(ref_rev)[0]
 
     _, avoid_ids, _ = _user_filters(user)
+    found = Product.objects.filter(
+        current_revision__isnull=False, listable=True, categories__contains=[category]
+    )
+    if markets:
+        found = found.filter(countries__overlap=markets)
     candidates = list(
-        Product.objects.filter(
-            current_revision__isnull=False,
-            listable=True,
-            categories__contains=[category],
-            countries__contains=[market],
-        )
-        .exclude(pk=product.pk)
+        found.exclude(pk=product.pk)
         .select_related("current_revision")
         .order_by("pk")[:MAX_CANDIDATES]
     )
-    candidates = [p for p in candidates if str(p.pk) not in avoid_ids]
+    kept = [p for p in candidates if str(p.pk) not in avoid_ids]
+    for _ in range(len(candidates) - len(kept)):
+        result.exclude("avoid")
+    candidates = kept
     result.candidates = len(candidates)
     matches: list[Match] = []
     if criterion.nutrient == "foodo":
-        from assessments.score import is_better
+        from assessments.score import _comparable, is_better
 
         for p in candidates:
             value, score = _foodo(p.current_revision)
-            if value is None or not is_better(score, ref_score):
-                result.unknown += value is None
-                continue
-            matches.append(Match(p, None, "", value, Decimal(value - result.reference_foodo)))
+            if value is None:
+                result.unknown += 1
+                result.exclude("no_value")
+            elif not _comparable(score, ref_score):
+                result.unknown += 1
+                result.exclude("other_scale")  # another Nutri-Score version or category
+            elif not is_better(score, ref_score):
+                result.exclude("not_better")
+            else:
+                matches.append(Match(p, None, "", value, Decimal(value - result.reference_foodo)))
         matches.sort(key=lambda m: (-(m.foodo or 0), m.product.name))
     else:
         values = _values(
@@ -284,14 +358,18 @@ def compare_products(text: str, product: Product | None, user=None) -> Compariso
             row = values.get(p.current_revision_id)
             if row is None or row[1] != result.unit:
                 result.unknown += 1  # no declared value on the same basis and unit
+                result.exclude("no_value" if row is None else "other_unit")
                 continue
             value = row[0]
             better = _meets(value, row[3], result.reference_value, criterion.direction)
             if better is None:
                 result.unknown += 1  # "< x" / "> x" that cannot be compared
+                result.exclude("label_bound")
                 continue
             if better:
                 matches.append(Match(p, value, row[1], None, value - result.reference_value))
+            else:
+                result.exclude("not_better")
         matches.sort(
             key=lambda m: (m.value if criterion.direction == "lower" else -m.value, m.product.name)
         )
@@ -334,7 +412,7 @@ def build_material(comparison: Comparison | None, hits: list, product_facts=None
         basis = BASIS_LABELS.get(c.basis, c.basis) if c.basis else ""
         block: dict[str, Any] = {
             "criterion": c.criterion.label,
-            "market": c.market.split(":", 1)[-1].replace("-", " ").title(),
+            "market": markets_label(c.markets) or "any market",
             "category": c.category_name,
             "compared_on": f"{basis}, as sold, declared values" if basis else "Foodo Score",
             "products_in_category_and_market": c.candidates,
@@ -393,64 +471,399 @@ def build_material(comparison: Comparison | None, hits: list, product_facts=None
 
 
 def cited_sources(text: str, material: Material) -> tuple[str, list[dict[str, str]]]:
-    """The answer without ids that are not in the material, and the sources to link: the
-    products of the comparison always (they are its result), articles only when cited."""
-    used = set()
-
-    def keep(m: re.Match) -> str:
-        if m.group(1) in material.sources:
-            used.add(m.group(1))
-            return m.group(0)
-        return ""
-
-    clean = re.sub(r"[ \t]{2,}", " ", _CITE.sub(keep, text)).strip()
+    """The visible answer and its sources. The ids ([P1], [A1]) only tell which material the
+    answer used: they are removed from the text, and the sources are linked under it instead:
+    the products of the comparison always (they are its result), articles only when cited.
+    Ids that are not in the material are dropped."""
+    used = {m.group(1) for m in _CITE.finditer(text) if m.group(1) in material.sources}
+    clean = _CITE.sub("", text)
+    clean = re.sub(r"[ \t]+([.,;:!?)])", r"\1", clean)  # no space left before punctuation
+    clean = re.sub(r"\(\s*\)|,\s*(?=[.;])", "", clean)  # "( )" or ", ." left by an id
+    clean = re.sub(r"[ \t]{2,}", " ", clean)
+    clean = "\n".join(line.rstrip() for line in clean.strip().splitlines())
     out = [s for k, s in material.sources.items() if k.startswith("P")]
     out += [s for k, s in material.sources.items() if k.startswith("A") and k in used]
     return clean, out
 
 
-def _market_name(tag: str) -> str:
-    if tag == "en:united-kingdom":
-        return "the UK"
-    return tag.split(":", 1)[-1].replace("-", " ").title()
+def markets_label(markets: list[str]) -> str:
+    """ "the UK", "Belgium or the Netherlands" ("" without a market filter)."""
+    from myola.services.market import name
+
+    names = [str(name(tag)) for tag in markets]
+    if len(names) <= 1:
+        return "".join(names)
+    return ", ".join(names[:-1]) + " or " + names[-1]
+
+
+def has_answer(comparison: Comparison | None) -> bool:
+    """Whether the comparison found products to talk about (else the short direct answer)."""
+    return comparison is not None and not comparison.problem and bool(comparison.matches)
+
+
+def direct_answer(c: Comparison, lang: str = "en") -> str:
+    """The comparison's answer, written from the data only (every value is the database's):
+    the products that meet the criterion with their values, or why there are none. It names
+    the category and the market applied, and how many products could be compared. In English
+    or Romanian (``rag_text``)."""
+    from myola.services import rag_text as W
+
+    foodo = c.criterion.nutrient == "foodo"
+    what = W.nutrient(lang, c.criterion.nutrient)
+    label = W.criterion(lang, c.criterion.nutrient, c.criterion.direction)
+    scope = (
+        W.t(lang, "scope", category=c.category_name) if c.category_name else W.t(lang, "scope_any")
+    )
+    if c.markets:
+        scope += W.t(lang, "sold_in", markets=W.markets(c.markets, lang))
+    if c.problem == "no_reference":
+        return W.t(lang, "open_first")
+    if c.problem == "no_category":
+        return W.t(lang, "no_category")
+    if c.problem == "no_reference_value":
+        return W.t(lang, "no_foodo") if foodo else W.t(lang, "no_value", what=what)
+    ref = (
+        f"{W.number(c.reference_value, c.unit, lang)} {W.basis(lang, c.basis)}"
+        if c.basis
+        else f"{c.reference_foodo}/100"
+    )
+    if c.candidates == 0:
+        return W.t(lang, "nothing_to_compare", scope=scope)
+    compared = c.candidates - c.unknown
+    if compared == 0:
+        return W.t(lang, "not_enough", n=c.candidates, scope=scope, what=what, label=label)
+    tally = W.t(lang, "tally", compared=compared, n=c.candidates)
+    if c.unknown:
+        tally += W.t(lang, "tally_unknown", unknown=c.unknown, what=what)
+    if not c.matches:
+        return W.t(lang, "no_match", scope=scope, label=label, ref=ref, tally=tally)
+    lines = [W.t(lang, "with", label=label, ref=ref, scope=scope)]
+    for m in c.matches:
+        value = W.number(m.value, m.unit, lang) if c.basis else f"{m.foodo}/100"
+        lines.append(f"- {_name(m.product)}: {value}")
+    lines.append(f"{tally}.")
+    return "\n".join(lines)
+
+
+_EXPLAIN = re.compile(
+    r"\b(how|why|explain|cum|de ce|explic|comment|pourquoi|wie|warum|cómo|por qué|come|perché|"
+    r"jak|dlaczego)\b",
+    re.IGNORECASE,
+)
+
+
+def asks_explanation(text: str) -> bool:
+    """The question also asks how or why (for example "and how do I compare the labels?")."""
+    return bool(_EXPLAIN.search(text or ""))
+
+
+# ---------- A value of the open product ----------
+VALUE_CUES = (
+    "cât", "câtă", "câte", " cat ", " cata ", " cate ", "how much", "how many", "what is the",
+    "care e ", "care este", "conține", "contine", "is in it", "does it have", "has it",
+    "valoare", "value", "per 100", "la 100", "quantity", "cantitate",
+)  # fmt: skip
+
+
+def nutrient_asked(text: str) -> str | None:
+    """The one nutrient a question about the open product names ("Câtă sare are?", "How much
+    sugar is in it?"), when it is not a comparison. None otherwise."""
+    t = f" {(text or '').lower()} "
+    if criterion_of(text) is not None or concept_of(text) or not _has(t, VALUE_CUES):
+        return None  # a comparison, a thing the catalogue does not record, or not "how much"
+    for key, (_, words) in NUTRIENTS.items():
+        if key == "fat" and _has(t, NUTRIENTS["saturated-fat"][1]):
+            continue
+        if _has(t, words):
+            return key
+    return None
+
+
+def value_answer(product: Product, nutrient: str, lang: str = "en") -> tuple[str, dict[str, Any]]:
+    """The product's declared value per 100 g or 100 ml (as sold), from its current revision.
+    0 is a value; a missing value is said to be missing (never 0)."""
+    from myola.services import rag_text as W
+
+    name = W.nutrient(lang, nutrient)
+    row = _values([product.current_revision_id], nutrient, None).get(product.current_revision_id)
+    details: dict[str, Any] = {
+        "kind": "value", "nutrient": nutrient, "basis": "", "unit": "",
+        "products": [_product_detail(product, None, None)],
+    }  # fmt: skip
+    if row is None:
+        serving = NutrientFact.objects.filter(
+            revision_id=product.current_revision_id, nutrient=nutrient, basis="per_serving",
+            preparation=AS_SOLD, status="declared", value__isnull=False,
+        ).values_list("value", "unit").first()  # fmt: skip
+        if serving:
+            shown = W.number(serving[0], serving[1], lang)
+            return W.t(lang, "value_serving", what=name, value=shown), details
+        return W.t(lang, "value_none", what=name), details
+    value, unit, basis, modifier = row
+    details.update(basis=basis, unit=unit)
+    details["products"] = [_product_detail(product, value, None)]
+    shown = W.number(value, unit, lang)
+    if modifier in ("<", ">"):
+        shown = f"{modifier}{shown}"
+    text = W.t(lang, "value", What=W.capital(name), value=shown, basis=W.basis(lang, basis))
+    return text, details
+
+
+# ---------- Recommendations from the whole catalogue ----------
+# Foods named in a question -> OFF category tags (Romanian and English words).
+FOODS: dict[str, tuple[str, ...]] = {
+    "en:fishes": ("pește", "peste", "pești", "pesti", "peşte", "fish"),
+    "en:pizzas": ("pizza",),
+    "en:yogurts": ("iaurt", "yogurt", "yoghurt"),
+    "en:breakfast-cereals": ("cereale", "cereal"),
+    "en:cheeses": ("brânz", "branz", "cheese"),
+    "en:breads": ("pâine", "paine", "bread"),
+    "en:chocolates": ("ciocolat", "chocolate"),
+    "en:biscuits": ("biscui",),
+}
+# Things people ask for that the catalogue does not record as a nutrient. ``off_key``: the OFF
+# field read from the stored OFF data when a product has it; ``category``: where OFF files the
+# foods it applies to ("fatty fishes" for omega-3 in fish), used only when the value is missing.
+CONCEPTS: dict[str, dict[str, Any]] = {
+    "omega-3": {
+        "words": ("omega-3", "omega 3", "omega3", "omega‑3", "omega–3"),
+        "off_key": "omega-3-fat_100g",
+        "category": {"en:fishes": "en:fatty-fishes"},
+    },
+}
+RECOMMEND_WORDS = (
+    "recoman", "recommend", "suggest", "suger", "unde găsesc", "unde gasesc", "unde pot găsi",
+    "unde pot gasi", "where can i find", "where do i find", "where can i get", "ce produs are",
+    "ce produse au", "what product has", "which product has", "which products have",
+)  # fmt: skip
+ANAPHORA = (
+    "aceste", "acestea", "astea", "acelea", "aceleași", "aceleasi", "acesta", "these", "those",
+    "them", "this fat", "such",
+)  # fmt: skip
+THIS_PRODUCT = ("scanat", "scanned", "this one", "this product", "acest produs", "acesta",
+                "decât produsul", "decat produsul", "than this")  # fmt: skip
+
+
+def food_of(text: str) -> str | None:
+    t = f" {(text or '').lower()} "
+    for tag, words in FOODS.items():
+        if _has(t, words):
+            return tag
+    return None
+
+
+def wants_recommendation(text: str, product: Product | None) -> bool:
+    """ "Recomandă-mi…", "Ce produs are…", "Unde găsesc…": a search of the whole catalogue
+    (not a comparison with the open product: those name "this one" or a criterion)."""
+    t = f" {(text or '').lower()} "
+    if not _has(t, RECOMMEND_WORDS):
+        return False
+    if product is not None and (criterion_of(text) is not None or _has(t, THIS_PRODUCT)):
+        return False
+    return food_of(text) is not None
+
+
+def concept_of(text: str) -> str | None:
+    t = (text or "").lower()
+    for key, concept in CONCEPTS.items():
+        if _has(t, concept["words"]):
+            return key
+    return None
+
+
+def subject_of(text: str, earlier: list[str]) -> tuple[str | None, str]:
+    """What the question asks for: a nutrient key or a concept ("omega-3"), and where it came
+    from ("question" or "conversation"). "These fats" and other references are resolved from
+    the user's earlier messages of the same chat, newest first."""
+    t = f" {(text or '').lower()} "
+    own = concept_of(text)
+    if own:
+        return own, "question"
+    for key, (_, words) in NUTRIENTS.items():
+        if key == "fat" and _has(t, NUTRIENTS["saturated-fat"][1]):
+            continue
+        if _has(t, words) and not _has(t, ANAPHORA):
+            return key, "question"
+    if _has(t, ANAPHORA) or not any(_has(t, w) for _, w in NUTRIENTS.values()):
+        for message in earlier:
+            found = concept_of(message)
+            if found:
+                return found, "conversation"
+            m = f" {message.lower()} "
+            for key, (_, words) in NUTRIENTS.items():
+                if _has(m, words):
+                    return key, "conversation"
+    for key, (_, words) in NUTRIENTS.items():
+        if _has(t, words):
+            return key, "question"
+    return None, ""
+
+
+def recommend(text: str, earlier: list[str], user=None, lang: str = "en"):
+    """``(answer, sources, details)``: 1-3 real products of the catalogue for the food asked
+    for, sold in the market of the question (else the user's), ranked by the value asked for.
+    Each line says what the data confirms; a value the catalogue does not have is said to be
+    missing, never guessed."""
+    from myola.context.django_source import user_country
+    from myola.services import rag_text as W
+
+    category = food_of(text)
+    market = market_of(text) or user_country(user)
+    subject, origin = subject_of(text, earlier)
+    lower = _has(f" {(text or '').lower()} ", LOWER_WORDS)
+    found = Product.objects.filter(
+        current_revision__isnull=False, listable=True, categories__contains=[category],
+        countries__contains=[market],
+    )  # fmt: skip
+    kind = category_name(category)
+    where = W.markets([market], lang)
+    details: dict[str, Any] = {"kind": "recommendation", "category": category,
+                               "markets": [market], "subject": subject, "origin": origin,
+                               "candidates": found.count()}  # fmt: skip
+    picks: list[tuple[Product, str]] = []
+    lines: list[str] = []
+    if subject in NUTRIENTS:
+        facts = list(
+            NutrientFact.objects.filter(
+                revision__product__in=found, revision__product__current_revision=F("revision"),
+                nutrient=subject, basis="per_100g", preparation=AS_SOLD, status="declared",
+                value__isnull=False, modifier__in=["", "~"],
+            )
+            .select_related("revision__product")
+            .order_by("value" if lower else "-value", "revision__product__name")[:3]
+        )  # fmt: skip
+        name = W.nutrient(lang, subject)
+        details.update(nutrient=subject, basis="per_100g", unit="g")
+        if not facts:
+            lines.append(W.t(lang, "rec_no_value", kind=kind, where=where, what=name))
+        else:
+            label = W.t(lang, "rec_least" if lower else "rec_most", what=name)
+            lines.append(W.t(lang, "rec_head", kind=kind, where=where, label=label))
+            for f in facts:
+                p = f.revision.product
+                picks.append((p, str(f.value)))
+                lines.append(f"- {_name(p)}: {W.number(f.value, f.unit, lang)} {name} "
+                             f"{W.basis(lang, 'per_100g')}")  # fmt: skip
+    elif subject in CONCEPTS:
+        concept = CONCEPTS[subject]
+        key = concept["off_key"]
+        with_value = list(
+            found.filter(
+                **{f"current_revision__off_payload__nutriments__{key}__isnull": False}
+            ).select_related("current_revision")[:50]
+        )
+        with_value.sort(key=lambda p: -float(p.current_revision.off_payload["nutriments"][key]))
+        if with_value:
+            lines.append(W.t(lang, "rec_head", kind=kind, where=where,
+                             label=W.t(lang, "rec_most", what=subject)))  # fmt: skip
+            for p in with_value[:3]:
+                value = p.current_revision.off_payload["nutriments"][key]
+                picks.append((p, str(value)))
+                lines.append(f"- {_name(p)}: {W.number(value, 'g', lang)} {subject} "
+                             f"{W.basis(lang, 'per_100g')}")  # fmt: skip
+        else:
+            lines.append(W.t(lang, "rec_missing", kind=kind, where=where, what=subject))
+            narrower = concept["category"].get(category)
+            pool = found.filter(categories__contains=[narrower]) if narrower else found
+            fats = list(
+                NutrientFact.objects.filter(
+                    revision__product__in=pool,
+                    revision__product__current_revision=F("revision"), nutrient="fat",
+                    basis="per_100g", preparation=AS_SOLD, status="declared",
+                    value__isnull=False,
+                )
+                .select_related("revision__product")
+                .order_by("-value", "revision__product__name")[:3]
+            )  # fmt: skip
+            if narrower and fats:
+                lines.append(W.t(lang, "rec_category", category=category_name(narrower),
+                                 what=subject))  # fmt: skip
+                for f in fats:
+                    p = f.revision.product
+                    picks.append((p, None))
+                    lines.append(
+                        f"- {_name(p)}: {W.t(lang, 'rec_fat', value=W.number(f.value, 'g', lang))}"
+                    )
+    else:
+        best = list(found.filter(foodo_value__isnull=False).order_by("-foodo_value", "name")[:3])
+        if best:
+            lines.append(W.t(lang, "rec_head", kind=kind, where=where,
+                             label=W.t(lang, "rec_foodo")))  # fmt: skip
+            for p in best:
+                picks.append((p, None))
+                lines.append(f"- {_name(p)}: Foodo Score {p.foodo_value}/100")
+    if not lines:
+        lines.append(W.t(lang, "rec_none", kind=kind, where=where))
+    if origin == "conversation" and subject:
+        lines.insert(0, W.t(lang, "rec_context", what=W.nutrient(lang, subject)
+                            if subject in NUTRIENTS else subject))  # fmt: skip
+    sources = [{"kind": "product", "title": _name(p), "url": _product_url(p)} for p, _ in picks]
+    details["products"] = [_product_detail(p, Decimal(v) if v else None, None) for p, v in picks]
+    return "\n".join(lines), sources, details
+
+
+# ---------- Follow-up: "And for 200 g?" ----------
+_AMOUNT = re.compile(r"(\d+(?:[.,]\d+)?)\s*(kg|g|gr|grame|grams?|ml|l)\b", re.IGNORECASE)
+
+
+def amount_asked(text: str) -> tuple[Decimal, str] | None:
+    """A short follow-up asking for another amount ("Dar la 200 g?", "and for 150 ml?")."""
+    t = (text or "").strip()
+    m = _AMOUNT.search(t)
+    if m is None or len(t.split()) > 8 or criterion_of(t) is not None:
+        return None
+    number = Decimal(m.group(1).replace(",", "."))
+    unit = m.group(2).lower()
+    if unit == "kg":
+        number, unit = number * 1000, "g"
+    elif unit == "l":
+        number, unit = number * 1000, "ml"
+    elif unit != "ml":
+        unit = "g"
+    return (number, unit) if number > 0 else None
+
+
+def followup_answer(
+    previous: dict[str, Any] | None, amount: Decimal, unit: str, lang: str = "en"
+) -> str:
+    """The values of the previous answer (a comparison or a value), for another amount,
+    computed here: value per 100 × amount / 100, only on the same unit (g with per 100 g,
+    ml with per 100 ml; never converted). A short question back when that is not possible."""
+    from myola.services import rag_text as W
+
+    if not previous or previous.get("kind") not in ("comparison", "value", "recommendation"):
+        return W.t(lang, "which_product")
+    basis = previous.get("basis") or ""
+    nutrient = (previous.get("criterion") or {}).get("nutrient") or previous.get("nutrient")
+    rows = [p for p in previous.get("products") or [] if p.get("value") is not None]
+    if nutrient == "foodo" or not basis or not rows:
+        return W.t(lang, "no_base")
+    per = "g" if basis == "per_100g" else "ml"
+    if per != unit:
+        return W.t(lang, "other_unit", per=per)
+    size = W.number(amount, "", lang)
+    lines = [W.t(lang, "amount", What=W.capital(W.nutrient(lang, nutrient)), size=size,
+                 unit=unit)]  # fmt: skip
+    for p in rows:
+        total = Decimal(p["value"]) * amount / 100
+        label = (p["name"] or W.t(lang, "unnamed")) + (f" ({p['brand']})" if p["brand"] else "")
+        lines.append(f"- {label}: {W.number(total, previous.get('unit') or 'g', lang)}")
+    return "\n".join(lines)
 
 
 def _excerpt(text: str, limit: int = 320) -> str:
     return text if len(text) <= limit else text[: limit - 3].rsplit(" ", 1)[0] + "…"
 
 
-def deterministic_answer(material: Material) -> str:
-    """The material in plain English, without the AI (it is translated like rule answers)."""
+def deterministic_answer(material: Material, lang: str = "en", excerpts=None) -> str:
+    """The material written without the AI, in English or Romanian. ``excerpts``: the passages'
+    text to quote (for example already translated), else the article's own words."""
+    from myola.services import rag_text as W
+
     lines: list[str] = []
-    c = material.comparison
-    if c is not None:
-        foodo = c.criterion.nutrient == "foodo"
-        what = "Foodo Score" if foodo else NUTRIENTS[c.criterion.nutrient][0]
-        where = f"{c.category_name.lower()} sold in {_market_name(c.market)}"
-        if c.problem == "no_reference":
-            lines.append("Open or scan a product first: I compare other products with it.")
-        elif c.problem == "no_category":
-            lines.append("This product's category is not known, so I can't compare it.")
-        elif c.problem == "no_reference_value":
-            lines.append(f"This product's {what} is not known, so I can't compare it [P0].")
-        elif not c.matches:
-            lines.append(
-                f"None of the {c.candidates} other {where} in the catalogue has "
-                f"{c.criterion.label} than this product [P0]."
-            )
-        else:
-            basis = f", {BASIS_LABELS[c.basis]}" if c.basis else ""
-            ref = _amount(c.reference_value, c.unit) if c.basis else f"{c.reference_foodo}/100"
-            lines.append(
-                f"{c.criterion.label.capitalize()} than this product ({what} {ref}{basis}) "
-                f"[P0], among {where}:"
-            )
-            for i, m in enumerate(c.matches, start=1):
-                val = _amount(m.value, m.unit) if c.basis else f"{m.foodo}/100"
-                lines.append(f"- {_name(m.product)}: {val} [P{i}]")
-        if c.unknown and not c.problem:
-            lines.append(f"{c.unknown} of them have no comparable {what} and were left out.")
+    if material.comparison is not None:
+        lines.append(direct_answer(material.comparison, lang))
     for i, hit in enumerate(material.hits[:MAX_PASSAGES], start=1):
-        title, excerpt = hit.article.title, _excerpt(hit.passage.text)
-        lines.append(f"From the Magazine, “{title}”: {excerpt} [A{i}]")
+        excerpt = (excerpts or {}).get(i) or _excerpt(hit.passage.text)
+        lines.append(W.t(lang, "magazine", title=hit.article.title, excerpt=excerpt) + f" [A{i}]")
     return "\n".join(lines)

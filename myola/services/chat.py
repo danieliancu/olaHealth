@@ -407,10 +407,18 @@ def reply(user, context: str, text: str, product=None):
 def reply_with_sources(user, context: str, text: str, product=None):
     """``(answer, AIAnswer or None, sources)``. ``sources``: the products and Magazine articles
     an answer with retrieval used (``myola.services.rag``), as ``{kind, title, url}``."""
+    return reply_full(user, context, text, product)[:3]
+
+
+def reply_full(user, context: str, text: str, product=None):
+    """``(answer, AIAnswer or None, sources, details)``. ``details``: what an answer with
+    retrieval was built from (internal: criterion, market, category, candidates, exclusions,
+    product values); a follow-up such as "and for 200 g?" reads it. Never shown."""
     sources: list[dict[str, str]] = []
-    out, log = _answer(user, context, text, product, sources)
+    details: dict = {}
+    out, log = _answer(user, context, text, product, sources, details)
     out = (out or "").strip()
-    return (out or NO_ANSWER), log, (sources if out else [])
+    return (out or NO_ANSWER), log, (sources if out else []), (details if out else {})
 
 
 # Follow-up questions ("and salt?"): the last AI answers of the same chat go with the question
@@ -442,7 +450,10 @@ def _followups(user, context: str) -> list[dict[str, str]]:
     return turns
 
 
-def _answer(user, context: str, text: str, product=None, sources: list | None = None):
+def _answer(
+    user, context: str, text: str, product=None, sources: list | None = None,
+    details: dict | None = None,
+):  # fmt: skip
     """``(answer, AIAnswer or None)``. The rule-based answer; for questions about a product's
     label (and general food questions in the general chat) the AI provider may answer from an
     allow-list of facts (see ``ai_facts_for``). Any AI problem (off, limits, errors, a blocked
@@ -460,12 +471,26 @@ def _answer(user, context: str, text: str, product=None, sources: list | None = 
     def localise(answer: str, log=None, *, kind: str = "public"):
         return _localise(user, profile, answer, log, lang, text, context, kind=kind)
 
+    sources = sources if sources is not None else []
+    details = details if details is not None else {}
     found = chat_products.answer(text)
     if found:
         # Product search: facts only, never phrased by the AI provider (only translated).
         return localise(found)
+    from myola.services import rag_text
+
+    # Answers written from data are written in English or Romanian directly; other languages
+    # get the English text translated like the rule answers.
+    written = rag_text.lang_of(lang)
+
+    def deliver(answer: str, log=None):
+        return (answer, log) if not lang or lang == written else localise(answer, log)
+
+    data_answer = _data_answer(user, context, text, product, sources, details, written)
+    if data_answer is not None:
+        return deliver(data_answer)
     intent = detect_intent(text)
-    if intent == "scans" and product is not None:
+    if intent == "scans":
         from myola.services.rag import criterion_of
 
         if criterion_of(text) is not None:
@@ -484,7 +509,7 @@ def _answer(user, context: str, text: str, product=None, sources: list | None = 
         return localise(baseline, kind=kind)
     with_retrieval = _rag_answer(
         user, profile, context, text, product, facts, intent, baseline, lang, localise,
-        sources if sources is not None else [],
+        sources, details, deliver,
     )  # fmt: skip
     if with_retrieval is not None:
         return with_retrieval
@@ -493,7 +518,11 @@ def _answer(user, context: str, text: str, product=None, sources: list | None = 
     from staff.models import SiteSettings
 
     site = SiteSettings.load()
-    if product is None:
+    from myola.services.rag import concept_of
+
+    # A question about something labels do not record here (omega-3…) is a general question,
+    # also on a product page: the product's label facts cannot answer it.
+    if product is None or concept_of(text):
         # General chat: general food and nutrition questions may go to the AI (only the
         # question is sent). Not for people who told us about an eating disorder.
         if not site.ai_general_questions or profile.eating_disorder:
@@ -518,8 +547,56 @@ def _answer(user, context: str, text: str, product=None, sources: list | None = 
     return localise(baseline, result.log, kind=kind)
 
 
+def _data_answer(user, context, text, product, sources, details, lang="en") -> str | None:
+    """Answers written only from the data, before anything else (English; translated by the
+    caller): a follow-up asking for another amount ("Dar la 200 g?"), computed from the values
+    of the previous answer of this chat; and a question about one value of the open product
+    ("Câtă sare are?"). None for any other question."""
+    from myola.services import rag
+
+    amount = rag.amount_asked(text)
+    if amount is not None:
+        previous = (
+            ChatMessage.objects.filter(user=user, context=context, role=ChatMessage.Role.OLA)
+            .exclude(details={})
+            .order_by("-created_at", "-pk")
+            .values_list("details", flat=True)
+            .first()
+        )
+        answer = rag.followup_answer(previous, *amount, lang)
+        if previous and previous.get("kind") in ("comparison", "value", "recommendation"):
+            details.update(previous)  # a further follow-up works from the same values
+            for p in previous.get("products") or []:
+                if p.get("value") is not None:
+                    title = p["name"] + (f" ({p['brand']})" if p.get("brand") else "")
+                    sources.append({"kind": "product", "title": title or "Unnamed product",
+                                    "url": f"/p/{p['id']}/"})  # fmt: skip
+        return answer
+    if rag.wants_recommendation(text, product):
+        # "Ce pește îmi recomanzi…", "Unde găsesc…": the whole catalogue, in any chat (also
+        # one started from the diary); "these fats" is read from the user's earlier messages.
+        earlier = list(
+            ChatMessage.objects.filter(user=user, context=context, role=ChatMessage.Role.USER)
+            .order_by("-created_at", "-pk")
+            .values_list("text", flat=True)[:4]
+        )
+        answer, links, found = rag.recommend(text, earlier, user, lang)
+        sources.extend(links)
+        details.update(found)
+        return answer
+    if product is not None:
+        nutrient = rag.nutrient_asked(text)
+        if nutrient is not None:
+            answer, found = rag.value_answer(product, nutrient, lang)
+            details.update(found)
+            sources.append({"kind": "product", "title": rag._name(product),
+                            "url": rag._product_url(product)})  # fmt: skip
+            return answer
+    return None
+
+
 def _rag_answer(user, profile, context, text, product, facts, intent, baseline, lang, localise,
-                sources):  # fmt: skip
+                sources, details, deliver):  # fmt: skip
     """``(answer, log)`` with retrieval (``myola.services.rag``), or None when the question is
     neither a product comparison nor answered by a Magazine passage (the usual flow then).
     The links of the answer are added to ``sources``."""
@@ -534,20 +611,24 @@ def _rag_answer(user, profile, context, text, product, facts, intent, baseline, 
     # The Magazine for product questions, and for general ones where general AI questions are
     # allowed (not for people who told us about an eating disorder).
     general_ok = site.ai_general_questions and not profile.eating_disorder
+    if comparison is not None:
+        details.update(comparison.details())
+        return _comparison_answer(user, context, text, comparison, lang, deliver, sources, details)
     hits = passages.search(text, user=user) if (product is not None or general_ok) else []
-    if comparison is None and not hits:
+    if not hits:
         return None
     product_facts = None
-    if product is not None and comparison is None:
+    if product is not None:
         product_facts = ai_facts_for(
             facts,
             product,
             with_preferences=profile.ai_use_preferences,
             with_ingredients=site.ai_send_ingredients,
         )
-    material = rag.build_material(comparison, hits, product_facts)
-    result = ask(user, material.facts, text, _followups(user, context), context=context,
-                 mode="rag")  # fmt: skip
+    material = rag.build_material(None, hits, product_facts)
+    details.update(kind="magazine", passages=[h.passage.pk for h in hits])
+    # No earlier answers as history: the model restated them (the repeated explanation).
+    result = ask(user, material.facts, text, [], context=context, mode="rag")
     if result.route:
         routed = rule_answer(result.route, facts)
         return localise(routed, result.log, kind=_personal_data(result.route, facts))
@@ -558,13 +639,57 @@ def _rag_answer(user, profile, context, text, product, facts, intent, baseline, 
     # No AI answer: the same material, phrased by code (with the rule answer when the question
     # was a known one about the product).
     fallback = rag.deterministic_answer(material)
-    if comparison is None and intent is not None and product is not None:
+    if intent is not None and product is not None:
         fallback = f"{baseline}\n{fallback}"
     clean, links = rag.cited_sources(fallback, material)
     sources.extend(links)
     if result.log and result.log.outcome == AIAnswer.Outcome.FAILED:
         return _english_only(clean, lang, "busy"), result.log
     return localise(clean, result.log)
+
+
+def _comparison_answer(user, context, text, comparison, lang, deliver, sources, details):
+    """A product comparison: the products and values come straight from the data
+    (``rag.direct_answer``), written in the question's language (English or Romanian; other
+    languages translated like rule answers), with links to every product compared. When the
+    question also asks how or why (for example "and how do I compare the labels?"), the best
+    Magazine passage is quoted after it, with its article linked; if the Magazine has nothing
+    on it, one line says so. Nothing here is written by the AI."""
+    from core import passages
+    from myola.services import rag, rag_text
+
+    written = rag_text.lang_of(lang)
+    hits = []
+    explain = rag.asks_explanation(text) and comparison.problem != "no_reference"
+    if explain:
+        hits = passages.search(text, user=user)[:1]
+        details["passages"] = [h.passage.pk for h in hits]
+    material = rag.build_material(comparison, hits)
+    excerpts = _translated_excerpts(user, hits, written, text, context)
+    answer = rag.deterministic_answer(material, written, excerpts)
+    if explain and not hits:
+        answer += "\n" + rag_text.t(written, "no_article")
+    clean, links = rag.cited_sources(answer, material)
+    sources.extend(links)
+    return deliver(clean)
+
+
+def _translated_excerpts(user, hits, lang, question, context) -> dict[int, str]:
+    """The quoted passages in the answer's language: the articles are in English, so for a
+    Romanian answer each quote is translated (translation only, nothing added); without AI
+    the English words stay, marked as such."""
+    from myola.services import rag
+
+    if lang == "en" or not hits:
+        return {}
+    from ai.service import translate
+
+    out = {}
+    for i, hit in enumerate(hits, start=1):
+        excerpt = rag._excerpt(hit.passage.text)
+        done, _log = translate(user, excerpt, lang, question=question, context=context)
+        out[i] = done or f"{excerpt} (în engleză)"
+    return out
 
 
 # "my", "I", "me" in the app's languages: a question about the user themselves.
@@ -666,13 +791,13 @@ def send(user, context: str, text: str, product=None) -> tuple[ChatMessage, Chat
     """Answer a question and keep both messages (the oldest beyond the limit are dropped).
     The answer (possibly a network call to the AI provider) is made outside the transaction."""
     text = (text or "").strip()[:300]
-    out, log, sources = reply_with_sources(user, context, text, product)
-    return _store(user, context, text, out, log, sources)
+    out, log, sources, details = reply_full(user, context, text, product)
+    return _store(user, context, text, out, log, sources, details)
 
 
 @transaction.atomic
 def _store(
-    user, context: str, text: str, out: str, log=None, sources=None
+    user, context: str, text: str, out: str, log=None, sources=None, details=None
 ) -> tuple[ChatMessage, ChatMessage]:
     asked = ChatMessage.objects.create(
         user=user, context=context, role=ChatMessage.Role.USER, text=text
@@ -685,6 +810,7 @@ def _store(
         # Helpful / not helpful buttons only under answers the AI wrote.
         ai_answer=log if log is not None and log.outcome == log.Outcome.ANSWERED else None,
         sources=sources or [],
+        details=details or {},
     )
     stale = list(
         ChatMessage.objects.filter(user=user, context=context)

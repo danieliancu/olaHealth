@@ -52,8 +52,11 @@ def test_ask_foodo_uses_the_ai_only_for_product_label_questions(member, off_payl
 
     p = import_off_product(off_payload())
     monkeypatch.setattr("ai.service.ask", lambda *a, **k: AIResult(text="AI phrased answer"))
-    _, reply = chat.send(member, f"product:{p.pk}", "How much sugar?", product=p)
+    _, reply = chat.send(member, f"product:{p.pk}", "Is it a good snack?", product=p)
     assert reply.text == "AI phrased answer"
+    # A single value of the label is read from the data, never phrased by the AI.
+    _, reply = chat.send(member, f"product:{p.pk}", "How much sugar?", product=p)
+    assert reply.text == "Sugar: 3.6 g per 100 g (as sold)."
     # Personal questions and allergen/diet checks never go to the AI.
     _, reply = chat.send(member, "personal", "What did I scan?")
     assert reply.text != "AI phrased answer"
@@ -61,7 +64,7 @@ def test_ask_foodo_uses_the_ai_only_for_product_label_questions(member, off_payl
     assert reply.text != "AI phrased answer"
     # Any AI problem falls back to the rule-based answer.
     monkeypatch.setattr("ai.service.ask", lambda *a, **k: AIResult())
-    _, reply = chat.send(member, f"product:{p.pk}", "How much sugar?", product=p)
+    _, reply = chat.send(member, f"product:{p.pk}", "Is it a good snack?", product=p)
     assert reply.text and reply.text != "AI phrased answer"
 
 
@@ -95,7 +98,7 @@ def test_ai_gets_only_the_allow_list(member, off_payload, monkeypatch):
     Note.objects.create(user=member, text="SECRET NOTE about sugar", product=p)
     Memory.objects.create(user=member, text="SECRET MEMORY", confirmed_at=timezone.now())
     seen = _capture(monkeypatch)
-    chat.send(member, f"product:{p.pk}", "How much sugar?", product=p)
+    chat.send(member, f"product:{p.pk}", "Is it a good snack?", product=p)
     text = repr(seen["facts"])
     for secret in (
         "diabetes",
@@ -120,7 +123,7 @@ def test_ai_gets_diets_and_allergies_only_with_the_opt_in(member, off_payload, m
     p = import_off_product(off_payload())
     Profile.objects.create(user=member, restrictions=["nuts"], ai_use_preferences=True)
     seen = _capture(monkeypatch)
-    chat.send(member, f"product:{p.pk}", "How much sugar?", product=p)
+    chat.send(member, f"product:{p.pk}", "Is it a good snack?", product=p)
     assert "Peanuts" in repr(seen["facts"]["allergies"])
 
 

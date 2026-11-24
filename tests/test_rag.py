@@ -13,7 +13,6 @@ from django.core.cache import cache
 from django.urls import reverse
 
 from ai import embeddings, service
-from ai.models import AIAnswer
 from ai.providers.base import ProviderError, Reply
 from catalog.models import NutrientFact
 from catalog.services.importer import import_off_product
@@ -42,6 +41,9 @@ class ScriptedProvider:
         self.calls.append({"system": system, "messages": messages})
         if self.fail:
             raise ProviderError("down")
+        if system.startswith("You translate"):  # translations keep the text (simulated)
+            text = messages[-1]["content"]
+            return Reply(text=text, input_tokens=10, output_tokens=10, model=self.model)
         return Reply(text=self.text, input_tokens=100, output_tokens=50, model=self.model)
 
     def facts(self, n: int = -1) -> dict:
@@ -139,7 +141,7 @@ def test_criteria_are_distinct_and_multilingual():
 # ---------- Comparison in code ----------
 def test_only_products_that_meet_the_criterion_with_db_values(pizzas, member):
     c = rag.compare_products(QUESTION, pizzas["scanned"], member)
-    assert c.problem == "" and c.category == "en:pizzas" and c.market == UK
+    assert c.problem == "" and c.category == "en:pizzas" and c.markets == [UK]
     assert c.reference_value == Decimal("1.2") and c.basis == "per_100g" and c.unit == "g"
     assert [m.product for m in c.matches] == [pizzas["low"], pizzas["mid"]]
     for m in c.matches:  # every match meets the criterion, with the value stored in the DB
@@ -192,11 +194,84 @@ def test_foodo_score_is_another_criterion(pizzas, off_payload, member):
 def test_missing_reference_value_and_no_alternative(pizzas, member):
     c = rag.compare_products(QUESTION, pizzas["unknown"], member)
     assert c.problem == "no_reference_value" and c.matches == []
-    text = rag.deterministic_answer(rag.build_material(c, []))
-    assert "salt is not known" in text
+    assert rag.direct_answer(c) == (
+        "This product's label gives no salt value per 100 g or 100 ml, so I can't compare it "
+        "with others."
+    )
     lowest = rag.compare_products(QUESTION, pizzas["low"], member)
     assert lowest.matches == [] and lowest.problem == ""
-    assert "None of the" in rag.deterministic_answer(rag.build_material(lowest, []))
+    assert rag.direct_answer(lowest) == (
+        "No match in the verified catalogue: no other product in the “Pizzas” category sold in "
+        "the UK has less salt than this one (0.8 g per 100 g). Compared 3 of 4 products; 1 have "
+        "no comparable salt value."
+    )
+
+
+def test_market_is_where_the_scanned_product_is_sold(db, off_payload, member):
+    """Not the user's market: a pizza sold in Belgium and the Netherlands is compared with
+    pizzas sold there (the error behind "no other pizza" for an Albert Heijn pizza)."""
+    cache.clear()
+    be_nl = ("en:belgium", "en:netherlands")
+    scanned = pizza(off_payload, "5000000000301", "Shoarma pizza", 1.0, countries=be_nl)
+    pizza(off_payload, "5000000000302", "Quattro formaggi", 1.01, countries=("en:netherlands",))
+    pizza(off_payload, "5000000000303", "UK low salt", 0.5)  # UK only: another market
+    c = rag.compare_products("Ce altă pizza are mai puțină sare?", scanned, member)
+    assert c.markets == list(be_nl) and c.market_source == "product"
+    assert c.candidates == 1 and c.matches == []
+    assert "sold in Belgium or the Netherlands" in rag.direct_answer(c)
+    # Named in the question, the market wins.
+    named = rag.compare_products("Which UK pizza has less salt than this?", scanned, member)
+    assert named.markets == [UK] and [m.product.name for m in named.matches] == ["UK low salt"]
+
+
+def generic(off_payload, code, name, category_tags, countries, **nutriments):
+    payload = off_payload(
+        code=code, product_name=name, brands="Brand", categories_tags=category_tags,
+        countries_tags=list(countries), nutriments=nutriments, nutrient_levels={},
+        **nutriscore_fields("c"),
+    )  # fmt: skip
+    return import_off_product(payload)
+
+
+@pytest.mark.parametrize(
+    ("tags", "question", "nutrient", "ref", "better", "worse"),
+    [
+        (["en:dairies", "en:yogurts"], "Ce alt iaurt are mai puțin zahăr?", "sugars_100g",
+         8, 4, 12),
+        (["en:breakfasts", "en:breakfast-cereals"], "Ce alte cereale au mai multe fibre?",
+         "fiber_100g", 5, 9, 2),
+        (PIZZAS, "Ce altă pizza are mai puțină sare?", "salt_100g", 1.2, 0.7, 1.6),
+    ],
+)  # fmt: skip
+def test_three_situations_per_category(db, off_payload, member, tags, question, nutrient, ref,
+                                       better, worse):  # fmt: skip
+    """For each category: an alternative exists, none meets the criterion, data missing."""
+    cache.clear()
+    ro = ("en:romania",)
+    base = {"energy-kcal_100g": 100}
+
+    def make(code, name, **values):
+        return generic(off_payload, code, name, tags, ro, **base, **values)
+
+    scanned = make("5000000000401", "Scanned", **{nutrient: ref})
+    good = make("5000000000402", "Better one", **{nutrient: better})
+    make("5000000000403", "Worse one", **{nutrient: worse})
+    make("5000000000404", "No value")
+    found = rag.compare_products(question, scanned, member)
+    assert [m.product for m in found.matches] == [good]
+    text = rag.direct_answer(found)
+    assert f"Better one (Brand): {rag._amount(Decimal(str(better)), 'g')}" in text
+    assert "sold in Romania" in text and "Compared 2 of 3 products; 1 have no" in text
+    # None meets it: the best product itself.
+    none = rag.compare_products(question, good, member)
+    assert none.matches == [] and rag.direct_answer(none).startswith(
+        "No match in the verified catalogue"
+    )
+    # Data missing on the scanned product.
+    gap = rag.compare_products(question, make("5000000000405", "Unlabelled"), member)
+    assert gap.problem == "no_reference_value" and "gives no" in rag.direct_answer(gap)
+    for answer in (text, rag.direct_answer(none), rag.direct_answer(gap)):
+        assert "[P" not in answer and "matches" not in answer
 
 
 def test_avoid_list_is_respected(pizzas, member):
@@ -259,17 +334,19 @@ def test_search_by_meaning_with_other_words(article, site, monkeypatch):
 
 
 # ---------- Through the chat ----------
-def test_chat_answer_cites_and_links_only_selected_sources(member_client, member, pizzas,
-                                                         article, provider):  # fmt: skip
-    provider.text = (
-        "Low Salt Veggie has 0.8 g of salt per 100 g [P1] and Pepperoni 1 g [P2], less than "
-        "your 1.2 g [P0]. Compare per 100 g, never per serving [A1]. See also [P7] [A9]."
-    )
+def test_chat_answer_from_data_with_explanation_and_links(member_client, member, pizzas,
+                                                          article, provider):  # fmt: skip
     ctx = f"product:{pizzas['scanned'].pk}"
-    r = member_client.post(reverse("chat-send"), {"context": ctx, "text": QUESTION}, **HX)
+    question = "Which pizza has less salt than this, and how do I compare the labels?"
+    r = member_client.post(reverse("chat-send"), {"context": ctx, "text": question}, **HX)
     assert r.status_code == 200
     answer = ChatMessage.objects.get(user=member, context=ctx, role="ola")
-    assert "[P7]" not in answer.text and "[A9]" not in answer.text and "[P1]" in answer.text
+    # Products, values and the Magazine quote all come from the data: no AI call at all.
+    assert provider.calls == []
+    assert "Low Salt Veggie (Test Pizzeria): 0.8 g" in answer.text
+    assert "Pepperoni (Test Pizzeria): 1 g" in answer.text
+    assert "From the Magazine, “How to compare two labels”:" in answer.text
+    assert "[" not in answer.text and "matches" not in answer.text
     urls = [s["url"] for s in answer.sources]
     assert urls == [
         reverse("product", args=[pizzas["scanned"].pk]),
@@ -279,30 +356,54 @@ def test_chat_answer_cites_and_links_only_selected_sources(member_client, member
     ]
     body = r.content.decode()
     assert 'class="chat-sources"' in body and reverse("learn-article", args=[article.slug]) in body
-    # The model got only the selected material: the comparison and the passage.
-    facts = provider.facts()
-    assert set(facts) == {"comparison", "magazine"}
-    assert [m["name"] for m in facts["comparison"]["matches"]] == [
-        "Low Salt Veggie (Test Pizzeria)", "Pepperoni (Test Pizzeria)",
-    ]  # fmt: skip
-    assert facts["comparison"]["matches"][0]["value"] == "0.8 g"
-    assert facts["comparison"]["scanned_product"]["value"] == "1.2 g"
-    assert facts["magazine"][0]["article"] == article.title
-    assert "Mystery" not in json.dumps(facts) and "Reine" not in json.dumps(facts)
-    assert "RAG" not in provider.calls[0]["system"] and "matches" in provider.calls[0]["system"]
+    sent = json.dumps(provider.calls)
+    assert "Mystery" not in sent and "Reine" not in sent and "Four Cheese" not in sent
     for link in urls:  # every link opens
         assert member_client.get(link).status_code == 200
 
 
-def test_ai_failure_gives_the_same_material_without_ai(member, pizzas, article, provider):
-    provider.fail = True
+def test_romanian_answer_written_from_data_without_translation(member, pizzas, provider):
+    """The bug report's question: written in Romanian from the data (no model, no markers)."""
+    out, log, sources = chat.reply_with_sources(
+        member, f"product:{pizzas['scanned'].pk}", "ce alta pizza are mai putina sarE?",
+        pizzas["scanned"],
+    )  # fmt: skip
+    assert provider.calls == [] and log is None
+    assert out.startswith("Cu mai puțină sare decât acesta (1,2 g la 100 g), din categoria")
+    assert "- Low Salt Veggie (Test Pizzeria): 0,8 g" in out and "Regatul Unit" in out
+    assert "[" not in out and "matches" not in out
+    assert len(sources) == 3
+
+
+def test_comparison_alone_makes_no_ai_call(member, pizzas, article, provider):
     out, log, sources = chat.reply_with_sources(
         member, f"product:{pizzas['scanned'].pk}", "Which pizza has less salt than this?",
         pizzas["scanned"],
     )  # fmt: skip
-    assert log.outcome == AIAnswer.Outcome.FAILED
-    assert "Low Salt Veggie (Test Pizzeria): 0.8 g [P1]" in out and "Pepperoni" in out
-    assert "Four Cheese" not in out
+    assert provider.calls == [] and log is None
+    assert "Low Salt Veggie (Test Pizzeria): 0.8 g" in out and "Four Cheese" not in out
+    assert len(sources) == 3 and all(s["kind"] == "product" for s in sources)
+
+
+def test_zero_results_short_answer_from_data(member, pizzas, provider):
+    out, _log, sources = chat.reply_with_sources(
+        member, f"product:{pizzas['low'].pk}", "Which pizza has less salt than this?",
+        pizzas["low"],
+    )  # fmt: skip
+    assert provider.calls == []  # English question: nothing to translate, no AI at all
+    assert out.startswith("No match in the verified catalogue: no other product in the “Pizzas”")
+    assert sources == [{"kind": "product", "title": "Low Salt Veggie (Test Pizzeria)",
+                        "url": reverse("product", args=[pizzas["low"].pk])}]  # fmt: skip
+
+
+def test_ai_failure_keeps_the_data_answer(member, pizzas, article, provider):
+    provider.fail = True
+    out, _log, sources = chat.reply_with_sources(
+        member, f"product:{pizzas['scanned'].pk}",
+        "Which pizza has less salt, and how do I compare the labels?", pizzas["scanned"],
+    )  # fmt: skip
+    assert "Low Salt Veggie (Test Pizzeria): 0.8 g" in out and "Pepperoni" in out
+    assert "From the Magazine" in out and "[A1]" not in out
     assert len([s for s in sources if s["kind"] == "product"]) == 3
 
 
@@ -317,29 +418,129 @@ def test_ai_off_answers_with_material(member, pizzas, site):
 
 
 def test_withdrawn_article_not_used_in_a_new_answer(member, pizzas, article, provider):
-    provider.text = "Compare per 100 g [A1]."
     ctx = f"product:{pizzas['scanned'].pk}"
-    chat.send(member, ctx, QUESTION, pizzas["scanned"])
-    assert "magazine" in provider.facts()
+    question = "Which pizza has less salt than this, and how do I compare the labels?"
+    chat.send(member, ctx, question, pizzas["scanned"])
+    first = ChatMessage.objects.filter(user=member, role="ola").order_by("-pk").first()
+    assert any(s["kind"] == "article" for s in first.sources)
     article.published = False
     article.save()
-    chat.send(member, ctx, QUESTION, pizzas["scanned"])
-    assert "magazine" not in provider.facts()
+    chat.send(member, ctx, question, pizzas["scanned"])
     last = ChatMessage.objects.filter(user=member, role="ola").order_by("-pk").first()
     assert all(s["kind"] == "product" for s in last.sources)
+    assert "How to compare two labels" not in last.text
 
 
-def test_no_access_to_another_users_chat_or_notes(client, member, pizzas, provider):
+def test_no_access_to_another_users_chat_or_notes(client, member, pizzas, article, provider):
     from django.contrib.auth import get_user_model
 
     from myola.models import Note
 
-    provider.text = "Low Salt Veggie [P1]."
     other = get_user_model().objects.create_user("other", password="a-long-test-password-2")
     Note.objects.create(user=other, text="secret pizza note", product=pizzas["scanned"])
     chat.send(member, f"product:{pizzas['scanned'].pk}", QUESTION, pizzas["scanned"])
-    assert "secret" not in json.dumps(provider.facts())
+    assert all("secret" not in json.dumps(c) for c in provider.calls)
+    assert "secret" not in ChatMessage.objects.get(user=member, role="ola").text
     client.force_login(other)
     page = client.get(reverse("chat"), {"context": f"product:{pizzas['scanned'].pk}"})
-    assert "Low Salt Veggie [P1]" not in page.content.decode()
+    assert "Low Salt Veggie" not in page.content.decode()
     assert ChatMessage.objects.filter(user=other).count() == 0
+
+
+# ---------- Values of the open product, follow-ups, recommendations ----------
+def test_value_of_the_open_product_existing_zero_unknown(member, pizzas, off_payload, provider):
+    ctx = f"product:{pizzas['scanned'].pk}"
+    out, _, sources = chat.reply_with_sources(member, ctx, "cata sarE are?", pizzas["scanned"])
+    assert out == "Sare: 1,2 g la 100 g (așa cum se vinde)." and provider.calls == []
+    assert sources[0]["url"] == reverse("product", args=[pizzas["scanned"].pk])
+    zero = pizza(off_payload, "5000000000501", "Salt free pizza", 0)
+    out, _, _ = chat.reply_with_sources(member, f"product:{zero.pk}", "How much salt is in it?",
+                                        zero)  # fmt: skip
+    assert out == "Salt: 0 g per 100 g (as sold)."
+    out, _, _ = chat.reply_with_sources(member, f"product:{pizzas['unknown'].pk}",
+                                        "Câtă sare are?", pizzas["unknown"])  # fmt: skip
+    assert out == "Eticheta acestui produs nu dă valoarea pentru sare."
+
+
+def test_followup_amount_uses_the_previous_values(member, pizzas, provider):
+    ctx = f"product:{pizzas['scanned'].pk}"
+    chat.send(member, ctx, "Which pizza has less salt than this?", pizzas["scanned"])
+    _asked, answer = chat.send(member, ctx, "Dar la 200 g?", pizzas["scanned"])
+    assert answer.text.splitlines() == [
+        "Sare în 200 g (din valorile la 100 g):",
+        "- Scanned Margherita (Test Pizzeria): 2,4 g",
+        "- Low Salt Veggie (Test Pizzeria): 1,6 g",
+        "- Pepperoni (Test Pizzeria): 2 g",
+    ]
+    assert len(answer.sources) == 3 and provider.calls == []
+    # Per 100 g values asked in ml: a short question back, never a conversion.
+    _asked, answer = chat.send(member, ctx, "and for 250 ml?", pizzas["scanned"])
+    assert answer.text == "These values are per 100 g. For which amount in g?"
+
+
+def test_followup_without_anything_before_asks_back(member, pizzas, provider):
+    out, _, sources = chat.reply_with_sources(
+        member, f"product:{pizzas['low'].pk}", "Dar la 200 g?", pizzas["low"]
+    )
+    assert out.startswith("Pentru care produs?") and sources == []
+
+
+def test_comparison_details_kept_for_diagnosis(member, pizzas, provider):
+    ctx = f"product:{pizzas['scanned'].pk}"
+    chat.send(member, ctx, "ce alta pizza are mai putina sarE?", pizzas["scanned"])
+    answer = ChatMessage.objects.filter(user=member, role="ola").order_by("-pk").first()
+    d = answer.details
+    assert d["kind"] == "comparison" and d["markets"] == [UK] and d["category"] == "en:pizzas"
+    assert d["candidates"] == 4 and d["excluded"] == {"no_value": 1, "not_better": 1}
+    assert "excluded" not in answer.text and "[" not in answer.text
+
+
+def test_scanned_product_question_without_a_product(member, pizzas, provider):
+    out, _, sources = chat.reply_with_sources(
+        member, "personal", "Ce pizza are mai puțină sare decât produsul scanat?"
+    )
+    assert out == "Deschide sau scanează mai întâi un produs: compar alte produse cu el."
+    assert sources == []
+
+
+@pytest.fixture
+def fishes(db, off_payload):
+    cache.clear()
+    tags = ["en:seafood", "en:fishes", "en:fatty-fishes"]
+
+    def fish(code, name, fat, tags=tags):
+        return generic(off_payload, code, name, tags, (UK,), **{"fat_100g": fat})
+
+    return [
+        fish("5000000000601", "Smoked mackerel", 25),
+        fish("5000000000602", "Salmon fillets", 15.1),
+        fish("5000000000603", "Cod fillets", 0.7, tags=["en:seafood", "en:fishes"]),
+    ]
+
+
+def test_recommendation_resolves_these_fats_from_the_conversation(member, fishes, provider):
+    """The exact question of the request, after a message about omega-3, in the general chat
+    (where a chat started from the diary lands)."""
+    provider.text = "Omega-3 are fats found in oily fish."
+    chat.send(member, "personal", "Ce sunt grăsimile omega-3?")
+    _, answer = chat.send(member, "personal",
+                          "Ce pește îmi recomanzi care să aibă aceste grăsimi?")  # fmt: skip
+    lines = answer.text.splitlines()
+    assert lines[0] == "Despre omega-3, din mesajul tău anterior:"
+    assert "nu are valori pentru omega-3" in lines[1]
+    assert lines[3:] == [
+        "- Smoked mackerel (Brand): 25 g grăsimi totale la 100 g",
+        "- Salmon fillets (Brand): 15,1 g grăsimi totale la 100 g",
+    ]
+    assert [s["url"] for s in answer.sources] == [
+        reverse("product", args=[fishes[0].pk]), reverse("product", args=[fishes[1].pk]),
+    ]  # fmt: skip
+    assert answer.details["subject"] == "omega-3" and answer.details["origin"] == "conversation"
+
+
+def test_recommendation_by_a_recorded_nutrient(member, fishes, provider):
+    out, _, sources = chat.reply_with_sources(
+        member, "personal", "Recommend a fish with the least fat"
+    )
+    assert out.splitlines()[1] == "- Cod fillets (Brand): 0.7 g fat per 100 g"
+    assert sources[0]["url"] == reverse("product", args=[fishes[2].pk])

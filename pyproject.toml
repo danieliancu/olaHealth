@@ -63,3 +63,5 @@ ignore = ["S101", "RUF012", "S311", "RUF001", "RUF002", "RUF003"]  # typographic
 # Local measuring tool: fixed commands (gzip, git, pg_dump), constant table names, and https
 # photo URLs taken from the import.
 "tools/off_pilot.py" = ["S310", "S603", "S607", "S608"]
+# Acceptance evaluation script: scenario tables, a throwaway local test account.
+"tools/rag_eval.py" = ["E501", "S106", "S608"]
