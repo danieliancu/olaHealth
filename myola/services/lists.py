@@ -32,6 +32,10 @@ def toggle(user, product, kind: str) -> bool:
         ProductMark.objects.filter(user=user, product=product, kind=other).delete()
     ProductMark.objects.create(user=user, product=product, kind=kind)
     _trim(ProductMark.objects.filter(user=user, kind=kind), LIMITS["marks"])
+    if kind != ProductMark.Kind.HIDDEN:
+        from myola.services.my_products import touch
+
+        touch(user, product, "saved")
     return True
 
 

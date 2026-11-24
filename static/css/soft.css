@@ -1914,3 +1914,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
 }
 /* Quick note (product page): "Save note" the full width, with more room above it. */
 .note-card .note-save { width: 100%; margin-top: .75rem; }
+/* "My products": what the user did with each product, and the empty state's two actions. */
+.my-badges { display: flex; flex-wrap: wrap; gap: .3rem; margin: .25rem 0 0; }
+.my-badges .pill { font-size: .72rem; padding: .1rem .5rem; }
+.my-empty .row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }

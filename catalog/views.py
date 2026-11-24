@@ -201,7 +201,7 @@ def lookup_view(request: HttpRequest) -> HttpResponse:
         if target:
             return redirect(diary_target.add_url(result.product.pk, target, code))
         url = reverse("product", args=[result.product.pk])
-        if request.GET.get("via") == "alternative":  # opened from "Better alternatives"
+        if request.GET.get("via") in ("alternative", "chat"):  # opened from a list, not scanned
             return redirect(url)
         return redirect(f"{url}?{urlencode({'scanned': code})}")
     context = {
@@ -267,6 +267,12 @@ def _record_visit(request: HttpRequest, product: Product, code: str) -> None:
     """History for signed-in users; a reload within a few minutes is not a new visit."""
     if not request.user.is_authenticated:
         return
+    if request.headers.get("HX-Request") and not request.headers.get("HX-Boosted"):
+        return  # a fragment, not the page opened by the user
+    from myola.services.my_products import touch
+
+    # "My products": a scan (the page opened right after scanning keeps it) or an open.
+    touch(request.user, product, "scan" if code else "open")
     recent = ProductVisit.objects.filter(
         user=request.user,
         product=product,
@@ -592,9 +598,48 @@ def _annotate_cards(request: HttpRequest, products: list) -> None:
         p.is_fav = p.pk in favourites
 
 
+CATALOGUE_KEYS = ("q", "category", "country", "score", "completeness", "sort", "all")
+
+
+def _my_products_page(request: HttpRequest) -> HttpResponse:
+    """ "My products": the products this user scanned, opened, saved or ate (newest
+    interaction first), filtered on the server for the signed-in user only."""
+    from myola.services.my_products import listing
+
+    paginator = Paginator(listing(request.user), 20)
+    page = paginator.get_page(request.GET.get("page"))
+    products = []
+    for row in page.object_list:
+        p = row.product
+        p.my = row
+        products.append(p)
+    _annotate_cards(request, products)
+    page.object_list = products
+    return render(
+        request,
+        "catalog/products.html",
+        {
+            "mine": True,
+            "form": SearchForm(),
+            "page": page,
+            "query": "",
+            "facets": {},
+            "hidden_count": len(lists.hidden_ids(request.user)),
+            "login_url": _login_url(request.get_full_path()),
+        },
+    )
+
+
 @require_GET
 @rate_limited("search")
 def product_list(request: HttpRequest) -> HttpResponse:
+    target = diary_target.from_params(request.GET)
+    if (
+        request.user.is_authenticated
+        and not target
+        and not any(request.GET.get(k) for k in CATALOGUE_KEYS)
+    ):
+        return _my_products_page(request)
     form = SearchForm(request.GET or None)
     params = SearchParams()
     if form.is_valid():
@@ -607,7 +652,8 @@ def product_list(request: HttpRequest) -> HttpResponse:
     page = paginator.get_page(request.GET.get("page"))
     query = request.GET.copy()
     query.pop("page", None)
-    target = diary_target.from_params(request.GET)
+    if request.user.is_authenticated and not any(request.GET.get(k) for k in CATALOGUE_KEYS):
+        query["all"] = "1"  # paging the catalogue (diary mode) must not fall back to "mine"
     if target:
         for p in page.object_list:
             p.diary_url = diary_target.add_url(p.pk, target)
@@ -801,7 +847,10 @@ def saved_clear(request: HttpRequest, what: str) -> HttpResponse:
     if not request.user.is_authenticated:
         return _login_required_response(request, reverse("saved"))
     if what == "history":
+        from myola.services.my_products import forget_history
+
         ProductVisit.objects.filter(user=request.user).delete()
+        forget_history(request.user)  # "My products": only scanned or opened ones go
         messages.success(request, _("History cleared."))
     else:
         ProductMark.objects.filter(user=request.user, kind=ProductMark.Kind.HIDDEN).delete()

@@ -167,7 +167,7 @@ def img(value: str) -> str:
     return image_url(value or "")
 
 
-_CHAT_LINK = re.compile(r"(/p/[0-9a-f-]{36}/|/lookup/\?code=\d{8,14})")
+_CHAT_LINK = re.compile(r"(/p/[0-9a-f-]{36}/|/lookup/\?code=\d{8,14}(?:&amp;via=chat)?)")
 
 
 @register.filter

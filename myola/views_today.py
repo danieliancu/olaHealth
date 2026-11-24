@@ -493,6 +493,9 @@ def add_food(request: HttpRequest, pk) -> HttpResponse:
                 form.add_error(None, _limit_text("diary"))
             else:
                 record_visit(request.user, product, d["scanned"])
+                from myola.services.my_products import touch
+
+                touch(request.user, product, "eaten")
                 messages.success(
                     request, _("Added to %(meal)s.") % {"meal": MEAL_LABELS[d["meal"]]}
                 )

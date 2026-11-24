@@ -285,6 +285,36 @@ class ProductVisit(models.Model):
         return bool(self.code)
 
 
+class MyProduct(models.Model):
+    """A product the user interacted with ("My products"): scanned it, opened its page on
+    purpose, saved it or put it in the diary. One row per (user, product), written only by
+    ``myola.services.my_products.touch`` (an atomic upsert). Showing a product in a search,
+    an answer, alternatives or an article never adds it."""
+
+    class Origin(models.TextChoices):
+        SCAN = "scan", _("Scanned")
+        OPEN = "open", _("Opened")
+        SAVED = "saved", _("Saved")
+        EATEN = "eaten", _("In the diary")
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="my_products")
+    product = models.ForeignKey("catalog.Product", on_delete=models.CASCADE, related_name="+")
+    first_at = models.DateTimeField()
+    last_at = models.DateTimeField()
+    last_origin = models.CharField(max_length=8, choices=Origin.choices)
+    scanned = models.BooleanField(default=False)
+    opened = models.BooleanField(default=False)
+    saved = models.BooleanField(default=False)
+    eaten = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "product"], name="uniq_my_product")]
+        indexes = [models.Index(fields=["user", "-last_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.user_id}: {self.product_id} ({self.last_origin})"
+
+
 class Note(models.Model):
     class Kind(models.TextChoices):
         GENERAL = "general", _("General")

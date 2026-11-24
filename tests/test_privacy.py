@@ -47,6 +47,7 @@ PERSONAL_MODELS = [
     m.WeightEntry,
     m.ProductMark,
     m.ProductVisit,
+    m.MyProduct,
     m.Note,
     m.Memory,
     m.ChatMessage,

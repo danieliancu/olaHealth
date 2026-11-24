@@ -102,7 +102,7 @@ def test_hidden_products_are_filtered_and_shown_again(member_client, member, pro
     yogurt = products[0]
     r = member_client.post(mark_url(yogurt, "hidden"), {"ui": "hide"}, **HX)
     assert r.status_code == 200 and "Removed from your list" in r.content.decode()
-    html = member_client.get(reverse("products")).content.decode()
+    html = member_client.get(reverse("products"), {"all": "1"}).content.decode()
     assert reverse("product", args=[yogurt.pk]) not in html
     assert "1 product hidden from your lists." in html
     suggest = member_client.get(reverse("suggest-html"), {"q": "greek"}).content.decode()
@@ -113,7 +113,7 @@ def test_hidden_products_are_filtered_and_shown_again(member_client, member, pro
     assert r.status_code == 302 and not ProductMark.objects.filter(kind="hidden").exists()
     assert (
         reverse("product", args=[yogurt.pk])
-        in member_client.get(reverse("products")).content.decode()
+        in member_client.get(reverse("products"), {"all": "1"}).content.decode()
     )
 
 

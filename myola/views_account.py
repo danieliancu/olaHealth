@@ -72,6 +72,20 @@ def export_data(user) -> dict:
             m.ProductVisit.objects.filter(user=user),
             ["product_id", "product__name", "code", "created_at"],
         ),
+        "my_products": _rows(
+            m.MyProduct.objects.filter(user=user),
+            [
+                "product_id",
+                "product__name",
+                "first_at",
+                "last_at",
+                "last_origin",
+                "scanned",
+                "opened",
+                "saved",
+                "eaten",
+            ],
+        ),
         "notes": _rows(
             m.Note.objects.filter(user=user),
             ["kind", "text", "product_id", "created_at", "updated_at"],

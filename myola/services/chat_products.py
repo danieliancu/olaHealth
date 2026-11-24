@@ -101,7 +101,7 @@ def _by_text(terms: str) -> str:
     for r in rows:
         name = r.get("product_name") or "Unnamed product"
         brand = f" ({r['brands']})" if r.get("brands") else ""
-        url = f"{reverse('lookup')}?{urlencode({'code': r['code']})}"
+        url = f"{reverse('lookup')}?{urlencode({'code': r['code'], 'via': 'chat'})}"
         lines.append(f"{name}{brand}\nOpen it: {url}")
     return "Not in our catalogue yet; from Open Food Facts:\n\n" + "\n\n".join(lines)
 

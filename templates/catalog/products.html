@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load i18n ui static %}
-{% block title %}{% translate "Products" %}{% endblock %}
+{% block title %}{% if mine %}{% translate "My products" %}{% else %}{% translate "Products" %}{% endif %}{% endblock %}
 {% block content %}
 <div id="catalog">
-<div class="page-head"><div class="page-head-soft"><span class="soft-icon">{% icon "search" 20 %}</span><h1>{% translate "Products" %}</h1></div>{% if user.is_authenticated %}{% include "partials/head_bell.html" %}{% endif %}</div>
+<div class="page-head"><div class="page-head-soft"><span class="soft-icon">{% icon "search" 20 %}</span><h1>{% if mine %}{% translate "My products" %}{% else %}{% translate "Products" %}{% endif %}</h1></div>{% if user.is_authenticated %}{% include "partials/head_bell.html" %}{% endif %}</div>
 
 {% include "partials/diary_banner.html" %}
 {# Filters apply on change through htmx (the Apply button stays for no-JS). #}
@@ -19,6 +19,9 @@
            hx-indicator="closest .search-box"{% if diary %} hx-include="#diary-add, #diary-date"{% endif %}>
     {% include "partials/suggest.html" with show=False %}
   </div>
+  {% if mine %}
+  <p class="caption">{% translate "Products you scanned, opened, saved or added to your diary. Search to explore the whole AskFoodo catalogue." %} <a href="{% url 'products' %}?all=1">{% translate "Browse the catalogue" %}</a></p>
+  {% else %}
   <p class="caption">{% translate "Products in the AskFoodo catalogue" %}<span class="sr-only"> – {% translate "only products already scanned or added here" %}</span></p>
   <div class="pills">
     {% translate "Category" as l_cat %}{% translate "Country" as l_country %}{% translate "Completeness" as l_comp %}
@@ -27,6 +30,7 @@
     {% translate "Foodo Score" as l_score %}{% include "partials/facet_select.html" with name="score" label=l_score options=facets.score value=form.score.value %}
     {% include "partials/facet_select.html" with name="completeness" label=l_comp options=facets.completeness value=form.completeness.value %}
   </div>
+  {% endif %}
   <div class="sort-row">
     {# Filters apply on change with htmx; the button is the no-JavaScript fallback. #}
     <noscript><button class="btn btn-small btn-outline" type="submit">{% translate "Apply" %}</button></noscript>
@@ -36,7 +40,7 @@
 
 
 {% include "partials/compare_link.html" %}
-<p class="caption" role="status">{% blocktranslate count counter=page.paginator.count %}{{ counter }} product{% plural %}{{ counter }} products{% endblocktranslate %}</p>
+{% if not mine or page.paginator.count %}<p class="caption" role="status">{% blocktranslate count counter=page.paginator.count %}{{ counter }} product{% plural %}{{ counter }} products{% endblocktranslate %}</p>{% endif %}
 <ul class="product-list">
   {% for p in page.object_list %}
   <li class="product-card">
@@ -44,6 +48,7 @@
     <div class="grow">
       <a href="{% if diary %}{{ p.diary_url }}{% else %}{% url 'product' p.pk %}{% endif %}" class="product-link">{{ p.name|default:_("Unnamed product") }}</a>{% if p.quality_issues %} <span class="partial quality-pill" title="{{ p.quality_labels|join:', ' }}">{% translate "Incomplete data" %}</span>{% endif %}
       <p class="meta">{% if p.brand %}{{ p.brand }}{% endif %}{% if p.brand and p.quantity %} · {% endif %}{{ p.quantity }}</p>
+      {% if p.my %}<p class="my-badges">{% if p.my.scanned %}<span class="pill">{% translate "Scanned" %}</span>{% endif %}{% if p.my.saved %}<span class="pill">{% translate "Saved" %}</span>{% endif %}{% if p.my.eaten %}<span class="pill">{% translate "In your diary" %}</span>{% endif %}</p>{% endif %}
       <p class="scores">
         {% if p.nova_group %}<span class="processing processing-{{ p.nova_group }}"><span class="dot" aria-hidden="true"></span>{{ p.nova_group|processing }}</span>{% endif %}
       </p>
@@ -51,7 +56,17 @@
     </div>
   </li>
   {% empty %}
+  {% if mine %}
+  <li class="empty my-empty">
+    <p>{% translate "No products yet. Products you scan, open, save or add to your diary appear here." %}</p>
+    <p class="row">
+      <a class="btn btn-primary" href="{% url 'scan' %}">{% icon "scan-barcode" 18 %}<span>{% translate "Scan a product" %}</span></a>
+      <a class="btn btn-outline" href="{% url 'products' %}?all=1">{% icon "search" 18 %}<span>{% translate "Search a product" %}</span></a>
+    </p>
+  </li>
+  {% else %}
   <li class="empty">{% translate "No products match. Try another search or scan a barcode." %}</li>
+  {% endif %}
   {% endfor %}
 </ul>
 
