@@ -260,9 +260,8 @@ def test_for_you_uses_the_signed_in_profile(member_client, member, off_payload):
     assert 'href="/ask-foodo/profile/#restrictions"' in card
     assert "Never a guarantee" in card
     assert "of your daily targets" not in html  # the portion block is gone
-    # Ask Foodo: a button of its own, above the card, not inside it.
-    ask = html.split('class="ask-standalone po-2"')[1].split('id="foryou-h"')[0]
-    assert "Ask Foodo about this product" in ask and "Ask Foodo about this product" not in card
+    # No "Ask Foodo about this product" button on product pages any more.
+    assert "Ask Foodo about this product" not in html and "ask-standalone" not in html
 
 
 def test_for_you_without_preferences_and_for_visitors(member_client, product):
@@ -277,7 +276,7 @@ def test_for_you_without_preferences_and_for_visitors(member_client, product):
     card = anon.split('id="foryou-h"')[1].split("</section>")[0]
     assert "Sign in to check this product against your diet and allergies" in card
     assert reverse("account_login") + "?next=" in card
-    assert "Ask Foodo about this product" in anon.split('class="ask-standalone po-2"')[1]
+    assert "Ask Foodo about this product" not in anon
     assert 'id="ola-data"' not in anon and "Sign in to save" in anon
 
 

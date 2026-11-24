@@ -102,14 +102,6 @@
     <p class="caption htmx-indicator">{% translate "Loading…" %}</p>
     <p><a data-alternatives-link href="{% url 'product-alternatives' product.pk %}">{% translate "See better alternatives" %}</a></p>
   </section>
-  {# 2. Ask Foodo about this product: a button of its own #}
-  <div class="ask-standalone po-2">
-    {% if user.is_authenticated %}
-      {% include "myola/partials/chat.html" with chat_context=chat_context chat_product=product button_label=_("Ask Foodo about this product") %}
-    {% else %}
-      <a class="btn btn-primary btn-block btn-ask ask-foodo-btn" href="{{ login_url }}">{% icon "message-circle" 18 %}<span>{% translate "Ask Foodo about this product" %}</span></a>
-    {% endif %}
-  </div>
   {# For you: the signed-in user's diets and allergies against this product (red: a problem, orange: a doubt) #}
   <section class="card foryou-card po-2" aria-labelledby="foryou-h">
     <h2 id="foryou-h">{% translate "For you" %}</h2>

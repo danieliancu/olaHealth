@@ -1062,8 +1062,6 @@ html { scroll-behavior: smooth; }
 .ap-text strong { font-size: var(--fs-sm); font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .ap-text small { font-size: var(--fs-xs); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ap-grade { margin-top: .2rem; }
-.ap-ask { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); text-decoration: none; transition: background-color .2s; }
-.ap-ask:hover { background: #d7eee2; color: var(--accent-strong); }
 
 @media (min-width: 1024px) {
   .article-layout { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch; }
@@ -1351,11 +1349,6 @@ a:hover .ticker-track, a:focus-visible .ticker-track { animation-play-state: pau
 
 /* Product page: "For you" on green, white Ask Foodo button, one or two leaves drifting down */
 /* Ask Foodo about this product: a green button of its own, white text and icon. */
-.ask-standalone { margin: 0 0 1rem; }
-.ask-standalone .btn-ask, .ask-standalone .btn-ask:visited { background: var(--accent); border-color: var(--accent); color: #fff; min-height: 52px; font-size: 1rem; }
-.ask-standalone .btn-ask .icon { color: #fff; }
-.ask-standalone .btn-ask:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
-.ask-standalone .btn-ask:focus-visible { outline: 3px solid var(--accent-strong); outline-offset: 2px; }
 /* For you: a white card; red for a problem, orange for a doubt (the words say it too). */
 .foryou-card { background: var(--surface, #fff); }
 .foryou-card .rs-incompatible, .foryou-card .rs-contains { color: #b42318; }
@@ -1659,7 +1652,6 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
 @media (max-width: 767px) {
   .product .nutri-card { order: 2; }
   .product #better { order: 3; }
-  .product .ask-standalone { order: 3; }
   .product .po-3 { order: 3; }
   .product .foryou-card { order: 4; }
   .product .ingredients-card { order: 5; }

@@ -395,7 +395,7 @@ def test_chat_partial_and_product_page(member_client, yogurt):
     assert 'hx-post="/ask-foodo/chat/send/"' in body and 'hx-swap="beforeend scroll:bottom"' in body
     assert "Does it fit my restrictions?" not in body  # no suggestion pills
     html = member_client.get(reverse("product", args=[yogurt.pk])).content.decode()
-    assert f"context=product%3A{yogurt.pk}" in html  # the includable panel
+    assert f"context=product%3A{yogurt.pk}" not in html  # no chat button on product pages
 
 
 def test_account_icon_reopens_the_last_tab(member_client):
