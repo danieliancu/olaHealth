@@ -21,6 +21,8 @@ SCHEDULES = [
     ("purge-old-notifications", "myola.tasks.purge_old_notifications", Schedule.DAILY),
     ("notify-new-articles", "myola.tasks.notify_new_articles", Schedule.HOURLY),
     ("purge-old-ai-answers", "ai.tasks.purge_old_ai_answers", Schedule.DAILY),
+    # Ask Foodo's Magazine passages: articles seeded by migrations, embeddings that failed.
+    ("index-magazine-passages", "core.passages.refresh_all", Schedule.HOURLY),
 ]
 
 

@@ -1,5 +1,8 @@
 """Small coordination tables shared by web and worker processes (PostgreSQL only, no Redis)."""
 
+from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVectorField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
@@ -214,3 +217,30 @@ class MagazineCover(models.Model):
             f"--photo-y:{int(self.photo_y)};--m-zoom:{int(self.mobile_zoom)};"
             f"--m-x:{int(self.mobile_x)};--m-y:{int(self.mobile_y)}}}"
         )
+
+
+class ArticlePassage(models.Model):
+    """A passage of a published Magazine article, for Ask Foodo's search (``core.passages``).
+
+    Rebuilt from the article whenever its text changes (``version``: a hash of title, summary
+    and body); deleted when the article is unpublished or deleted. ``embedding``: the
+    normalised ``ai.embeddings`` vector, empty until computed (full-text search still works)."""
+
+    article = models.ForeignKey(LearnArticle, on_delete=models.CASCADE, related_name="passages")
+    ordinal = models.PositiveSmallIntegerField()
+    heading = models.CharField(max_length=200, blank=True)
+    text = models.TextField()
+    version = models.CharField(max_length=16)
+    search = SearchVectorField(null=True)
+    embedding = ArrayField(models.FloatField(), null=True, blank=True)
+    embedding_model = models.CharField(max_length=60, blank=True)
+
+    class Meta:
+        ordering = ["article", "ordinal"]
+        constraints = [
+            models.UniqueConstraint(fields=["article", "ordinal"], name="uniq_article_passage")
+        ]
+        indexes = [GinIndex(fields=["search"], name="passage_search_gin")]
+
+    def __str__(self) -> str:
+        return f"{self.article_id}#{self.ordinal}"

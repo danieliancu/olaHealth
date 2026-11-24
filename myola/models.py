@@ -342,6 +342,9 @@ class ChatMessage(models.Model):
     ai_answer = models.ForeignKey(
         "ai.AIAnswer", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
+    # The products and Magazine articles an answer used, linked under it: built by the app
+    # from what it selected (``myola.services.rag``), never from the model's text.
+    sources = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

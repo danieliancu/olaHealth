@@ -25,6 +25,13 @@ def _isolated_storage(settings, tmp_path):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_embeddings(monkeypatch):
+    """Never call the real embeddings API (the container may hold an OpenAI key): Magazine
+    search uses full text unless a test installs fake embeddings."""
+    monkeypatch.setattr("ai.embeddings._client", lambda: None)
+
+
+@pytest.fixture(autouse=True)
 def queued_tasks(monkeypatch):
     """django-q async_task is replaced by a recorder: tests run jobs explicitly."""
     calls: list[tuple] = []

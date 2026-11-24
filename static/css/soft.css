@@ -1490,6 +1490,10 @@ input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
 
 /* Ask Foodo: helpful / not helpful under AI answers */
 .chat-bubble { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; min-width: 0; }
+/* Ask Foodo: the products and Magazine articles an answer used (built by the app). */
+.chat-sources { list-style: none; margin: .15rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .2rem; font-size: .85rem; }
+.chat-sources a { display: inline-flex; align-items: center; gap: .35rem; }
+.chat-sources .icon { flex: none; }
 .chat-rate { display: flex; gap: .15rem; margin: 0; padding-left: .35rem; }
 .chat-rate-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
 .chat-rate-btn:hover { background: rgba(17, 24, 39, .06); color: var(--text); }
