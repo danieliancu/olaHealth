@@ -1,5 +1,5 @@
 {% load i18n ui %}<li class="note-item kind-{{ note.kind }}" id="note-{{ note.pk }}">
-  {# One row: the type and date pills, the note, then edit and delete (never covered by the text). #}
+  {# One row: the type and date pills, the note, then a single x to delete (never covered by the text). #}
   <span class="note-pills">
     <span class="note-kind">{% if note.kind == "general" %}{% translate "Note" %}{% else %}{% for value, label in kind_labels.items %}{% if value == note.kind %}{{ label }}{% endif %}{% endfor %}{% endif %}</span>
     <span class="note-date">{{ note.updated_at|date:"j M" }}</span>
@@ -9,9 +9,8 @@
     {% if note.product %}<a class="note-product" href="{% url 'product' note.product_id %}">{% icon "shopping-basket" 16 %}<span>{{ note.product.name|default:_("Unnamed product") }}</span>{% icon "arrow-right" 14 %}</a>{% endif %}
   </div>
   <span class="note-actions">
-    <a class="note-action" href="{% url 'ask-foodo' %}?tab=notes&amp;edit={{ note.pk }}#note-{{ note.pk }}" hx-get="{% url 'note-edit' note.pk %}" hx-target="#note-{{ note.pk }}" hx-swap="outerHTML" aria-label="{% translate 'Edit note' %}" title="{% translate 'Edit' %}">{% icon "pencil" 18 %}</a>
     <form method="post" action="{% url 'note-delete' note.pk %}" hx-post="{% url 'note-delete' note.pk %}" hx-target="#notes-list" hx-swap="outerHTML" hx-include="#mo-note-search" hx-confirm="{% translate 'Delete this note? It is removed from your account.' %}">
-      {% csrf_token %}<button type="submit" class="note-action is-danger" aria-label="{% translate 'Delete note' %}" title="{% translate 'Delete' %}">{% icon "trash-2" 18 %}</button>
+      {% csrf_token %}<button type="submit" class="note-action is-danger" aria-label="{% translate 'Delete note' %}" title="{% translate 'Delete' %}">{% icon "x" 18 %}</button>
     </form>
   </span>
 </li>

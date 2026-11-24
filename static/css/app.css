@@ -753,7 +753,7 @@ html:has(.chat-dialog[open]) { overflow: hidden; }
 /* Notes: one row: type and date pills, the note (it wraps in its own column), then edit and
    delete at the end, never covered by the text. The product is a quiet pill after the note. */
 .note-item {
-  position: relative; display: flex; align-items: center; gap: .65rem;
+  position: relative; display: flex; align-items: center; gap: .65rem; min-width: 0; max-width: 100%; box-sizing: border-box;
   padding: .6rem .6rem .6rem 1.05rem; background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
 }
@@ -778,7 +778,7 @@ html:has(.chat-dialog[open]) { overflow: hidden; }
 }
 .note-action:hover { background: var(--accent-soft); color: var(--accent-strong); }
 .note-action.is-danger:hover { background: #fde3df; color: #b42318; }
-.note-item .note-text { font-size: 1rem; line-height: 1.4; color: var(--text); margin: 0; min-width: 0; }
+.note-item .note-text { flex: 1 1 10rem; max-width: 100%; font-size: 1rem; line-height: 1.4; color: var(--text); margin: 0; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .note-product {
   display: inline-flex; align-items: center; gap: .4rem; padding: .2rem .6rem;
   border-radius: 999px; background: #f5f6f8; color: #374151; font-size: .8rem; font-weight: 500; text-decoration: none; max-width: 100%;
@@ -786,6 +786,7 @@ html:has(.chat-dialog[open]) { overflow: hidden; }
 .note-product span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-product:hover { background: var(--accent-soft); color: var(--accent-strong); }
 .note-item > .mytrack-note-edit { flex: 1; min-width: 0; } /* editing: the form takes the row */
+.grid-2.note-fields { gap: .75rem; } /* New note: space between Type and Product, side by side or stacked */
 /* New note: the product field types and picks in one line (a search icon inside). */
 .note-product-pick { position: relative; display: flex; align-items: center; }
 .note-product-pick .icon { position: absolute; left: .7rem; color: var(--muted); pointer-events: none; }
