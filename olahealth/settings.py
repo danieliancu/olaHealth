@@ -246,6 +246,9 @@ OFF_DUMP_MIN_PRODUCTS = env_int("OFF_DUMP_MIN_PRODUCTS", 1000)
 OFF_DUMP_MAX_FAILED_RATIO = float(env("OFF_DUMP_MAX_FAILED_RATIO", "0.005"))
 # Local candidates read per category for alternatives once the local catalogue is active.
 OFF_LOCAL_ALTERNATIVES_LIMIT = env_int("OFF_LOCAL_ALTERNATIVES_LIMIT", 300)
+# Ask Foodo: the language of answers written by code when the question's language has no
+# templates (myola/services/chat_text.py) and the AI cannot phrase them: "en" or "ro".
+ASK_FOODO_FALLBACK_LANGUAGE = env("ASK_FOODO_FALLBACK_LANGUAGE", "en")
 # Daily delta sync (catalog/services/delta.py, docs/off-local-catalogue.md). Products already
 # in the catalogue are always updated; new products are added only for these markets (OFF
 # country tags, comma-separated; "all" for every market; empty: none).

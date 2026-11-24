@@ -8,6 +8,7 @@ translated like the app's rule answers.
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 
 LANGS = ("en", "ro")
@@ -68,7 +69,9 @@ T = {
         "not_enough": "Not enough data: none of the {n} other products in {scope} has a "
                       "comparable {what} value, so I can't tell which has {label}.",
         "tally": "Compared {compared} of {n} products",
+        "tally_one": "Compared {compared} of 1 product",
         "tally_unknown": "; {unknown} have no comparable {what} value",
+        "tally_unknown_one": "; 1 has no comparable {what} value",
         "no_match": "No match in the verified catalogue: no other product in {scope} has "
                     "{label} than this one ({ref}). {tally}.",
         "with": "With {label} than this one ({ref}), in {scope}:",
@@ -113,7 +116,9 @@ T = {
                       "nu are o valoare comparabilă pentru {what}, așa că nu pot spune care "
                       "are {label}.",
         "tally": "Am comparat {compared} din {n} produse",
+        "tally_one": "Am comparat {compared} din 1 produs",
         "tally_unknown": "; {unknown} nu au o valoare comparabilă pentru {what}",
+        "tally_unknown_one": "; unul nu are o valoare comparabilă pentru {what}",
         "no_match": "Nicio potrivire în catalogul verificat: niciun alt produs din {scope} nu "
                     "are {label} decât acesta ({ref}). {tally}.",
         "with": "Cu {label} decât acesta ({ref}), din {scope}:",
@@ -149,9 +154,19 @@ T = {
 }  # fmt: skip
 
 
-def lang_of(code: str | None) -> str:
-    """The language the data answers are written in ("en" for any other language)."""
+def fallback() -> str:
+    """The language answers fall back to when the question's language has no templates and
+    the AI cannot phrase them (``ASK_FOODO_FALLBACK_LANGUAGE``, one of ``LANGS``)."""
+    from django.conf import settings
+
+    code = getattr(settings, "ASK_FOODO_FALLBACK_LANGUAGE", "en")
     return code if code in LANGS else "en"
+
+
+def lang_of(code: str | None) -> str:
+    """The language code-written answers are written in: the answer's language when it has
+    templates, else the fallback language (translated afterwards when the AI can)."""
+    return code if code in LANGS else fallback()
 
 
 def t(lang: str, key: str, **values) -> str:
@@ -200,3 +215,126 @@ def markets(tags: list[str], lang: str) -> str:
 
 def capital(text: str) -> str:
     return text[:1].upper() + text[1:]
+
+
+# ---------- Rule answers (myola.services.chat.rule_answer) ----------
+# Only the answers that hold no free English text are written here; those quoting restriction
+# reasons, memories or preferences keep the English text and the translation path.
+RULE_LANGS_INTENTS = frozenset({None, "values", "indicators", "avoid", "scans"})
+
+VALUE_NAMES = {
+    "en": {"energy-kcal": "Energy", "sugars": "Sugars", "saturated-fat": "Saturates",
+           "salt": "Salt", "proteins": "Protein", "fiber": "Fibre"},
+    "ro": {"energy-kcal": "Energie", "sugars": "Zaharuri", "saturated-fat": "Grăsimi saturate",
+           "salt": "Sare", "proteins": "Proteine", "fiber": "Fibre"},
+}  # fmt: skip
+PROCESSING = {
+    "en": {1: "unprocessed or minimally processed", 2: "processed culinary ingredient",
+           3: "processed food", 4: "ultra-processed"},
+    "ro": {1: "neprocesat sau minim procesat", 2: "ingredient culinar procesat",
+           3: "aliment procesat", 4: "ultraprocesat"},
+}  # fmt: skip
+SCORE_MESSAGES_RO = {
+    "Not enough data": "nu sunt destule date",
+    "Doesn't apply to this product": "nu se aplică acestui produs",
+    "Data being checked": "datele sunt în verificare",
+    "Not available for this kind of product yet": "nu este încă disponibil pentru acest tip "
+                                                  "de produs",
+}  # fmt: skip
+SUGGESTION_LABELS_RO = {
+    "values": "Care sunt valorile principale?",
+    "indicators": "Ce înseamnă Foodo Score și procesarea?",
+    "restrictions": "Se potrivește restricțiilor mele?",
+    "remember": "Ce îți amintești?",
+    "avoid": "Ce am marcat „De evitat”?",
+    "scans": "Ce am scanat recent?",
+    "prefs": "Care sunt preferințele mele?",
+}
+MONTHS_RO = ("ian.", "feb.", "mar.", "apr.", "mai", "iun.", "iul.", "aug.", "sept.", "oct.",
+             "nov.", "dec.")  # fmt: skip
+
+T["en"].update({
+    "ind_open": "Open a product and ask there: I explain that product's indicators.",
+    "foodo": "Foodo Score {score}: AskFoodo's conversion of the official Nutri-Score from Open "
+             "Food Facts to a 0-100 scale (100 is the most favourable), per 100 g or 100 ml.",
+    "no_foodo": "No Foodo Score for this product: {why}.",
+    "processing": "Processing: {label}, judged from the ingredient list. It says nothing about "
+                  "sugar, fat or salt.",
+    "no_processing": "The source does not say how processed it is.",
+    "val_open": "Open a product and ask there: I read that product's label values.",
+    "val_none": "No values per 100 g or 100 ml are recorded for this product.",
+    "val_line": "{Basis}: {values}.",
+    "val_missing": "Not recorded: {names}.",
+    "avoid_list": "You marked as Avoid: {names}.",
+    "avoid_none": "You haven't marked any product as Avoid.",
+    "scans_list": "Your recent scans: {items}. A scan is not a purchase.",
+    "scans_none": "No scans recorded yet.",
+    "limit": "I can't answer that yet: I only use the facts shown in the app, Open Food Facts "
+             "and what you saved in your account. You can also ask me to find a product by "
+             "name or barcode. Try: {options}.",
+    "notes": "From your notes: {notes}.",
+    "unnamed_product": "Unnamed product",
+    "from_type": " (from the product type)",
+    "in_english": "",
+})  # fmt: skip
+T["ro"].update({
+    "ind_open": "Deschide un produs și întreabă acolo: îți explic indicatorii acelui produs.",
+    "foodo": "Foodo Score {score}: conversia făcută de AskFoodo a Nutri-Score-ului oficial din "
+             "Open Food Facts pe o scară de la 0 la 100 (100 este cel mai favorabil), la 100 g "
+             "sau 100 ml.",
+    "no_foodo": "Acest produs nu are Foodo Score: {why}.",
+    "processing": "Procesare: {label}, apreciată după lista de ingrediente. Nu spune nimic "
+                  "despre zahăr, grăsimi sau sare.",
+    "no_processing": "Sursa nu spune cât de procesat este.",
+    "val_open": "Deschide un produs și întreabă acolo: îți citesc valorile de pe eticheta lui.",
+    "val_none": "Pentru acest produs nu sunt înregistrate valori la 100 g sau la 100 ml.",
+    "val_line": "{Basis}: {values}.",
+    "val_missing": "Neînregistrate: {names}.",
+    "avoid_list": "Ai marcat „De evitat”: {names}.",
+    "avoid_none": "Nu ai marcat niciun produs „De evitat”.",
+    "scans_list": "Scanările tale recente: {items}. O scanare nu înseamnă o cumpărare.",
+    "scans_none": "Nu ai încă nicio scanare.",
+    "limit": "Încă nu pot răspunde la asta: folosesc doar ce arată aplicația, Open Food Facts "
+             "și ce ai salvat în cont. Îmi poți cere și să caut un produs după nume sau cod de "
+             "bare. Încearcă: {options}.",
+    "notes": "Din notițele tale: {notes}.",
+    "unnamed_product": "Produs fără nume",
+    "from_type": " (dedus din tipul produsului)",
+    "in_english": " (citat în engleză)",
+})  # fmt: skip
+
+
+def quote(lang: str, text: str) -> str:
+    return f"„{text}”" if lang_of(lang) == "ro" else f"“{text}”"
+
+
+def day(lang: str, value) -> str:
+    """ "24 Nov" / "24 nov."."""
+    if lang_of(lang) == "ro":
+        return f"{value.day} {MONTHS_RO[value.month - 1]}"
+    from django.utils.formats import date_format
+
+    return date_format(value, "j M")
+
+
+def score_message(lang: str, message: str) -> str:
+    text = (message or "Not enough data").rstrip(".")
+    if lang_of(lang) == "ro":
+        return SCORE_MESSAGES_RO.get(text, text)
+    return text.lower()
+
+
+def suggestion(lang: str, key: str, label: str) -> str:
+    return SUGGESTION_LABELS_RO.get(key, label) if lang_of(lang) == "ro" else label
+
+
+def localized_display(display: str, lang: str) -> str:
+    """A value as the label page shows it ("1.5 g", "<0.5 g") in the answer's language."""
+    if lang_of(lang) != "ro":
+        return display
+    return re.sub(r"(\d)\.(\d)", r"\1,\2", display)
+
+
+def basis_label(lang: str, basis: str, inferred: bool) -> str:
+    text = BASIS[lang_of(lang)].get(basis, "")
+    return text + (T[lang_of(lang)]["from_type"] if inferred and text else "")

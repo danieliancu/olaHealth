@@ -220,3 +220,57 @@ def english_only(text: str, code: str, why: str = "busy") -> str:
     """``text`` with a one-line note in the question's language saying why it is in English."""
     note = ENGLISH_ONLY.get(why, {}).get(code)
     return f"{note}\n\n{text}" if note else text
+
+
+# ---------- Which language an answer is written in (one rule for the whole chat) ----------
+# Words naming a language, in the app's languages -> code ("in English", "în română"...).
+_NAMES = {
+    "en": r"english|engleză|engleza|anglais|inglés|ingles|englisch|inglese|inglês|angielsku",
+    "ro": r"romanian|română|romana|românește|romaneste|roumain|rumano|rumänisch|rumeno|romeno|rumuńsku",  # noqa: E501
+    "es": r"spanish|spaniolă|spaniola|espagnol|español|espanol|spanisch|spagnolo|espanhol|hiszpańsku",  # noqa: E501
+    "fr": r"french|franceză|franceza|français|francais|francés|frances|französisch|francese|francês|francusku",  # noqa: E501
+    "it": r"italian|italiană|italiana|italien|italiano|italienisch|włosku",
+    "de": r"german|germană|germana|allemand|alemán|aleman|deutsch|tedesco|alemão|niemiecku",
+    "pt": r"portuguese|portugheză|portugheza|portugais|portugués|portugiesisch|portoghese|português|portugalsku",  # noqa: E501
+    "pl": r"polish|poloneză|poloneza|polonais|polaco|polnisch|polacco|polonês|polsku",
+}
+_EXPLICIT = re.compile(
+    r"(?:\b(?:in|în|en|auf|em|po|na)\s+(?:limba\s+)?)(" + "|".join(_NAMES.values()) + r")\b",
+    re.IGNORECASE,
+)
+_CODE_OF = {word: code for code, words in _NAMES.items() for word in words.split("|")}
+
+
+def explicit(text: str) -> str:
+    """The language the message asks for ("răspunde-mi în engleză", "in English please",
+    "en français"), or ""."""
+    m = _EXPLICIT.search(text or "")
+    return _CODE_OF.get(m.group(1).lower(), "") if m else ""
+
+
+def choose(text: str, *, previous: dict | None = None, preference: str = "",
+           interface: str = "en") -> tuple[str, str]:  # fmt: skip
+    """``(code, reason)``: the language of the answer, by one rule for every kind of answer.
+
+    1. "explicit": the message asks for a language; that choice is kept for the rest of the
+       conversation ("explicit-kept") until another explicit request;
+    2. "question": the language of the current message, when it is clear;
+    3. "conversation": a short or ambiguous message ("200 g?") continues in the language of
+       the previous answer of the same chat (``previous``: its ``details``);
+    4. "account": the language chosen in Settings (``Profile.answer_language``);
+    5. "interface": the language of the interface.
+    """
+    asked = explicit(text)
+    if asked:
+        return asked, "explicit"
+    previous = previous or {}
+    if previous.get("lang") and previous.get("lang_reason") in ("explicit", "explicit-kept"):
+        return previous["lang"], "explicit-kept"
+    found = detect(text)
+    if found:
+        return found, "question"
+    if previous.get("lang"):
+        return previous["lang"], "conversation"
+    if preference in LANGUAGES:
+        return preference, "account"
+    return (interface if interface in LANGUAGES else "en"), "interface"

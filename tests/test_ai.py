@@ -286,7 +286,8 @@ def test_general_questions_in_the_general_chat(site, fake, member):
     call = fake.calls[-1]
     assert call["system"].startswith(GENERAL_SYSTEM_PROMPT) and "NHS 111" in GENERAL_SYSTEM_PROMPT
     assert call["system"].endswith(
-        "The question is in British English: write the whole answer in it."
+        "Write the whole answer in British English, whatever the language of the facts, the "
+        "passages or earlier messages."
     )
     # Only the question goes out: no facts, no user data.
     assert call["messages"] == [{"role": "user", "content": "Are carbohydrates good for you?"}]
@@ -397,9 +398,9 @@ def test_model_can_hand_a_question_back_to_the_rules(site, fake, member, monkeyp
     assert "ROUTE:restrictions" in SYSTEM_PROMPT and "ROUTE:scans" in GENERAL_SYSTEM_PROMPT
     monkeypatch.setattr(fake, "reply", lambda *a, **k: Reply("ROUTE:scans", 10, 2, "fake-1"))
     out, log = chat.reply(member, "personal", "Ce produse am verificat ieri, te rog?")
-    # The rule answer, in English with a Romanian note (scan history is never sent to the AI).
-    assert out.endswith(chat.rule_answer("scans", chat.build_facts(member, "personal")))
-    assert out.startswith("Acest răspuns conține notițele, listele sau istoricul tău")
+    # The rule answer, written in Romanian by the app (scan history never goes to the AI).
+    assert out == chat.rule_answer("scans", chat.build_facts(member, "personal"), "ro")
+    assert out == "Nu ai încă nicio scanare."
     assert log.outcome == "routed" and log.reason == "scans"
 
 

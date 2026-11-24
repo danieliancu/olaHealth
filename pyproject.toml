@@ -65,3 +65,5 @@ ignore = ["S101", "RUF012", "S311", "RUF001", "RUF002", "RUF003"]  # typographic
 "tools/off_pilot.py" = ["S310", "S603", "S607", "S608"]
 # Acceptance evaluation script: scenario tables, a throwaway local test account.
 "tools/rag_eval.py" = ["E501", "S106", "S608"]
+# Shares the fixtures of tests/test_rag.py by importing them.
+"tests/test_chat_language.py" = ["F401", "F811"]

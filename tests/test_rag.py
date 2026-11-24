@@ -202,7 +202,7 @@ def test_missing_reference_value_and_no_alternative(pizzas, member):
     assert lowest.matches == [] and lowest.problem == ""
     assert rag.direct_answer(lowest) == (
         "No match in the verified catalogue: no other product in the “Pizzas” category sold in "
-        "the UK has less salt than this one (0.8 g per 100 g). Compared 3 of 4 products; 1 have "
+        "the UK has less salt than this one (0.8 g per 100 g). Compared 3 of 4 products; 1 has "
         "no comparable salt value."
     )
 
@@ -261,7 +261,7 @@ def test_three_situations_per_category(db, off_payload, member, tags, question, 
     assert [m.product for m in found.matches] == [good]
     text = rag.direct_answer(found)
     assert f"Better one (Brand): {rag._amount(Decimal(str(better)), 'g')}" in text
-    assert "sold in Romania" in text and "Compared 2 of 3 products; 1 have no" in text
+    assert "sold in Romania" in text and "Compared 2 of 3 products; 1 has no" in text
     # None meets it: the best product itself.
     none = rag.compare_products(question, good, member)
     assert none.matches == [] and rag.direct_answer(none).startswith(

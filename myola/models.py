@@ -97,6 +97,9 @@ class Profile(models.Model):
     # Separate, explicit consent: the names of the saved health conditions (and the "Other"
     # note) may be sent to the AI provider, for relevance and tone only (ai.service). Off.
     ai_use_health = models.BooleanField(default=False)
+    # The language Ask Foodo answers in when a message does not show it ("200 g?"): blank =
+    # the interface language (ai.language.choose).
+    answer_language = models.CharField(max_length=5, blank=True, default="")
     show_energy = models.BooleanField(default=True)
     show_targets = models.BooleanField(default=True)
     track_weight = models.BooleanField(default=False)

@@ -21,7 +21,6 @@ from typing import Any
 
 from django.db import transaction
 from django.utils import timezone
-from django.utils.formats import date_format
 
 from myola import preferences as P
 from myola.models import LIMITS, ChatMessage, Note, ProductMark
@@ -74,8 +73,8 @@ VALUE_NAMES = [
 ]
 
 _RULES = [
-    ("indicators", re.compile(r"nutri|nova|score|grade")),
-    ("values", re.compile(r"sugar|salt|fat|protein|fibre|fiber|calor|energy|value")),
+    ("indicators", re.compile(r"nutri|nova|score|scor|grade|procesa|processing")),
+    ("values", re.compile(r"sugar|salt|fat|protein|fibre|fiber|calor|energy|value|valori|valoare")),
     ("remember", re.compile(r"remember|memor")),
     ("avoid", re.compile(r"avoid")),
     ("scans", re.compile(r"scan")),
@@ -184,7 +183,8 @@ def build_facts(user, context: str, product=None, question: str = "") -> dict[st
         "notes": _relevant_notes(user, product, question) if profile.use_notes else [],
         "avoid": [m.product.name or "Unnamed product" for m in avoid],
         "scans": [
-            (v.product.name or "Unnamed product", date_format(v.created_at, "j M")) for v in scans
+            (v.product.name or "Unnamed product", timezone.localtime(v.created_at).date())
+            for v in scans
         ],
     }
 
@@ -200,47 +200,65 @@ def _prefs_summary(facts: dict) -> str:
     return ", ".join(parts)
 
 
-def rule_answer(intent: str | None, facts: dict[str, Any]) -> str:
+def rule_language(intent: str | None, lang: str) -> str:
+    """The language a rule answer is written in: the question's for the answers with
+    templates (``chat_text``), else English (it holds English text such as restriction
+    reasons, and is translated with the user's consent rules)."""
+    from myola.services import chat_text as W
+
+    written = W.lang_of(lang)
+    return written if intent in W.RULE_LANGS_INTENTS else "en"
+
+
+def rule_answer(intent: str | None, facts: dict[str, Any], lang: str = "en") -> str:
+    from myola.services import chat_text as W
+
+    lang = rule_language(intent, lang)
     p = facts.get("product")
     lines: list[str] = []
     if intent == "indicators":
         if not p:
-            lines.append("Open a product and ask there: I explain that product's indicators.")
+            lines.append(W.t(lang, "ind_open"))
         else:
             foodo = p.get("foodo") or {}
             lines.append(
-                f"Foodo Score {foodo['foodo_score']}: AskFoodo's conversion of the official "
-                "Nutri-Score from Open Food Facts to a 0-100 scale (100 is the most "
-                "favourable), per 100 g or 100 ml."
+                W.t(lang, "foodo", score=foodo["foodo_score"])
                 if foodo.get("foodo_score")
-                else "No Foodo Score for this product: "
-                f"{(foodo.get('message') or 'not enough data').lower()}."
+                else W.t(lang, "no_foodo", why=W.score_message(lang, foodo.get("message") or ""))
             )
             lines.append(
-                f"Processing: {PROCESSING[p['nova']]}, judged from the ingredient list. It says "
-                "nothing about sugar, fat or salt."
+                W.t(lang, "processing", label=W.PROCESSING[lang][p["nova"]])
                 if p.get("nova") in PROCESSING
-                else "The source does not say how processed it is."
+                else W.t(lang, "no_processing")
             )
     elif intent == "values":
         if not p:
-            lines.append("Open a product and ask there: I read that product's label values.")
+            lines.append(W.t(lang, "val_open"))
         else:
             values = p["facts"]["values"]
             names = [
-                (k, label)
-                for k, label in VALUE_NAMES
+                (k, W.VALUE_NAMES[lang][k])
+                for k, _ in VALUE_NAMES
                 if k != "energy-kcal" or facts.get("energy_visible", True)
             ]
-            known = [f"{label} {values[k]['display']}" for k, label in names if k in values]
+            known = [
+                f"{label} {W.localized_display(values[k]['display'], lang)}"
+                for k, label in names
+                if k in values
+            ]
             unknown = [label.lower() for k, label in names if k not in values]
             if not known:
-                lines.append("No values per 100 g or 100 ml are recorded for this product.")
+                lines.append(W.t(lang, "val_none"))
             else:
-                basis = p["facts"]["basis_label"] or "per 100 g or ml"
-                lines.append(f"{basis[0].upper()}{basis[1:]}: {'; '.join(known)}.")
+                inferred = "from the product type" in (p["facts"]["basis_label"] or "")
+                basis = (
+                    W.basis_label(lang, p["facts"].get("basis") or "", inferred)
+                    or p["facts"]["basis_label"]
+                    or "per 100 g or ml"
+                )
+                lines.append(W.t(lang, "val_line", Basis=W.capital(basis), values="; ".join(known)))
                 if unknown:
-                    lines.append(f"Not recorded: {', '.join(unknown)}.")
+                    lines.append(W.t(lang, "val_missing", names=", ".join(unknown)))
     elif intent == "restrictions":
         if not p:
             lines.append(
@@ -276,29 +294,33 @@ def rule_answer(intent: str | None, facts: dict[str, Any]) -> str:
             lines.append(f"Your preferences: {summary}.")
     elif intent == "avoid":
         lines.append(
-            f"You marked as Avoid: {', '.join(facts['avoid'])}."
+            W.t(lang, "avoid_list", names=", ".join(facts["avoid"]))
             if facts["avoid"]
-            else "You haven't marked any product as Avoid."
+            else W.t(lang, "avoid_none")
         )
     elif intent == "scans":
         lines.append(
-            "Your recent scans: "
-            + ", ".join(f"{name} ({day})" for name, day in facts["scans"])
-            + ". A scan is not a purchase."
+            W.t(lang, "scans_list", items=", ".join(
+                f"{name} ({W.day(lang, when)})" for name, when in facts["scans"]
+            ))
             if facts["scans"]
-            else "No scans recorded yet."
-        )
+            else W.t(lang, "scans_none")
+        )  # fmt: skip
     elif intent == "prefs":
         summary = _prefs_summary(facts)
         lines.append(
             f"Your preferences: {summary}." if summary else "You haven't set any preferences yet."
         )
     else:
-        options = ", ".join(_quote(label) for _, label in suggestions_for(facts["context"]))
-        return f"{LIMIT_TEXT}{options}."
+        options = ", ".join(
+            W.quote(lang, W.suggestion(lang, key, label))
+            for key, label in suggestions_for(facts["context"])
+        )
+        return W.t(lang, "limit", options=options)
 
     if facts["notes"]:
-        lines.append(f"From your notes: {'; '.join(_quote(n) for n in facts['notes'])}.")
+        notes = "; ".join(W.quote(lang, n) for n in facts["notes"])
+        lines.append(W.t(lang, "notes", notes=notes))
     return "\n".join(lines)
 
 
@@ -332,6 +354,11 @@ def _ingredient_facts(product) -> dict[str, Any]:
         "ingredients": text[:MAX_INGREDIENTS_CHARS] if text else "unknown",
         "additives": [additive_label(t) for t in tags] if tags is not None else "unknown",
     }
+
+
+LEVEL_WORDS = {"low": "low", "moderate": "medium", "high": "high"}
+LEVEL_NUTRIENTS = {"saturated-fat": "saturated fat", "sugars": "sugars", "fat": "fat",
+                   "salt": "salt"}  # fmt: skip
 
 
 def _levels(product) -> dict[str, str]:
@@ -375,7 +402,11 @@ def ai_facts_for(
     if product is not None:
         levels = _levels(product)
         if levels:
-            out["product"]["levels"] = levels
+            # As the UK label says it ("high in saturated fat"), not as keys ("saturated-fat":
+            # "high"), which the model used to copy word by word ("grăsimi - mare").
+            out["product"]["levels"] = [
+                f"{LEVEL_WORDS[v]} in {LEVEL_NUTRIENTS.get(k, k)}" for k, v in levels.items()
+            ]
         # Computed by code (score.v3, x/100); the AI only rephrases it, never a letter.
         if p.get("foodo") is not None:
             out["foodo_score"] = p["foodo"]
@@ -460,24 +491,39 @@ def _answer(
     answer) silently falls back to the rule-based answer, and the model may hand a question
     about allergies, diets or the user's own data back to the rules.
 
-    Every answer is in the language of the question: the rule answers are written in English,
-    so they are translated (``_localise``); English with a short note only when that fails."""
+    The language of every answer follows one rule (``ai.language.choose``): an explicit
+    request, else the question's language, else the conversation's, the account's, the
+    interface's. It is kept on the answer (``details["lang"]``). Answers with templates
+    (``chat_text``: English, Romanian) are written in it; others are written in English and
+    translated once (``_localise``); English with a one-line note when that is not possible."""
+    from django.utils import translation
+
     from ai import language
     from myola.services import chat_products
 
-    lang = language.detect(text)
+    sources = sources if sources is not None else []
+    details = details if details is not None else {}
     profile = get_profile(user)
+    previous = (
+        ChatMessage.objects.filter(user=user, context=context, role=ChatMessage.Role.OLA)
+        .order_by("-created_at", "-pk")
+        .values_list("details", flat=True)
+        .first()
+    )
+    lang, reason = language.choose(
+        text, previous=previous, preference=profile.answer_language,
+        interface=(translation.get_language() or "en")[:2],
+    )  # fmt: skip
+    details.update(lang=lang, lang_reason=reason)
 
     def localise(answer: str, log=None, *, kind: str = "public"):
         return _localise(user, profile, answer, log, lang, text, context, kind=kind)
 
-    sources = sources if sources is not None else []
-    details = details if details is not None else {}
     found = chat_products.answer(text)
     if found:
         # Product search: facts only, never phrased by the AI provider (only translated).
         return localise(found)
-    from myola.services import rag_text
+    from myola.services import chat_text as rag_text
 
     # Answers written from data are written in English or Romanian directly; other languages
     # get the English text translated like the rule answers.
@@ -499,14 +545,21 @@ def _answer(
     # or diet check of a product always stays with the rules (safety).
     product_check = product is not None and intent == "restrictions"
     if profile.ai_use_my_data and not product_check and is_personal(text, intent):
-        personal = _personal_answer(user, profile, context, text)
+        personal = _personal_answer(user, profile, context, text, lang)
         if personal is not None:
             return personal
     facts = build_facts(user, context, product, question=text)
-    baseline = rule_answer(intent, facts)
+    baseline = rule_answer(intent, facts, lang)
     kind = _personal_data(intent, facts)
+
+    def localise_rule(answer: str, log=None, *, rule_intent=intent, rule_kind=kind):
+        # Written in the answer's language already (templates), or English to translate.
+        if rule_language(rule_intent, lang) == lang:
+            return answer, log
+        return localise(answer, log, kind=rule_kind)
+
     if intent in RULE_ONLY_INTENTS:
-        return localise(baseline, kind=kind)
+        return localise_rule(baseline)
     with_retrieval = _rag_answer(
         user, profile, context, text, product, facts, intent, baseline, lang, localise,
         sources, details, deliver,
@@ -526,8 +579,9 @@ def _answer(
         # General chat: general food and nutrition questions may go to the AI (only the
         # question is sent). Not for people who told us about an eating disorder.
         if not site.ai_general_questions or profile.eating_disorder:
-            return localise(baseline, kind=kind)
-        result = ask(user, {}, text, _followups(user, context), general=True, context=context)
+            return localise_rule(baseline)
+        result = ask(user, {}, text, _followups(user, context), general=True, context=context,
+                     lang=lang)  # fmt: skip
     else:
         ai_facts = ai_facts_for(
             facts,
@@ -536,15 +590,19 @@ def _answer(
             with_ingredients=site.ai_send_ingredients,
         )
         # Rule answers never go out: they can contain notes and memories.
-        result = ask(user, ai_facts, text, _followups(user, context), context=context)
+        result = ask(user, ai_facts, text, _followups(user, context), context=context,
+                     lang=lang)  # fmt: skip
     if result.route:
-        routed = rule_answer(result.route, facts)
-        return localise(routed, result.log, kind=_personal_data(result.route, facts))
+        routed = rule_answer(result.route, facts, lang)
+        return localise_rule(routed, result.log, rule_intent=result.route,
+                             rule_kind=_personal_data(result.route, facts))  # fmt: skip
     if result.text:
         return result.text, result.log
     if result.log and result.log.outcome == AIAnswer.Outcome.FAILED:
+        if rule_language(intent, lang) == lang:
+            return baseline, result.log  # written in the answer's language already
         return _english_only(baseline, lang, "busy"), result.log  # the provider is failing now
-    return localise(baseline, result.log, kind=kind)
+    return localise_rule(baseline, result.log)
 
 
 def _data_answer(user, context, text, product, sources, details, lang="en") -> str | None:
@@ -565,7 +623,8 @@ def _data_answer(user, context, text, product, sources, details, lang="en") -> s
         )
         answer = rag.followup_answer(previous, *amount, lang)
         if previous and previous.get("kind") in ("comparison", "value", "recommendation"):
-            details.update(previous)  # a further follow-up works from the same values
+            # A further follow-up works from the same values (the language is this answer's).
+            details.update({k: v for k, v in previous.items() if not k.startswith("lang")})
             for p in previous.get("products") or []:
                 if p.get("value") is not None:
                     title = p["name"] + (f" ({p['brand']})" if p.get("brand") else "")
@@ -603,7 +662,7 @@ def _rag_answer(user, profile, context, text, product, facts, intent, baseline, 
     from ai.models import AIAnswer
     from ai.service import ask
     from core import passages
-    from myola.services import rag
+    from myola.services import chat_text, rag
     from staff.models import SiteSettings
 
     site = SiteSettings.load()
@@ -628,9 +687,11 @@ def _rag_answer(user, profile, context, text, product, facts, intent, baseline, 
     material = rag.build_material(None, hits, product_facts)
     details.update(kind="magazine", passages=[h.passage.pk for h in hits])
     # No earlier answers as history: the model restated them (the repeated explanation).
-    result = ask(user, material.facts, text, [], context=context, mode="rag")
+    result = ask(user, material.facts, text, [], context=context, mode="rag", lang=lang)
     if result.route:
-        routed = rule_answer(result.route, facts)
+        routed = rule_answer(result.route, facts, lang)
+        if rule_language(result.route, lang) == lang:
+            return routed, result.log
         return localise(routed, result.log, kind=_personal_data(result.route, facts))
     if result.text:
         clean, links = rag.cited_sources(result.text, material)
@@ -638,11 +699,17 @@ def _rag_answer(user, profile, context, text, product, facts, intent, baseline, 
         return clean, result.log
     # No AI answer: the same material, phrased by code (with the rule answer when the question
     # was a known one about the product).
-    fallback = rag.deterministic_answer(material)
-    if intent is not None and product is not None:
-        fallback = f"{baseline}\n{fallback}"
+    use = chat_text.lang_of(lang)
+    with_rule = intent is not None and product is not None
+    if with_rule and rule_language(intent, lang) != use:
+        use = "en"  # the rule answer holds English text: all of it goes the translation way
+    fallback = rag.deterministic_answer(material, use)
+    if with_rule:
+        fallback = f"{rule_answer(intent, facts, use)}\n{fallback}"
     clean, links = rag.cited_sources(fallback, material)
     sources.extend(links)
+    if use == lang:
+        return clean, result.log
     if result.log and result.log.outcome == AIAnswer.Outcome.FAILED:
         return _english_only(clean, lang, "busy"), result.log
     return localise(clean, result.log)
@@ -656,7 +723,8 @@ def _comparison_answer(user, context, text, comparison, lang, deliver, sources, 
     Magazine passage is quoted after it, with its article linked; if the Magazine has nothing
     on it, one line says so. Nothing here is written by the AI."""
     from core import passages
-    from myola.services import rag, rag_text
+    from myola.services import chat_text as rag_text
+    from myola.services import rag
 
     written = rag_text.lang_of(lang)
     hits = []
@@ -678,7 +746,7 @@ def _translated_excerpts(user, hits, lang, question, context) -> dict[int, str]:
     """The quoted passages in the answer's language: the articles are in English, so for a
     Romanian answer each quote is translated (translation only, nothing added); without AI
     the English words stay, marked as such."""
-    from myola.services import rag
+    from myola.services import chat_text, rag
 
     if lang == "en" or not hits:
         return {}
@@ -688,7 +756,7 @@ def _translated_excerpts(user, hits, lang, question, context) -> dict[int, str]:
     for i, hit in enumerate(hits, start=1):
         excerpt = rag._excerpt(hit.passage.text)
         done, _log = translate(user, excerpt, lang, question=question, context=context)
-        out[i] = done or f"{excerpt} (în engleză)"
+        out[i] = done or excerpt + chat_text.t(lang, "in_english")
     return out
 
 
@@ -712,7 +780,7 @@ def is_personal(text: str, intent: str | None) -> bool:
     return bool(sections_for(text)) or wants_products(text)
 
 
-def _personal_answer(user, profile, context: str, text: str):
+def _personal_answer(user, profile, context: str, text: str, lang: str = ""):
     """``(answer, log)`` from the user's own data (``myola.context``), or None when the AI
     cannot answer now (the rules answer instead)."""
     from ai.service import ask
@@ -731,7 +799,7 @@ def _personal_answer(user, profile, context: str, text: str):
     )
     result = ask(
         user, facts, text, _followups(user, context), context=context, mode="personal",
-        own_targets=own,
+        own_targets=own, lang=lang,
     )  # fmt: skip
     return (result.text, result.log) if result.text else None
 
@@ -752,8 +820,12 @@ def _personal_data(intent: str | None, facts: dict) -> str:
 
 def _english_only(answer: str, lang: str, why: str) -> str:
     from ai import language
+    from myola.services import chat_text
 
-    return language.english_only(answer, lang, why) if lang and lang != "en" else answer
+    # The one-line note says the answer is in English: only when that is the fallback.
+    if not lang or lang == "en" or chat_text.fallback() != "en":
+        return answer
+    return language.english_only(answer, lang, why)
 
 
 def _localise(user, profile, answer, log, lang, question, context, *, kind):

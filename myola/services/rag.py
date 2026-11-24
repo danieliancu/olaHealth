@@ -68,6 +68,10 @@ COMPARE_WORDS = (
     "which", "what", "ce ", "care", "quel", "cuál", "welche", "quale", "swap", "înlocui",
     "recommend", "recomand", "suggest", "suger", "another", "other", " alt ", " alta ",
     " altă ", " alte ", "autre", "otro", "andere",
+    # "pot să găsesc…", "dă-mi un produs…", "show me…", "¿qué…?" ask for a product too.
+    "găsesc", "gasesc", "caut", "find", "looking for", "dă-mi", "da-mi", "dami", "give me",
+    "arată-mi", "arata-mi", "show me", "vreau", "i want", "qué", "quelle", "welcher",
+    "welches", "qual", "jaki", "jaka",
 )  # fmt: skip
 MARKETS: dict[str, tuple[str, ...]] = {
     "en:united-kingdom": ("uk", "u.k.", "united kingdom", "britain", "british", "england",
@@ -164,6 +168,14 @@ def _product_detail(p: Product, value: Decimal | None, foodo: int | None) -> dic
 
 
 # ---------- Reading the question ----------
+_PUNCT = re.compile(r"[?!.,;:¿¡()\"“”„«»]")
+
+
+def _norm(text: str | None) -> str:
+    """The question as the word lists read it: lower case, punctuation as spaces, padded."""
+    return f" {_PUNCT.sub(' ', (text or '').lower())} "
+
+
 def _has(text: str, words) -> bool:
     return any(w in text for w in words)
 
@@ -172,7 +184,7 @@ def criterion_of(text: str) -> Criterion | None:
     """The one criterion of a comparison question, or None when it is not one. "Less salt"
     and "a higher Foodo Score" are different criteria: a question naming a nutrient compares
     that nutrient; the Foodo Score only when it names the score and no nutrient."""
-    t = f" {(text or '').lower()} "
+    t = _norm(text)
     lower, higher = _has(t, LOWER_WORDS), _has(t, HIGHER_WORDS)
     if not (lower or higher) or not _has(t, COMPARE_WORDS):
         return None
@@ -187,7 +199,7 @@ def criterion_of(text: str) -> Criterion | None:
 
 
 def market_of(text: str) -> str | None:
-    t = f" {(text or '').lower()} "
+    t = _norm(text)
     for tag, words in MARKETS.items():
         if any(re.search(rf"(?<![\w]){re.escape(w)}(?![\w])", t) for w in words):
             return tag
@@ -506,7 +518,7 @@ def direct_answer(c: Comparison, lang: str = "en") -> str:
     the products that meet the criterion with their values, or why there are none. It names
     the category and the market applied, and how many products could be compared. In English
     or Romanian (``rag_text``)."""
-    from myola.services import rag_text as W
+    from myola.services import chat_text as W
 
     foodo = c.criterion.nutrient == "foodo"
     what = W.nutrient(lang, c.criterion.nutrient)
@@ -532,9 +544,11 @@ def direct_answer(c: Comparison, lang: str = "en") -> str:
     compared = c.candidates - c.unknown
     if compared == 0:
         return W.t(lang, "not_enough", n=c.candidates, scope=scope, what=what, label=label)
-    tally = W.t(lang, "tally", compared=compared, n=c.candidates)
+    tally = W.t(lang, "tally_one" if c.candidates == 1 else "tally", compared=compared,
+                n=c.candidates)  # fmt: skip
     if c.unknown:
-        tally += W.t(lang, "tally_unknown", unknown=c.unknown, what=what)
+        key = "tally_unknown_one" if c.unknown == 1 else "tally_unknown"
+        tally += W.t(lang, key, unknown=c.unknown, what=what)
     if not c.matches:
         return W.t(lang, "no_match", scope=scope, label=label, ref=ref, tally=tally)
     lines = [W.t(lang, "with", label=label, ref=ref, scope=scope)]
@@ -568,7 +582,7 @@ VALUE_CUES = (
 def nutrient_asked(text: str) -> str | None:
     """The one nutrient a question about the open product names ("Câtă sare are?", "How much
     sugar is in it?"), when it is not a comparison. None otherwise."""
-    t = f" {(text or '').lower()} "
+    t = _norm(text)
     if criterion_of(text) is not None or concept_of(text) or not _has(t, VALUE_CUES):
         return None  # a comparison, a thing the catalogue does not record, or not "how much"
     for key, (_, words) in NUTRIENTS.items():
@@ -582,7 +596,7 @@ def nutrient_asked(text: str) -> str | None:
 def value_answer(product: Product, nutrient: str, lang: str = "en") -> tuple[str, dict[str, Any]]:
     """The product's declared value per 100 g or 100 ml (as sold), from its current revision.
     0 is a value; a missing value is said to be missing (never 0)."""
-    from myola.services import rag_text as W
+    from myola.services import chat_text as W
 
     name = W.nutrient(lang, nutrient)
     row = _values([product.current_revision_id], nutrient, None).get(product.current_revision_id)
@@ -620,6 +634,9 @@ FOODS: dict[str, tuple[str, ...]] = {
     "en:breads": ("pâine", "paine", "bread"),
     "en:chocolates": ("ciocolat", "chocolate"),
     "en:biscuits": ("biscui",),
+    "en:vegetable-oils": (" ulei", "uleiuri", " oil", " oils"),
+    "en:butters": (" unt ", " untul", " butter"),
+    "en:milks": ("lapte", " milk"),
 }
 # Things people ask for that the catalogue does not record as a nutrient. ``off_key``: the OFF
 # field read from the stored OFF data when a product has it; ``category``: where OFF files the
@@ -645,7 +662,7 @@ THIS_PRODUCT = ("scanat", "scanned", "this one", "this product", "acest produs",
 
 
 def food_of(text: str) -> str | None:
-    t = f" {(text or '').lower()} "
+    t = _norm(text)
     for tag, words in FOODS.items():
         if _has(t, words):
             return tag
@@ -655,12 +672,16 @@ def food_of(text: str) -> str | None:
 def wants_recommendation(text: str, product: Product | None) -> bool:
     """ "Recomandă-mi…", "Ce produs are…", "Unde găsesc…": a search of the whole catalogue
     (not a comparison with the open product: those name "this one" or a criterion)."""
-    t = f" {(text or '').lower()} "
+    t = _norm(text)
+    food = food_of(text)
+    if food is None or not _has(t, RECOMMEND_WORDS + COMPARE_WORDS):
+        return False
+    if product is not None and food not in (product.categories or []):
+        return not _has(t, THIS_PRODUCT)  # another kind of food than the open product
     if not _has(t, RECOMMEND_WORDS):
         return False
-    if product is not None and (criterion_of(text) is not None or _has(t, THIS_PRODUCT)):
-        return False
-    return food_of(text) is not None
+    # With a product open, a criterion or "this one" means a comparison with it.
+    return product is None or (criterion_of(text) is None and not _has(t, THIS_PRODUCT))
 
 
 def concept_of(text: str) -> str | None:
@@ -675,7 +696,7 @@ def subject_of(text: str, earlier: list[str]) -> tuple[str | None, str]:
     """What the question asks for: a nutrient key or a concept ("omega-3"), and where it came
     from ("question" or "conversation"). "These fats" and other references are resolved from
     the user's earlier messages of the same chat, newest first."""
-    t = f" {(text or '').lower()} "
+    t = _norm(text)
     own = concept_of(text)
     if own:
         return own, "question"
@@ -705,7 +726,7 @@ def recommend(text: str, earlier: list[str], user=None, lang: str = "en"):
     Each line says what the data confirms; a value the catalogue does not have is said to be
     missing, never guessed."""
     from myola.context.django_source import user_country
-    from myola.services import rag_text as W
+    from myola.services import chat_text as W
 
     category = food_of(text)
     market = market_of(text) or user_country(user)
@@ -829,7 +850,7 @@ def followup_answer(
     """The values of the previous answer (a comparison or a value), for another amount,
     computed here: value per 100 × amount / 100, only on the same unit (g with per 100 g,
     ml with per 100 ml; never converted). A short question back when that is not possible."""
-    from myola.services import rag_text as W
+    from myola.services import chat_text as W
 
     if not previous or previous.get("kind") not in ("comparison", "value", "recommendation"):
         return W.t(lang, "which_product")
@@ -858,12 +879,12 @@ def _excerpt(text: str, limit: int = 320) -> str:
 def deterministic_answer(material: Material, lang: str = "en", excerpts=None) -> str:
     """The material written without the AI, in English or Romanian. ``excerpts``: the passages'
     text to quote (for example already translated), else the article's own words."""
-    from myola.services import rag_text as W
+    from myola.services import chat_text as W
 
     lines: list[str] = []
     if material.comparison is not None:
         lines.append(direct_answer(material.comparison, lang))
     for i, hit in enumerate(material.hits[:MAX_PASSAGES], start=1):
-        excerpt = (excerpts or {}).get(i) or _excerpt(hit.passage.text)
+        excerpt = (excerpts or {}).get(i) or _excerpt(hit.passage.text) + W.t(lang, "in_english")
         lines.append(W.t(lang, "magazine", title=hit.article.title, excerpt=excerpt) + f" [A{i}]")
     return "\n".join(lines)
