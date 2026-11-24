@@ -112,11 +112,14 @@ class Concept:
 
 def concept_words(text: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """``(english words, original words)`` naming the product in a question."""
-    from myola.services.rag import MARKETS, NUTRIENTS
+    from myola.services.rag import HIGHER_WORDS, LOWER_WORDS, MARKETS, NUTRIENTS
 
     drop = set(STOP)
     for words in list(MARKETS.values()) + [w for _, w in NUTRIENTS.values()]:
         drop.update(fold(w).strip() for w in words)
+    # Comparison words ("low in", "sărac în", "fără") describe the criterion, not the product.
+    for phrase in LOWER_WORDS + HIGHER_WORDS:
+        drop.update(w for w in _words(phrase) if len(w) > 2)
     known = _vocabulary()
     original: list[str] = []
     english: list[str] = []

@@ -562,10 +562,6 @@ def _answer(
     def localise(answer: str, log=None, *, kind: str = "public"):
         return _localise(user, profile, answer, log, lang, text, context, kind=kind)
 
-    found = chat_products.answer(text)
-    if found:
-        # Product search: facts only, never phrased by the AI provider (only translated).
-        return localise(found)
     from myola.services import chat_text as rag_text
 
     # Answers written from data are written in English or Romanian directly; other languages
@@ -575,9 +571,15 @@ def _answer(
     def deliver(answer: str, log=None):
         return (answer, log) if not lang or lang == written else localise(answer, log)
 
+    # A request on the catalogue ("show me some jam low in sugar") first; the search by name
+    # or barcode ("find …", "5941234567899") for anything else.
     data_answer = _data_answer(user, context, text, product, sources, details, written)
     if data_answer is not None:
         return deliver(data_answer)
+    found = chat_products.answer(text)
+    if found:
+        # Product search: facts only, never phrased by the AI provider (only translated).
+        return localise(found)
     intent = detect_intent(text)
     if intent == "scans":
         from myola.services.rag import criterion_of

@@ -57,6 +57,10 @@ LOWER_WORDS = (
     "less", "lower", "fewer", "least", "lowest", "low ", "reduced", "mai puțin", "mai putin",
     "mai puţin", "mai mic", "mai redus", "mai scăzut", "mai scazut", "cel mai mic", "moins",
     "menos", "weniger", "meno", "mniej",
+    # "sărac în grăsimi", "cu puțin zahăr", "low in salt", "fără zahăr"
+    "sărac", "sarac", "săracă", "saraca", "sărace", "sarace", "cu puțin", "cu putin",
+    "cu puțină", "cu putina", "cu puține", "cu putine", "low in", "low-", " fără ", " fara ",
+    "without", "pauvre en", "bajo en",
 )  # fmt: skip
 HIGHER_WORDS = (
     "more", "higher", "highest", "most", "better", "best", "mai mult", "mai mare", "mai bun",
@@ -688,6 +692,9 @@ RECOMMEND_WORDS = (
     "recoman", "recommend", "suggest", "suger", "unde găsesc", "unde gasesc", "unde pot găsi",
     "unde pot gasi", "where can i find", "where do i find", "where can i get", "ce produs are",
     "ce produse au", "what product has", "which product has", "which products have",
+    # "poți să-mi arăți…", "arată-mi…", "dă-mi…", "vreau…", "show me…", "I want…"
+    "arăt", "arat", "dă-mi", "da-mi", "dami", "vreau", "am nevoie", "show me", "give me",
+    "i want", "i need", "montre", "muéstrame", "zeig",
 )  # fmt: skip
 # Asking what the catalogue holds ("Ce produse … există?", "Which … are sold in the UK?").
 DISCOVER_WORDS = (

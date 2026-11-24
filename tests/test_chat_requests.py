@@ -173,3 +173,31 @@ def test_saved_products_come_from_the_users_data(member, catalogue, client):
 
     lists.toggle(member, catalogue["coconut"], "favorite")
     assert ask(member, "Ce am salvat?").text == "Ai salvat: Coconut milk."
+
+
+@pytest.fixture
+def jams(db, off_payload):
+    category("en:jams", "Jams", ro="Gemuri")
+    return [
+        product(off_payload, "5000000000783", "Raspberry jam", ["en:jams"],
+                **{"fat_100g": 0, "sugars_100g": 47}),
+        product(off_payload, "5000000000790", "Blackcurrant jam", ["en:jams"],
+                **{"fat_100g": 0.3, "sugars_100g": 26}),
+    ]  # fmt: skip
+
+
+def test_show_me_and_poor_in_are_catalogue_requests(member, jams):
+    """ "poți să-mi arăți…", "cât mai sărac în grăsimi", "show me … low in sugar": requests on
+    the catalogue (they used to fall through to "I can't answer that yet")."""
+    ro = ask(member, "vreau sa mananc cat mai sarac in grasimi, poti sa imi aratai niste dulceata?")
+    request = ro.details["request"]
+    assert (request["intent"], request["subject"], request["direction"]) == (
+        "recommend",
+        "fat",
+        "lower",
+    )
+    assert request["concept"]["tags"] == ["en:jams"]
+    assert ro.text.splitlines()[1] == "- Raspberry jam (Brand): 0 g grăsimi la 100 g"
+    en = ask(member, "Show me some jam low in sugar")
+    assert en.details["lang"] == "en" and en.details["request"]["subject"] == "sugars"
+    assert en.text.splitlines()[1] == "- Blackcurrant jam (Brand): 26 g sugar per 100 g"
