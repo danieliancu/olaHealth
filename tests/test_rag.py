@@ -355,7 +355,7 @@ def test_chat_answer_from_data_with_explanation_and_links(member_client, member,
         reverse("learn-article", args=[article.slug]),
     ]
     body = r.content.decode()
-    assert 'class="chat-sources"' in body and reverse("learn-article", args=[article.slug]) in body
+    assert 'class="chat-cards"' in body and reverse("learn-article", args=[article.slug]) in body
     sent = json.dumps(provider.calls)
     assert "Mystery" not in sent and "Reine" not in sent and "Four Cheese" not in sent
     for link in urls:  # every link opens
@@ -392,8 +392,10 @@ def test_zero_results_short_answer_from_data(member, pizzas, provider):
     )  # fmt: skip
     assert provider.calls == []  # English question: nothing to translate, no AI at all
     assert out.startswith("No match in the verified catalogue: no other product in the “Pizzas”")
-    assert sources == [{"kind": "product", "title": "Low Salt Veggie (Test Pizzeria)",
-                        "url": reverse("product", args=[pizzas["low"].pk])}]  # fmt: skip
+    assert [(s["title"], s["url"], s["subtitle"]) for s in sources] == [
+        ("Low Salt Veggie", reverse("product", args=[pizzas["low"].pk]),
+         "Test Pizzeria · 0.8 g salt / 100 g"),
+    ]  # fmt: skip
 
 
 def test_ai_failure_keeps_the_data_answer(member, pizzas, article, provider):

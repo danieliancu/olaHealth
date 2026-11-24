@@ -406,6 +406,50 @@ def _name(p: Product) -> str:
     return f"{name} ({p.brand})" if p.brand else name
 
 
+def product_card(
+    p: Product,
+    lang: str = "en",
+    nutrient: str | None = None,
+    value=None,
+    unit: str = "g",
+    basis: str = "per_100g",
+    foodo: int | None = None,
+) -> dict:
+    """A product as a source card under an answer: its name, then the brand and the value
+    the question was about (a verified value from the product record), and its photo."""
+    from myola.services import chat_text as W
+
+    second = [p.brand] if p.brand else []
+    if nutrient == "foodo" and foodo is not None:
+        second.append(f"Foodo Score {foodo}/100")
+    elif nutrient and value is not None:
+        second.append(W.card_value(lang, nutrient, value, unit or "g", basis or "per_100g"))
+    return {
+        "kind": "product",
+        "title": p.name or W.t(lang, "unnamed"),
+        "url": _product_url(p),
+        "subtitle": " · ".join(second),
+        "image": p.front_image_url or "",
+    }
+
+
+def article_card(article, lang: str = "en") -> dict:
+    """A Magazine article as a source card: its title, then its topic and reading time, and
+    its cover photo."""
+    from myola.services import chat_text as W
+
+    second = [article.topic.title] if article.topic_id else []
+    if article.minutes:
+        second.append(W.t(lang, "read_time", n=article.minutes))
+    return {
+        "kind": "article",
+        "title": article.title,
+        "url": reverse("learn-article", args=[article.slug]),
+        "subtitle": " · ".join(second),
+        "image": article.image_url(),
+    }
+
+
 @dataclass
 class Material:
     """What the model may use, with the ids it may cite, and the links behind those ids."""
@@ -416,7 +460,9 @@ class Material:
     sources: dict[str, dict[str, str]]
 
 
-def build_material(comparison: Comparison | None, hits: list, product_facts=None) -> Material:
+def build_material(
+    comparison: Comparison | None, hits: list, product_facts=None, lang: str = "en"
+) -> Material:
     facts: dict[str, Any] = {}
     sources: dict[str, dict[str, str]] = {}
     if comparison is not None:
@@ -431,8 +477,10 @@ def build_material(comparison: Comparison | None, hits: list, product_facts=None
             "without_the_value_not_compared": c.unknown,
         }
         if c.reference is not None:
-            sources["P0"] = {"kind": "product", "title": _name(c.reference),
-                             "url": _product_url(c.reference)}  # fmt: skip
+            sources["P0"] = product_card(
+                c.reference, lang, c.criterion.nutrient, c.reference_value, c.unit, c.basis,
+                c.reference_foodo,
+            )  # fmt: skip
             block["scanned_product"] = {
                 "id": "P0",
                 "name": _name(c.reference),
@@ -450,8 +498,9 @@ def build_material(comparison: Comparison | None, hits: list, product_facts=None
         block["matches"] = []
         for i, m in enumerate(c.matches, start=1):
             pid = f"P{i}"
-            sources[pid] = {"kind": "product", "title": _name(m.product),
-                            "url": _product_url(m.product)}  # fmt: skip
+            sources[pid] = product_card(
+                m.product, lang, c.criterion.nutrient, m.value, m.unit, c.basis, m.foodo
+            )
             block["matches"].append(
                 {
                     "id": pid,
@@ -467,8 +516,7 @@ def build_material(comparison: Comparison | None, hits: list, product_facts=None
         facts["magazine"] = []
         for i, hit in enumerate(hits[:MAX_PASSAGES], start=1):
             aid = f"A{i}"
-            sources[aid] = {"kind": "article", "title": hit.article.title,
-                            "url": reverse("learn-article", args=[hit.article.slug])}  # fmt: skip
+            sources[aid] = article_card(hit.article, lang)
             facts["magazine"].append(
                 {
                     "id": aid,
@@ -678,6 +726,10 @@ def wants_recommendation(text: str, product: Product | None) -> bool:
         return False
     if product is not None and food not in (product.categories or []):
         return not _has(t, THIS_PRODUCT)  # another kind of food than the open product
+    if product is None and not _has(t, THIS_PRODUCT):
+        # The general chat has no open product: "Ce iaurt are mai puțin zahăr?" searches the
+        # catalogue ("than the scanned one" still asks to open a product first).
+        return True
     if not _has(t, RECOMMEND_WORDS):
         return False
     # With a product open, a criterion or "this one" means a comparison with it.
@@ -742,6 +794,7 @@ def recommend(text: str, earlier: list[str], user=None, lang: str = "en"):
                                "markets": [market], "subject": subject, "origin": origin,
                                "candidates": found.count()}  # fmt: skip
     picks: list[tuple[Product, str]] = []
+    cards: list[dict] = []
     lines: list[str] = []
     if subject in NUTRIENTS:
         facts = list(
@@ -763,6 +816,7 @@ def recommend(text: str, earlier: list[str], user=None, lang: str = "en"):
             for f in facts:
                 p = f.revision.product
                 picks.append((p, str(f.value)))
+                cards.append(product_card(p, lang, subject, f.value, f.unit))
                 lines.append(f"- {_name(p)}: {W.number(f.value, f.unit, lang)} {name} "
                              f"{W.basis(lang, 'per_100g')}")  # fmt: skip
     elif subject in CONCEPTS:
@@ -780,6 +834,7 @@ def recommend(text: str, earlier: list[str], user=None, lang: str = "en"):
             for p in with_value[:3]:
                 value = p.current_revision.off_payload["nutriments"][key]
                 picks.append((p, str(value)))
+                cards.append(product_card(p, lang))
                 lines.append(f"- {_name(p)}: {W.number(value, 'g', lang)} {subject} "
                              f"{W.basis(lang, 'per_100g')}")  # fmt: skip
         else:
@@ -802,6 +857,7 @@ def recommend(text: str, earlier: list[str], user=None, lang: str = "en"):
                 for f in fats:
                     p = f.revision.product
                     picks.append((p, None))
+                    cards.append(product_card(p, lang, "fat", f.value, f.unit))
                     lines.append(
                         f"- {_name(p)}: {W.t(lang, 'rec_fat', value=W.number(f.value, 'g', lang))}"
                     )
@@ -812,13 +868,14 @@ def recommend(text: str, earlier: list[str], user=None, lang: str = "en"):
                              label=W.t(lang, "rec_foodo")))  # fmt: skip
             for p in best:
                 picks.append((p, None))
+                cards.append(product_card(p, lang, "foodo", foodo=p.foodo_value))
                 lines.append(f"- {_name(p)}: Foodo Score {p.foodo_value}/100")
     if not lines:
         lines.append(W.t(lang, "rec_none", kind=kind, where=where))
     if origin == "conversation" and subject:
         lines.insert(0, W.t(lang, "rec_context", what=W.nutrient(lang, subject)
                             if subject in NUTRIENTS else subject))  # fmt: skip
-    sources = [{"kind": "product", "title": _name(p), "url": _product_url(p)} for p, _ in picks]
+    sources = cards
     details["products"] = [_product_detail(p, Decimal(v) if v else None, None) for p, v in picks]
     return "\n".join(lines), sources, details
 

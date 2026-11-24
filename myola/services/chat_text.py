@@ -338,3 +338,35 @@ def localized_display(display: str, lang: str) -> str:
 def basis_label(lang: str, basis: str, inferred: bool) -> str:
     text = BASIS[lang_of(lang)].get(basis, "")
     return text + (T[lang_of(lang)]["from_type"] if inferred and text else "")
+
+
+# ---------- Source cards under an answer ----------
+# The nutrient as a card says it: "4,1 g zaharuri / 100 g".
+CARD_NUTRIENT = {
+    "en": {"sugars": "sugars", "salt": "salt", "saturated-fat": "saturates", "fat": "fat",
+           "fiber": "fibre", "proteins": "protein", "energy-kcal": "energy"},
+    "ro": {"sugars": "zaharuri", "salt": "sare", "saturated-fat": "grăsimi saturate",
+           "fat": "grăsimi", "fiber": "fibre", "proteins": "proteine", "energy-kcal": "energie"},
+}  # fmt: skip
+# The two groups of cards, in the answer's language (every language the chat detects).
+GROUPS = {
+    "products": {"en": "Products", "ro": "Produse", "es": "Productos", "fr": "Produits",
+                 "it": "Prodotti", "de": "Produkte", "pt": "Produtos", "pl": "Produkty"},
+    "magazine": {"en": "From the Magazine", "ro": "Din Magazine", "es": "De Magazine",
+                 "fr": "Du Magazine", "it": "Dal Magazine", "de": "Aus dem Magazine",
+                 "pt": "Da Magazine", "pl": "Z Magazine"},
+}  # fmt: skip
+T["en"]["read_time"] = "{n} min read"
+T["ro"]["read_time"] = "{n} min de citit"
+
+
+def card_value(lang: str, nutrient: str, value, unit: str, basis: str) -> str:
+    lang = lang_of(lang)
+    per = "100 ml" if basis == "per_100ml" else "100 g"
+    name = CARD_NUTRIENT[lang].get(nutrient, nutrient)
+    return f"{number(value, unit, lang)} {name} / {per}"
+
+
+def group_title(kind: str, lang: str) -> str:
+    titles = GROUPS[kind]
+    return titles.get(lang or "", titles["en"])

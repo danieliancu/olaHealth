@@ -605,6 +605,15 @@ def _answer(
     return localise_rule(baseline, result.log)
 
 
+def _uuid(value):
+    import uuid
+
+    try:
+        return uuid.UUID(str(value))
+    except ValueError:
+        return None
+
+
 def _data_answer(user, context, text, product, sources, details, lang="en") -> str | None:
     """Answers written only from the data, before anything else (English; translated by the
     caller): a follow-up asking for another amount ("Dar la 200 g?"), computed from the values
@@ -625,11 +634,18 @@ def _data_answer(user, context, text, product, sources, details, lang="en") -> s
         if previous and previous.get("kind") in ("comparison", "value", "recommendation"):
             # A further follow-up works from the same values (the language is this answer's).
             details.update({k: v for k, v in previous.items() if not k.startswith("lang")})
+            from catalog.models import Product
+
+            ids = [p["id"] for p in previous.get("products") or [] if p.get("value") is not None]
+            found = Product.objects.in_bulk([u for u in map(_uuid, ids) if u])
+            nutrient = (previous.get("criterion") or {}).get("nutrient") or previous.get("nutrient")
             for p in previous.get("products") or []:
-                if p.get("value") is not None:
-                    title = p["name"] + (f" ({p['brand']})" if p.get("brand") else "")
-                    sources.append({"kind": "product", "title": title or "Unnamed product",
-                                    "url": f"/p/{p['id']}/"})  # fmt: skip
+                product_row = found.get(_uuid(p["id"]))
+                if p.get("value") is not None and product_row is not None:
+                    sources.append(rag.product_card(
+                        product_row, lang, nutrient, p["value"], previous.get("unit") or "g",
+                        previous.get("basis") or "per_100g",
+                    ))  # fmt: skip
         return answer
     if rag.wants_recommendation(text, product):
         # "Ce pește îmi recomanzi…", "Unde găsesc…": the whole catalogue, in any chat (also
@@ -648,8 +664,9 @@ def _data_answer(user, context, text, product, sources, details, lang="en") -> s
         if nutrient is not None:
             answer, found = rag.value_answer(product, nutrient, lang)
             details.update(found)
-            sources.append({"kind": "product", "title": rag._name(product),
-                            "url": rag._product_url(product)})  # fmt: skip
+            value = (found.get("products") or [{}])[0].get("value")
+            sources.append(rag.product_card(product, lang, nutrient, value,
+                                            found.get("unit"), found.get("basis")))  # fmt: skip
             return answer
     return None
 
@@ -684,7 +701,7 @@ def _rag_answer(user, profile, context, text, product, facts, intent, baseline, 
             with_preferences=profile.ai_use_preferences,
             with_ingredients=site.ai_send_ingredients,
         )
-    material = rag.build_material(None, hits, product_facts)
+    material = rag.build_material(None, hits, product_facts, lang=chat_text.lang_of(lang))
     details.update(kind="magazine", passages=[h.passage.pk for h in hits])
     # No earlier answers as history: the model restated them (the repeated explanation).
     result = ask(user, material.facts, text, [], context=context, mode="rag", lang=lang)
@@ -732,7 +749,7 @@ def _comparison_answer(user, context, text, comparison, lang, deliver, sources, 
     if explain:
         hits = passages.search(text, user=user)[:1]
         details["passages"] = [h.passage.pk for h in hits]
-    material = rag.build_material(comparison, hits)
+    material = rag.build_material(comparison, hits, lang=written)
     excerpts = _translated_excerpts(user, hits, written, text, context)
     answer = rag.deterministic_answer(material, written, excerpts)
     if explain and not hits:

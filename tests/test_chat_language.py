@@ -169,3 +169,54 @@ def test_explanation_from_an_english_article_in_romanian_without_ai(member, pizz
     if any(s["kind"] == "article" for s in out.sources):
         assert "(citat în engleză)" in out.text or out.details["lang"] == "en"
     assert not MARKERS.search(out.text)
+
+
+def test_sources_as_card_groups_in_the_answer_language(member_client, member, pizzas, article,
+                                                       provider):  # fmt: skip
+    """Products then "Din Magazine", vertical cards, each one link, each result once."""
+
+    ctx = f"product:{pizzas['scanned'].pk}"
+    r = member_client.post(
+        reverse("chat-send"),
+        {"context": ctx, "text": "Ce pizza are mai puțină sare și how do I compare the labels?"},
+        HTTP_HX_REQUEST="true",
+    )
+    html = r.content.decode()
+    answer = ChatMessage.objects.filter(user=member, role="ola").order_by("-pk").first()
+    groups = html.split('class="chat-cards"')[1:]
+    titles = [g.split('class="chat-cards-title">')[1].split("<")[0] for g in groups]
+    assert titles[0] == "Produse"
+    assert all(t in ("Produse", "Din Magazine") for t in titles) and len(set(titles)) == len(titles)
+    products = groups[0].split("</section>")[0]
+    assert products.count('class="chat-card"') == 3  # the scanned pizza and two with less salt
+    assert "Test Pizzeria · 0,8 g sare / 100 g" in products
+    assert 'width="52" height="52"' in products
+    # Each card is a single link (no link inside a link).
+    for card in products.split('<a class="chat-card"')[1:]:
+        assert "<a " not in card.split("</a>")[0]
+    urls = [s["url"] for s in answer.sources]
+    assert len(urls) == len(set(urls))
+
+
+def test_card_groups_once_each_and_placeholder_without_photo(member, fishes, provider):
+    from core.templatetags.ui import source_groups
+
+    out = chat.send(member, "personal", "Recommend a fish with the least fat")[1]
+    out.sources = out.sources + out.sources  # the same result twice: shown once
+    groups = source_groups(out)
+    assert [(title, kind) for title, kind, _ in groups] == [("Products", "products")]
+    cards = groups[0][2]
+    assert [c["title"] for c in cards] == ["Cod fillets", "Salmon fillets", "Smoked mackerel"]
+    assert cards[0]["subtitle"] == "Brand · 0.7 g fat / 100 g"
+    from django.template.loader import render_to_string
+
+    html = render_to_string("myola/partials/chat_messages.html", {"chat_messages": [out]})
+    assert html.count('class="chat-card"') == 3
+
+
+def test_general_chat_question_searches_the_catalogue(member, fishes, provider):
+    """No product is open in the general chat: "Ce pește are cele mai puține grăsimi?" lists
+    products from the catalogue instead of asking to open one."""
+    out = chat.send(member, "personal", "Ce pește are cele mai puține grăsimi?")[1]
+    assert out.details["kind"] == "recommendation"
+    assert out.sources[0]["subtitle"] == "Brand · 0,7 g grăsimi / 100 g"

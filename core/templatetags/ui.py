@@ -182,6 +182,56 @@ def chat_links(text: str):
 
 
 @register.filter
+def source_groups(message) -> list[tuple[str, str, list[dict]]]:
+    """The sources under an Ask Foodo answer as card groups: ``(title, kind, cards)`` for
+    "Products" then "From the Magazine", titled in the answer's language, each result once,
+    in the order the answer gave them; a group only when it has results."""
+    from myola.services import chat_text
+
+    lang = (getattr(message, "details", None) or {}).get("lang") or "en"
+    seen: set[str] = set()
+    groups: dict[str, list[dict]] = {"products": [], "magazine": []}
+    for source in getattr(message, "sources", None) or []:
+        url = source.get("url")
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        groups["magazine" if source.get("kind") == "article" else "products"].append(dict(source))
+    _current_images(groups)
+    return [(chat_text.group_title(k, lang), k, cards) for k, cards in groups.items() if cards]
+
+
+def _current_images(groups: dict[str, list[dict]]) -> None:
+    """The photo of each card as it is now: the product's front photo, the article's cover
+    (also for answers saved before cards had photos). Unchanged when not found."""
+    import uuid
+
+    from catalog.models import Product
+    from core.models import LearnArticle
+
+    ids = {}
+    for card in groups["products"]:
+        m = re.match(r"^/p/([0-9a-f-]{36})/$", card.get("url") or "")
+        if m:
+            ids[card["url"]] = uuid.UUID(m.group(1))
+    photos = dict(Product.objects.filter(pk__in=ids.values()).values_list("pk", "front_image_url"))
+    for card in groups["products"]:
+        photo = photos.get(ids.get(card.get("url")))
+        if photo:
+            card["image"] = photo
+    slugs = {}
+    for card in groups["magazine"]:
+        m = re.match(r"^/learn/([\w-]+)/$", card.get("url") or "")
+        if m:
+            slugs[card["url"]] = m.group(1)
+    articles = {a.slug: a for a in LearnArticle.objects.filter(slug__in=slugs.values())}
+    for card in groups["magazine"]:
+        article = articles.get(slugs.get(card.get("url")))
+        if article is not None and article.image_url():
+            card["image"] = article.image_url()
+
+
+@register.filter
 def gbp(usd) -> str:
     """A US-dollar cost (what AI providers bill) as pounds with 3 decimals: "£0.012"."""
     from decimal import Decimal, InvalidOperation
