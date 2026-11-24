@@ -426,3 +426,17 @@ def test_migration_collapses_existing_duplicates(member):
         "reminder:2026-11-22:meal-lunch",
         "reminder:2026-11-22:water-17",
     ]
+
+
+def test_unread_notifications_show_in_the_browser_tab(client, member):
+    """A red dot on the tab icon and "(n)" before the title while something is unread."""
+    client.force_login(member)
+    html = client.get(reverse("products")).content.decode()
+    assert "<title>Products" in html and 'href="/static/img/icon.svg"' in html
+    for i in range(3):
+        notes.notify(member, "reminder", f"tab-{i}", f"Hello {i}")
+    html = client.get(reverse("products")).content.decode()
+    assert "<title>(3) Products" in html and 'href="/static/img/icon-alert.svg"' in html
+    assert 'data-notif-unread="3"' in html and "js/notif-badge.js" in html
+    Notification.objects.filter(user=member).update(read_at=timezone.now())
+    assert "<title>Products" in client.get(reverse("products")).content.decode()
